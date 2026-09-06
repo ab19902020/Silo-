@@ -39,6 +39,7 @@ export function createMaterials() {
   return {
     concrete: standard(0xb6aea0,{map:concreteMap,bumpMap:concreteMap,bumpScale:.075}),
     pale: standard(0xb4b19e,{map:concreteMap,bumpMap:concreteMap,bumpScale:.025}),
+    plaster: standard(0xb58d7f,{map:concreteMap,roughness:.94}),
     darkConcrete: standard(0x74756a,{map:concreteMap,bumpMap:concreteMap,bumpScale:.05}),
     floor: standard(0x8b8b7e,{map:concreteMap,roughness:.88}),
     airlockTile: standard(0x94785a,{map:tileMap,roughness:.83}),
@@ -53,6 +54,7 @@ export function createMaterials() {
     blue: standard(0x4e717b,{map:metalMap}),
     white: standard(0xd0d1bc,{roughness:.8}),
     fabric: standard(0x928d72,{roughness:1}),
+    bread: standard(0xc18d50,{map:rockMap,roughness:1}),
     linen: standard(0xb1b6a5,{roughness:1}),
     wood: standard(0x82704b,{map:woodMap,roughness:.8}),
     soil: standard(0x3d3022,{map:rockMap}),
@@ -79,6 +81,20 @@ const sphereGeometry=cached('sphere',()=>new THREE.SphereGeometry(1,16,10));
 const leafGeometry=cached('leaf',()=>new THREE.SphereGeometry(1,8,5));
 const temp=new THREE.Object3D(), matrix=new THREE.Matrix4();
 
+function roundedPath(path,x,y,w,h,r){
+  path.moveTo(x+r,y);path.lineTo(x+w-r,y);path.quadraticCurveTo(x+w,y,x+w,y+r);
+  path.lineTo(x+w,y+h-r);path.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  path.lineTo(x+r,y+h);path.quadraticCurveTo(x,y+h,x,y+h-r);
+  path.lineTo(x,y+r);path.quadraticCurveTo(x,y,x+r,y);return path;
+}
+export function portalGeometry(w,h,depth=.25,r=.3,trim=.16){
+  return cached(`portal:${w}:${h}:${depth}:${r}:${trim}`,()=>{
+    const shape=roundedPath(new THREE.Shape(),-w/2-trim,-trim,w+trim*2,h+trim*2,r+trim);
+    shape.holes.push(roundedPath(new THREE.Path(),-w/2,0,w,h,r));
+    const g=new THREE.ExtrudeGeometry(shape,{depth,steps:1,bevelEnabled:true,bevelSize:.025,bevelThickness:.025,bevelSegments:2,curveSegments:8});g.translate(0,0,-depth/2);return g;
+  });
+}
+
 // A solid arc in XZ, with a top surface, underside and closed ends.
 export function arcGeometry(inner,outer,height,start=0,angle=Math.PI*2,segments=96) {
   return cached(`arc:${inner}:${outer}:${height}:${start}:${angle}:${segments}`,()=>{
@@ -103,6 +119,11 @@ export class Kit {
   }
   box(mat,x,y,z,w,h,d,ry=0,rx=0,rz=0){return this.mesh(boxGeometry,mat,x,y,z,w,h,d,rx,ry,rz);}
   bevel(mat,x,y,z,w,h,d,ry=0){return this.mesh(bevelGeometry,mat,x,y,z,w,h,d,0,ry,0);}
+  portal(mat,x,y,z,w,h,depth=.25,ry=0,r=.3,trim=.16){return this.mesh(portalGeometry(w,h,depth,r,trim),mat,x,y,z,1,1,1,0,ry);}
+  slab(mat,x,y,z,w,d,h=.3,r=.3){
+    const g=cached(`slab:${w}:${d}:${h}:${r}`,()=>{const shape=roundedPath(new THREE.Shape(),-w/2,-d/2,w,d,r);const g=new THREE.ExtrudeGeometry(shape,{depth:h,bevelEnabled:true,bevelSize:.035,bevelThickness:.035,bevelSegments:2,curveSegments:8});g.rotateX(-Math.PI/2);g.translate(0,-h/2,0);return g;});
+    return this.mesh(g,mat,x,y,z);
+  }
   cylinder(mat,x,y,z,r,h,rx=0,ry=0,rz=0){return this.mesh(cylinderGeometry,mat,x,y,z,r,h,r,rx,ry,rz);}
   sphere(mat,x,y,z,rx,ry=rx,rz=rx){return this.mesh(sphereGeometry,mat,x,y,z,rx,ry,rz);}
   leaf(mat,x,y,z,sx,sy,sz,rot=0){return this.mesh(leafGeometry,mat,x,y,z,sx,sy,sz,0,rot,.4);}
@@ -129,7 +150,7 @@ export function sign(text,w=3,h=.65,{color='#ddd7b5',background='#2d3e35',font='
   if(!material){
     const canvas=document.createElement('canvas');canvas.width=512;canvas.height=Math.max(32,Math.round(512*h/w));const ctx=canvas.getContext('2d');
     ctx.fillStyle=background;ctx.fillRect(0,0,canvas.width,canvas.height);if(border){ctx.strokeStyle='#b7b797';ctx.lineWidth=1.5;ctx.strokeRect(5,5,canvas.width-10,canvas.height-10);}
-    ctx.fillStyle=color;ctx.font=font.replace(/(\d+)px/,(_,n)=>`${Number(n)/2}px`);ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,256,canvas.height/2,485);
+    ctx.fillStyle=color;ctx.font=font.replace(/(\d+)px/,(_,n)=>`${Number(n)/2}px`);ctx.textAlign='center';ctx.textBaseline='middle';const lines=text.split('\n');lines.forEach((line,i)=>ctx.fillText(line,256,canvas.height*(.5+(i-(lines.length-1)/2)*.16),485));
     const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4;
     material=new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide});material.userData.signRefs=0;material.userData.signCached=true;textCache.set(key,material);
     if(textCache.size>128){const oldest=textCache.keys().next().value,oldMaterial=textCache.get(oldest);textCache.delete(oldest);oldMaterial.userData.signCached=false;if(!oldMaterial.userData.signRefs){oldMaterial.map.dispose();oldMaterial.dispose();}}
@@ -152,10 +173,10 @@ export function desk(k,x,z,angle=0){
   k.bevel('green',x,1.13,z-.15,.65,.49,.43,angle);k.box('screen',x,1.15,z+.073,.5,.3,.012,angle);k.box('darkMetal',x,.91,z+.28,.65,.045,.2,angle);
 }
 export function chair(k,x,z,rot=0){
-  const base=new Kit(k.m);base.bevel('wood',0,.48,0,.5,.07,.51);base.bevel('wood',0,.89,-.23,.5,.6,.07);for(const dx of [-.2,.2])for(const dz of [-.2,.2])base.cylinder('metal',dx,.23,dz,.023,.46);
+  const base=new Kit(k.m);base.bevel('wood',0,.48,0,.5,.07,.51);base.bevel('wood',0,.89,-.23,.5,.6,.055);for(const dx of [-.2,.2]){base.beam('metal',[dx,.05,.24],[dx,.45,.19],.024);base.beam('metal',[dx,.05,-.25],[dx,1.08,-.21],.024);base.beam('metal',[dx,.22,-.23],[dx,.22,.22],.016);for(const y of [.7,1.08])base.cylinder('brass',dx,y,-.273,.019,.02,Math.PI/2);}
   temp.position.set(x,0,z);temp.rotation.set(0,rot,0);temp.scale.set(1,1,1);temp.updateMatrix();for(const p of base.parts)k.parts.push({...p,matrix:temp.matrix.clone().multiply(p.matrix)});
 }
-export function table(k,x,z,w=2,d=1){k.bevel('wood',x,.79,z,w,.09,d);for(const dx of [-w*.4,w*.4])for(const dz of [-d*.35,d*.35])k.cylinder('metal',x+dx,.37,z+dz,.04,.74);}
+export function table(k,x,z,w=2,d=1){k.bevel('wood',x,.79,z,w,.09,d);for(const dz of [-d*.2,d*.2])k.box('darkMetal',x,.837,z+dz,w-.08,.007,.008);for(const dx of [-w*.4,w*.4]){for(const dz of [-d*.35,d*.35])k.beam('metal',[x+dx*.94,.04,z+dz*1.2],[x+dx,.75,z+dz],.028);k.beam('metal',[x+dx,.69,z-d*.35],[x+dx,.69,z+d*.35],.025);}k.beam('metal',[x-w*.4,.59,z],[x+w*.4,.59,z],.024);}
 export function shelf(k,x,z,w=2,h=2.2){for(const dx of [-w/2,w/2])for(const dz of [-.34,.34])k.box('metal',x+dx,h/2,z+dz,.055,h,.055);for(const y of [.15,.8,1.45,2.1])k.box('metal',x,y,z,w,.06,.8);}
 export function bed(k,x,z){k.box('metal',x,.29,z,1.05,.12,2.15);k.bevel('linen',x,.45,z,1,.24,2);k.box('fabric',x,.61,z+.27,1.03,.08,1.32);k.bevel('white',x,.63,z-.68,.78,.14,.42);for(const dx of [-.45,.45])for(const dz of [-.9,.9])k.box('metal',x+dx,.15,z+dz,.06,.3,.06);}
 export function pipe(k,x,z,y=3,length=8,r=.14,mat='rust'){k.cylinder(mat,x,y,z,r,length,Math.PI/2);for(let dz=-length/2;dz<=length/2;dz+=2)k.torus('metal',x,y,z+dz,r+.025,.025);}

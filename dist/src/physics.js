@@ -35,6 +35,7 @@ export class ColliderSet {
     // around a thin door that is rotated forty-five degrees.
     this.arcs = [];
     this.orientedBoxes = [];
+    this.columns = [];
     this.bounds = bounds;
   }
 
@@ -87,6 +88,10 @@ export class ColliderSet {
     };
     this.orientedBoxes.push(collider);
     return collider;
+  }
+
+  addColumn({cx,cz,radius,minY,maxY}){
+    const column={cx,cz,radius,minY,maxY};this.columns.push(column);return column;
   }
 
   static _local(obb, x, z) {
@@ -278,6 +283,13 @@ export class ColliderSet {
     let corrected = false;
     for (let pass = 0; pass < 3; pass++) {
       let moved = false;
+      for(const column of this.columns){
+        if(column.maxY<=feetY+EPSILON||column.minY>=headY-EPSILON)continue;
+        const dx=position.x-column.cx,dz=position.z-column.cz,d=Math.hypot(dx,dz),limit=radius+column.radius;
+        if(d>=limit)continue;
+        const a=d>EPSILON?Math.atan2(dz,dx):0;
+        position.x=column.cx+Math.cos(a)*limit;position.z=column.cz+Math.sin(a)*limit;moved=corrected=true;
+      }
       for (const { box, climbable, enabled = true } of this.boxes) {
         if (!enabled) continue;
         if (box.max.y <= feetY + EPSILON || box.min.y >= headY - EPSILON) continue;
@@ -392,6 +404,7 @@ export class ColliderSet {
 
   // Cheap point query kept for AI and for the legacy blocked() signature.
   contains(x, z, radius = 0, feetY = 0.1, headY = 1.8, ignoreSoft = false) {
+    for(const c of this.columns)if(c.maxY>feetY&&c.minY<headY&&Math.hypot(x-c.cx,z-c.cz)<radius+c.radius)return true;
     if (this.bounds) {
       const b = this.bounds;
       if (x < b.minX + radius || x > b.maxX - radius) return true;
@@ -485,8 +498,10 @@ export class CharacterBody {
     const before = { x: this.position.x, z: this.position.z };
     this.position.x += this.velocity.x * dt;
     this.position.z += this.velocity.z * dt;
-    this.position.y += this.velocity.y * dt;
 
+    // Horizontal travel starts at the supported height. Integrating gravity
+    // first sank the feet below the floor by a fraction of a millimetre and
+    // made the facade of the level BELOW behave like an invisible wall here.
     const feet = this.position.y;
     const head = this.position.y + this.height;
     colliders.resolve(this.position, this.radius, feet, head, this.stepHeight);
@@ -498,6 +513,7 @@ export class CharacterBody {
     if (Math.abs(actualX) < Math.abs(this.velocity.x)) this.velocity.x = actualX;
     if (Math.abs(actualZ) < Math.abs(this.velocity.z)) this.velocity.z = actualZ;
 
+    this.position.y += this.velocity.y * dt;
     this.groundY = colliders.floorAt(this.position.x, this.position.z, this.radius, this.position.y + this.stepHeight);
     if (this.position.y <= this.groundY + EPSILON) {
       if (!this.grounded && this.velocity.y < -2.2) this.landingImpact = Math.min(1, -this.velocity.y / 9);

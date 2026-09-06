@@ -13,6 +13,46 @@ function walk(body,target,maxSeconds=50){
   assert.fail(`Route blocked: ${JSON.stringify(topLocal(body.position))} -> ${JSON.stringify(topLocal(target))}`);
 }
 
+test('actual walking exits and reenters all 864 directory wing destinations',()=>{
+  // A collision sample at y + .01 missed this regression. Exercise gravity
+  // and horizontal integration together, exactly as the game controller does.
+  const dt=1/120;
+  for(let n=1;n<=144;n++){
+    world.setLevel(n);
+    for(let w=0;w<6;w++){
+      const a=w*Math.PI/3,radial=new THREE.Vector3(Math.cos(a),0,Math.sin(a));
+      const b=new CharacterBody({radius:.3,stepHeight:.3});b.teleport(...world.destination(`room:${n}:${w}`).position.toArray());
+      for(const radius of [23,29]){
+        const target=radial.clone().multiplyScalar(radius);target.y=levelY(n);
+        for(let j=0;j<420&&b.position.distanceTo(target)>.09;j++){
+          const v=target.clone().sub(b.position);v.y=0;v.normalize().multiplyScalar(3.2);b.step(dt,v,world.colliders);
+        }
+        assert.ok(b.position.distanceTo(target)<.1,`Invisible wall on ${n}/${w} toward r=${radius}: ${b.position.toArray()}`);
+      }
+    }
+  }
+});
+
+test('rear passage openings and the whole circular service route are walkable',()=>{
+  const level=100;world.setLevel(level);const b=new CharacterBody({radius:.3,stepHeight:.3}),y=levelY(level);
+  b.teleport(47.7,y,0);walk(b,new THREE.Vector3(53.6,y,0));
+  for(let j=1;j<=144;j++){
+    const a=j*Math.PI*2/144;walk(b,new THREE.Vector3(Math.cos(a)*53.6,y,Math.sin(a)*53.6),5);
+  }
+  walk(b,new THREE.Vector3(47.7,y,0));
+});
+
+test('bazaar street and all six shop doorways admit a walking body',()=>{
+  world.setLevel(100);const room=world.loaded.get(100).rooms[0],y=levelY(100);
+  const p=(x,z)=>new THREE.Vector3(x,0,z).applyAxisAngle(new THREE.Vector3(0,1,0),room.rotation.y).add(new THREE.Vector3(room.position.x,y,room.position.z));
+  const b=new CharacterBody({radius:.3,stepHeight:.3});b.teleport(...p(0,2).toArray());
+  for(let row=0;row<3;row++){
+    const z=4.5+row*6.55;walk(b,p(0,z));
+    for(const side of [-1,1]){walk(b,p(side*6.5,z));walk(b,p(0,z));}
+  }
+  walk(b,p(0,27));
+});
+
 test('corrected TV departments and 864 direct wing destinations',()=>{
   assert.equal(LEVELS.length,144);assert.equal(LEVELS.flatMap(l=>roomsForLevel(l.level)).length,864);
   for(const [n,w,t] of [[1,0,'cafeteria'],[10,0,'porter'],[14,0,'judicial'],[19,0,'it'],[20,0,'janitorial'],[20,1,'recycling'],[62,0,'medical'],[126,1,'it'],[140,0,'residential'],[144,1,'workshop']])assert.equal(roomType(n,w),t);

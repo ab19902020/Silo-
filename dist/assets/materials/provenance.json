@@ -1,0 +1,123 @@
+{
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "sets": {
+    "concrete_wall_009": {
+      "source": "https://polyhaven.com/a/concrete_wall_009",
+      "authors": {
+        "Charlotte Baglioni": "All"
+      },
+      "description": "Free 16K concrete wall material with smooth formwork seams, tie-bolt marks, small air holes, light stains and subtle roughness in a warm gray tone.",
+      "size_meters": [
+        1.805,
+        1.805
+      ],
+      "resolution": "1024x1024",
+      "maps": {
+        "albedo": {
+          "path": "concrete_wall_009/albedo.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_wall_009/concrete_wall_009_diff_1k.jpg",
+          "md5": "183930f83ca9b70797b1226833d64bf3"
+        },
+        "normal-gl": {
+          "path": "concrete_wall_009/normal-gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_wall_009/concrete_wall_009_nor_gl_1k.jpg",
+          "md5": "68c543079c71fd14e9f0b38b126eb116"
+        },
+        "roughness": {
+          "path": "concrete_wall_009/roughness.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_wall_009/concrete_wall_009_rough_1k.jpg",
+          "md5": "4b5da97ce2a223738a67457ff9b75081"
+        }
+      }
+    },
+    "green_metal_rust": {
+      "source": "https://polyhaven.com/a/green_metal_rust",
+      "authors": {
+        "Rob Tuytel": "All"
+      },
+      "description": "Free 8K texture of painted green metal with worn, scratched surface, subtle rust streaks around fasteners and peeling, low-sheen, weathered industrial finish.",
+      "size_meters": [
+        1.0,
+        1.0
+      ],
+      "resolution": "1024x1024",
+      "maps": {
+        "albedo": {
+          "path": "green_metal_rust/albedo.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/green_metal_rust/green_metal_rust_diff_1k.jpg",
+          "md5": "f69d8c507961f0629019652162090917"
+        },
+        "normal-gl": {
+          "path": "green_metal_rust/normal-gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/green_metal_rust/green_metal_rust_nor_gl_1k.jpg",
+          "md5": "a6cefc436aa41f73f15347dcf7a791d0"
+        },
+        "roughness": {
+          "path": "green_metal_rust/roughness.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/green_metal_rust/green_metal_rust_rough_1k.jpg",
+          "md5": "22cb8ebbd84cd90667a2734114fc4732"
+        }
+      }
+    },
+    "brown_floor_tiles": {
+      "source": "https://polyhaven.com/a/brown_floor_tiles",
+      "authors": {
+        "Rob Tuytel": "All"
+      },
+      "description": "Free 8K texture: brown terracotta ceramic floor tiles with square grid and subtle wear - flat, grout-lined material for outdoor or indoor floors.",
+      "size_meters": [
+        1.7,
+        1.7
+      ],
+      "resolution": "1024x1024",
+      "maps": {
+        "albedo": {
+          "path": "brown_floor_tiles/albedo.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_floor_tiles/brown_floor_tiles_diff_1k.jpg",
+          "md5": "6bff33d5ac96c8ef912210bfdfb8411f"
+        },
+        "normal-gl": {
+          "path": "brown_floor_tiles/normal-gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_floor_tiles/brown_floor_tiles_nor_gl_1k.jpg",
+          "md5": "403a06b6f114d7585710c290f47c155a"
+        },
+        "roughness": {
+          "path": "brown_floor_tiles/roughness.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_floor_tiles/brown_floor_tiles_rough_1k.jpg",
+          "md5": "24b7da9312c16212b87fcf8340548e2b"
+        }
+      }
+    },
+    "rock_boulder_dry": {
+      "source": "https://polyhaven.com/a/rock_boulder_dry",
+      "authors": {
+        "Dimitrios Savva": "Photography",
+        "Rico Cilliers": "Processing"
+      },
+      "description": "Free 16K texture of a dry, weathered rock boulder with rough, chipped and cracked surfaces, small pits and uneven, eroded pale sandy-gray tones.",
+      "size_meters": [
+        1.8,
+        1.8
+      ],
+      "resolution": "1024x1024",
+      "maps": {
+        "albedo": {
+          "path": "rock_boulder_dry/albedo.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rock_boulder_dry/rock_boulder_dry_diff_1k.jpg",
+          "md5": "da794cd9be3db91e3160cf081109f322"
+        },
+        "normal-gl": {
+          "path": "rock_boulder_dry/normal-gl.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rock_boulder_dry/rock_boulder_dry_nor_gl_1k.jpg",
+          "md5": "6f1c575ceed560ae253f65518cf748e2"
+        },
+        "roughness": {
+          "path": "rock_boulder_dry/roughness.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rock_boulder_dry/rock_boulder_dry_rough_1k.jpg",
+          "md5": "0c8b15df3e31c15256da5f8e1b0d0759"
+        }
+      }
+    }
+  }
+}

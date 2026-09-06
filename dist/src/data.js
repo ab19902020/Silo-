@@ -3,7 +3,7 @@
 export const TAU = Math.PI * 2;
 export const SILO = Object.freeze({
   levels: 144, levelHeight: 10, bottomY: 80,
-  wellRadius: 18, deckOuter: 25.6, shellRadius: 54,
+  wellRadius: 18, deckOuter: 25.6, shellRadius: 56,
   stairColumn: 3.1, stairRadius: 7.3, stairTurns: 1, stairSteps: 72, stairLandingSteps: 8,
   landingHalf: 1.8, roomDepth: 24, roomHalf: 10, roomHeight: 5.8,
 });
@@ -13,6 +13,10 @@ export const levelAt = y => Math.max(1, Math.min(144, Math.round((levelY(1) - y)
 export const zoneFor = n => n < 50 ? 'UP TOP' : n <= 100 ? 'THE MIDS' : 'DOWN DEEP';
 
 export const SOURCES = [
+  {title:'Sally Crees · Silo market set photographs',url:'https://www.sallycreescostumedesign.co.uk/home/silo-apple-tv-seasons-1-and-2',note:'TV market alleys, concrete shopfronts, red food lamps, conduits and festival dressing. The bazaar level number is unconfirmed.'},
+  {title:'Arnaud Valette · Alleyway’s Markets',url:'https://arnaudvalette.artstation.com/projects/Dvb9q0',note:'Credited street-mood concept work with production designer Gavin Bocquet.'},
+  {title:'Charles E J Downman · Silo apartment concepts',url:'https://www.artstation.com/artwork/oby0Dk',note:'Rounded kitchen portal, worn domestic finishes and household furnishings; concept art can differ from the filmed set.'},
+  {title:'Poly Haven · photographic materials',url:'https://polyhaven.com/license',note:'CC0 concrete, painted metal, brown tiles and dry rock, with their original normal and roughness maps.'},
   { title: 'Silo Wiki · Silo 18', url: 'https://silo.fandom.com/wiki/Silo_18', note: 'Requested reference. Indexed department and translated wiki entries informed the corrected television floor schedule; the main English page blocks automated fetching.' },
   { title: 'Silo Wiki · television floor index', url: 'https://silo.fandom.com/de/wiki/Silo_18', note: 'Numbered locations including janitorial on 20, Medical on 62, recycling on 126, and the electronics workshop on 144.' },
   { title: 'Silo Wiki · Level 1 cafeteria', url: 'https://silo.fandom.com/wiki/Level_1_Cafeteria', note: 'The outside screen and access through the cafeteria to the sheriff’s station.' },
@@ -51,6 +55,7 @@ export const LANDMARKS = [
   landmark(72, 'School & residential quarter', 'school', 'Education and homes in the Mids.', 'School placement reconstructed'),
   landmark(80, 'Agricultural level', 'farm', 'Soil beds, irrigation, grow lights, propagation and orchard wing.', 'Wiki-associated agriculture'),
   landmark(90, 'Park & common rooms', 'park', 'An underground garden and communal space.', 'Park shown in series · level reconstructed'),
+  landmark(100, 'Bazaar · market alleys', 'bazaar', 'Six enterable shops, food counters, repair stalls and the rear service gallery.', 'Television market design · floor and street plan inferred'),
   landmark(105, 'Down Deep deputy station', 'sheriff', 'Lower law-enforcement offices and holding rooms.', 'Wiki-associated deputy station'),
   landmark(110, 'Supply & textiles', 'supply', 'Stores, repairable goods and porter collections.'),
   landmark(124, 'Lower residential quarter', 'residential', 'Homes and shared domestic services.', 'Wiki-associated residences'),
@@ -71,8 +76,7 @@ export const LEVELS = Array.from({ length: 144 }, (_, i) => {
   const defaultType = level > 140 ? 'mechanical' : level % 16 === 0 ? 'farm' : level % 11 === 0 ? 'supply' : level % 9 === 0 ? 'workshop' : 'residential';
   return { level, zone: zoneFor(level), ...(known || { name: `${defaultType === 'residential' ? 'Residential' : defaultType[0].toUpperCase() + defaultType.slice(1)} · ${String(level).padStart(3, '0')}`, type: defaultType, description: 'Six furnished, enterable wings around a complete numbered gallery.', placement: 'Unseen level · reconstructed rooms' }) };
 });
-// Named rooms from the television wiki. Names identify empty environments,
-// never spawn characters. Apartment numbers are retained where reported.
+// Named rooms from the television wiki. Names identify environmental locations. Apartment numbers are retained where reported.
 export const RESIDENCES = {
   '6:0':'HOLSTON & ALLISON', '9:0':'MARNES · 9129', '15:0':'MANAGER’S ROW',
   '17:0':'GLORIA · 1727', '17:1':'SIMS FAMILY', '22:0':'KENNEDY · 2215',
@@ -99,7 +103,7 @@ export function roomType(level, wing) {
   if (wing === 4 && level % 3 === 0) return 'workshop';
   return 'residential';
 }
-export const TYPE_NAMES = { cafeteria: 'CAFETERIA', sheriff: 'SHERIFF', office: 'ADMINISTRATION', judicial: 'JUDICIAL', it: 'INFORMATION TECHNOLOGY', recycling: 'RECYCLING', school: 'EDUCATION', medical: 'MEDICAL', water: 'WATER FILTRATION', residential: 'RESIDENCES', farm: 'AGRICULTURE', supply: 'SUPPLY', workshop: 'WORKSHOP', mechanical: 'MECHANICAL', generator: 'GENERATOR', airlock: 'CLEANING AIRLOCK', surveillance: 'WATCHER ROOM', vault: 'THE VAULT', utility: 'SERVICES', janitorial:'JANITORIAL', porter:'PORTER DISPATCH', bar:'BAR', park:'PARK & ORCHARD', laundry:'LAUNDRY' };
+export const TYPE_NAMES = { bazaar:'BAZAAR', cafeteria: 'CAFETERIA', sheriff: 'SHERIFF', office: 'ADMINISTRATION', judicial: 'JUDICIAL', it: 'INFORMATION TECHNOLOGY', recycling: 'RECYCLING', school: 'EDUCATION', medical: 'MEDICAL', water: 'WATER FILTRATION', residential: 'RESIDENCES', farm: 'AGRICULTURE', supply: 'SUPPLY', workshop: 'WORKSHOP', mechanical: 'MECHANICAL', generator: 'GENERATOR', airlock: 'CLEANING AIRLOCK', surveillance: 'WATCHER ROOM', vault: 'THE VAULT', utility: 'SERVICES', janitorial:'JANITORIAL', porter:'PORTER DISPATCH', bar:'BAR', park:'PARK & ORCHARD', laundry:'LAUNDRY' };
 export const roomsForLevel = level => Array.from({length:6},(_,wing)=>({id:`room:${level}:${wing}`,level,wing,type:roomType(level,wing),name:RESIDENCES[`${level}:${wing}`]||TYPE_NAMES[roomType(level,wing)]}));
 export const normalizeAngle = a => ((a % TAU) + TAU) % TAU;
 export function stairHeight(x, z, nearY) {

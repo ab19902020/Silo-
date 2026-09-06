@@ -1,0 +1,80 @@
+{
+  "references": [
+    {
+      "file": "market-stall-sally-crees.jpg",
+      "page": "https://www.sallycreescostumedesign.co.uk/home/silo-apple-tv-seasons-1-and-2",
+      "image_url": "https://images.squarespace-cdn.com/content/v1/65fc789f1a69921a3d3def17/b9672ea1-99c2-4e6d-892b-9ee4fb3fc11c/IMG_5390%2B2.jpeg",
+      "provenance": "Production still published by Sally Crees, credited crowd supervisor Season 1 and assistant designer (crowd) later seasons; Silo / Apple TV. Exact still episode not identified.",
+      "status": "TV reference; copyrighted, not CC0"
+    },
+    {
+      "file": "market-alley-sally-crees.jpg",
+      "page": "https://www.sallycreescostumedesign.co.uk/home/silo-apple-tv-seasons-1-and-2",
+      "image_url": "https://images.squarespace-cdn.com/content/v1/65fc789f1a69921a3d3def17/3c061523-2fd8-4359-8cf3-0bccc0db2e3c/IMG_5393.jpeg",
+      "provenance": "Production still from credited Silo crowd costume designer Sally Crees. Exact still episode not identified.",
+      "status": "TV reference; copyrighted, not CC0"
+    },
+    {
+      "file": "central-stair-tv.jpg",
+      "page": "https://aftermath.site/silo-apple-tv-architecture-politics-world/",
+      "image_url": "https://aftermath.site/content/images/2025/10/siloep10_silocultureview-1.jpg",
+      "provenance": "Actual Silo TV still reproduced by Aftermath, filename describes episode 10.",
+      "status": "TV reference; copyrighted, not CC0"
+    },
+    {
+      "file": "apartment-charles-downman-concept.jpg",
+      "page": "https://www.artstation.com/artwork/oby0Dk",
+      "image_url": "https://i.pinimg.com/originals/b2/08/02/b208025536068f38b568c36b4715e600.jpg",
+      "provenance": "Image itself credits Charles E J Downman and Silo / Apple TV+. Mirrored on Pinterest; original project describes Silo Season One concept selects, production direction Gavin Bocquet and art direction Phil Harvey.",
+      "status": "Production concept reference, may differ from final TV set; copyrighted, not CC0"
+    },
+    {
+      "file": "walker-workshop-apple-still.jpg",
+      "page": "https://www.countryandtownhouse.com/culture/harriet-walter-interview/",
+      "image_url": "https://www.countryandtownhouse.com/wp-content/uploads/2023/05/Silo_Photo_010404.jpg",
+      "provenance": "Apple TV+ Silo promotional still in an interview with Harriet Walter. She describes the set and her character as living in the workshop in Mechanical, Down Deep.",
+      "status": "TV reference; copyrighted, not CC0"
+    },
+    {
+      "file": "cafeteria-vfxvoice.jpg",
+      "page": "https://vfxvoice.com/unraveling-the-mysteries-of-silo/",
+      "image_url": "https://vfxvoice.com/wp-content/uploads/2023/10/PIX-3-Silo_103_S02300F.jpg",
+      "provenance": "VFX Voice production article interviewing VFX supervisor Daniel Rauchwerger; all article images explicitly courtesy of AppleTV+.",
+      "status": "Production still reference; copyrighted, not CC0"
+    },
+    {
+      "file": "shaft-previs-vfxvoice.jpg",
+      "page": "https://vfxvoice.com/unraveling-the-mysteries-of-silo/",
+      "image_url": "https://vfxvoice.com/wp-content/uploads/2023/10/PIX-12-press_previs_images16.jpg",
+      "provenance": "Silo stair/bridge image supplied courtesy of AppleTV+, published by VFX Voice with human scale-reference caption. Source filename includes press_previs; may be rendered previs or final production imagery.",
+      "status": "Production reference; copyrighted, not CC0"
+    },
+    {
+      "file": "shaft-upview-vfxvoice.jpg",
+      "page": "https://vfxvoice.com/unraveling-the-mysteries-of-silo/",
+      "image_url": "https://vfxvoice.com/wp-content/uploads/2023/10/PIX-14-press_previs_images20.jpg",
+      "provenance": "Silo vertical-shaft upward view supplied courtesy of AppleTV+, published by VFX Voice. Source filename includes press_previs; may be rendered previs or final production imagery.",
+      "status": "Production reference; copyrighted, not CC0"
+    },
+    {
+      "file": "surface-cleaning-set-vfxvoice.jpg",
+      "page": "https://vfxvoice.com/unraveling-the-mysteries-of-silo/",
+      "image_url": "https://vfxvoice.com/wp-content/uploads/2023/10/PIX-2-Silo_102_S00694F.jpg",
+      "provenance": "Production still supplied courtesy of AppleTV+, published by VFX Voice.",
+      "status": "Production still reference; copyrighted, not CC0"
+    },
+    {
+      "file": "corridor-tv.jpg",
+      "page": "https://movieplayer.it/articoli/silo-spiegazione-finale-serie-tv_30045/",
+      "image_url": "https://movieplayer.net-cdn.it/t/images/2023/06/30/silo-1x10-finale-rick-gomez_jpg_1400x0_crop_q85.jpg",
+      "provenance": "Season-one finale TV still reproduced by Movieplayer. Character Rick Gomez / Patrick Kennedy; image-search caption misidentified the character, so no reliance on search caption.",
+      "status": "TV reference; copyrighted, not CC0"
+    }
+  ],
+  "additional_primary_concept_pages": {
+    "market": "https://arnaudvalette.artstation.com/projects/Dvb9q0",
+    "walker": "https://arnaudvalette.artstation.com/projects/9Er1ao",
+    "shaft": "https://arnaudvalette.artstation.com/projects/39xAqA"
+  },
+  "bazaar_floor": "Unconfirmed for the television version in consulted production sources."
+}

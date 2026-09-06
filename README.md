@@ -2,10 +2,18 @@
 
 A browser-based, first-person reconstruction of the television silo, built in Adam’s **Silo-** repository using the circular collision system and selected interior assets from **Lost Signal**.
 
+## Latest environment update
+
+- Fixed gravity-induced invisible walls at wing entrances. A regression walks out of and back into all **864 destinations** on all **144 levels**.
+- Added a dedicated bazaar: six enterable shops, narrow market street, deep rounded shopfronts, ribbed overhangs, red food lamps, bunting, repair counters and merchandise. Its location on Level 100 is inferred, not confirmed TV canon.
+- Added a continuous 3.2 m wide rear service gallery on Levels 2–144, connected to standard wings through real doorways. The Level 1 civic/cleaning complex keeps its bespoke route; cafeteria screens are not cut through for a rear exit.
+- Added photographic 1K PBR concrete, painted metal, tiled floors and rock. Meter-scaled mapping prevents stretched textures on long walls. All maps are CC0 with recorded provenance.
+- Rebuilt shaft pylons with segmented light belts and core capsule lights; added deep portal surrounds, rounded domestic kitchen alcoves, worn household furnishings and detailed analogue workshop equipment.
+
 ## Explore
 
 - **144 numbered levels**, all with circular galleries, connected concrete spiral stairs, full-depth landings and six furnished wings.
-- A broad curved cafeteria screen with a continuously rendered exterior feed; 2,476 reconstructed apartments, each with living/kitchen space, bedroom and bathroom; the sheriff’s office, Judicial, IT, the vault, observation room, Medical, education, agriculture, recycling, water filtration, Supply and workshops.
+- A broad curved cafeteria screen with a continuously rendered exterior feed; reconstructed apartments, each with living/kitchen space, bedroom and bathroom; the sheriff’s office, Judicial, IT, the vault, observation room, Medical, education, agriculture, recycling, water filtration, Supply and workshops.
 - A 50 m diameter generator hall below Level 144, with six turbine panels, overhead crane, exposed rotor and a walkable upper gantry.
 - A separate excavator cavern with radial cutting arms, a central tower, water, catwalks and inspection access; supported mine workings, ore carts, a rock drill and a sealed lower tunnel.
 - A connected Level 1 cafeteria, sheriff’s station, Holding 3, preparation room, interlocked pressure doors and slatted ramp to the barren surface. A sunken hatch, squat camera monument, dead tree, rocky crater and ruined horizon. Use / E cleans the lens and clears the cafeteria feed.
@@ -13,7 +21,7 @@ A browser-based, first-person reconstruction of the television silo, built in Ad
 - Openable doors, solid walls and furniture, inspection points, a torch, ambient machinery sound, a searchable floor directory and travel shortcuts.
 - Touch controls for phones, keyboard/mouse controls, fullscreen, brightness and rendering settings.
 
-The directory’s travel feature is a visitor shortcut, not an in-world elevator. The central stairs physically connect every numbered floor. Lower maintenance hatches use explicit travel transitions into the mines and cavern. The cleaning route is continuously walkable in both directions. The hidden tunnel’s far door remains sealed. There are no characters, bodies or combat.
+The directory’s travel feature is a visitor shortcut, not an in-world elevator. The central stairs physically connect every numbered floor. Lower maintenance hatches use explicit travel transitions into the mines and cavern. The cleaning route is continuously walkable in both directions. The hidden tunnel’s far door remains sealed. There is no combat. The requested Juliette, Bernard and Sims character integration is pending restoration of the three uploaded GLBs; those attachment copies were absent from the resumed workspace. No substitute character models are included.
 
 ## Accuracy
 

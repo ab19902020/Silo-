@@ -1,7 +1,7 @@
 {
   "numberedLevels": 144,
   "wings": 864,
-  "residentialApartments": 2476,
+  "residentialApartments": 2472,
   "units": "metres",
   "note": "Television-associated locations plus explicitly reconstructed unseen floors. A wing is a department or four-apartment residential corridor; this is not a production room census.",
   "levels": [
@@ -5582,18 +5582,17 @@
     {
       "level": 100,
       "zone": "THE MIDS",
-      "name": "Residential · 100",
-      "type": "residential",
-      "description": "Six furnished, enterable wings around a complete numbered gallery.",
-      "placement": "Unseen level · reconstructed rooms",
+      "name": "Bazaar · market alleys",
+      "type": "bazaar",
+      "description": "Six enterable shops, food counters, repair stalls and the rear service gallery.",
+      "placement": "Television market design · floor and street plan inferred",
       "wings": [
         {
           "id": "room:100:0",
           "level": 100,
           "wing": 0,
-          "type": "residential",
-          "name": "RESIDENCES",
-          "apartments": 4
+          "type": "bazaar",
+          "name": "BAZAAR"
         },
         {
           "id": "room:100:1",

@@ -29,7 +29,7 @@ The shaft uses the finished series’ rounded concrete language: a broad central
 | Stair outside diameter | 14.6 m | Visual estimate |
 | Clear stair width | 4.2 m | Consequence of the chosen radii |
 | Gallery outer diameter | 51.2 m | Estimate |
-| Outer nominal envelope | 108 m | Estimate, not a production measurement |
+| Outer nominal envelope | 112 m | Estimate, not a production measurement |
 | Spiral repetition | One full turn per numbered interval | Model assumption; no reliable primary textual turn count established |
 | Stair pieces per interval | 72, including flat landing sectors | Modeled geometry; not a claimed show step count |
 | Standard wing | 20 × 24 m; 5.8 m internal height | Reusable reconstruction layout |
@@ -46,11 +46,11 @@ The user’s requested [Silo 18 wiki](https://silo.fandom.com/wiki/Silo_18) bloc
 - [The cleaning-chamber still in Die Zukunft](https://diezukunft.de/review/film/silo-und-noch-eine-dystopie) shows brown wall tiles, a rounded rectangular blast-door surround and diagonal panel seams.
 - [A Season 2 exterior still](https://minhtuanmobile.com/tin-tuc/giai-thich-chi-tiet-ket-thuc-silo-mua-2/) shows the low sunken hatch, reinforced lid panels and a squat concrete sensor monument with splayed buttresses. The camera lens is obscured in that frame; its exact mount and position are inferred.
 
-Images were inspected as references and are not bundled in the game. The environment omits every character and body visible in those references.
+Images were inspected as references and are not bundled in the game. The environment does not import people from reference images. The later request to add three supplied playable GLBs is tracked below.
 
 ## Floor program
 
-All 144 numbered galleries remain represented in the world. The directory opens on all levels and exposes six direct wing destinations for each, totaling 864 wings. Residential wings now contain four separate homes (2,476 apartments in the modeled schedule), with a central corridor and reachable domestic rooms. These counts describe this reconstruction, not a canonical room census.
+All 144 numbered galleries remain represented in the world. The directory opens on all levels and exposes six direct wing destinations for each, totaling 864 wings. Residential wings now contain four separate homes (a reconstructed apartment count recorded in level-schedule.json), with a central corridor and reachable domestic rooms. These counts describe this reconstruction, not a canonical room census.
 
 The schedule corrects the main television locations: Level 1 cafeteria → sheriff’s station → holding/preparation → airlock; Judicial on 14; IT on 19; janitorial and the concealed Watcher Room on 20; Medical on 50 and 62; water on 55; agriculture on 80; lower recycling and IT relay on 126; Juliette’s residence on 140; Walker’s workshop and Mechanical on 144. Wiki-associated residential nameplates and porter/bar locations are included. Unknown level assignments and the precise unseen interior arrangements remain inferred.
 
@@ -66,7 +66,7 @@ The outside camera renders the same authored terrain, hatch, camera monument and
 - The exterior is an original, walkable rocky landscape with distant ruined buildings, not an enterable town. The exact surface geography is reconstructed.
 - There is no simulation of 10,000 inhabitants, show dialogue, combat or story quests.
 - The digging machine is a detailed static environment; the generator rotor animates. Neither is an engineering simulator.
-- The visual upgrade includes 512 px layered albedo/normal/roughness maps, rounded furniture edges, local soft shadows, reflection lighting, depth-based contact shading and restrained bloom. Balanced/high settings use these effects; battery saver disables the shadow/composition passes. Unsupported floating-point color targets fall back to byte targets.
+- The visual upgrade includes photographic 1K albedo/normal/roughness maps with meter-scaled projection (512 px procedural fallbacks), rounded furniture edges, local soft shadows, reflection lighting, depth-based contact shading and restrained bloom. Balanced/high settings use these effects; battery saver disables the shadow/composition passes. Unsupported floating-point color targets fall back to byte targets.
 - Touch input, keyboard input, renderer settings and error handling are implemented. Automated validation covers source, assets, geometry and physics. Visual equivalence, browser behavior and frame rate require device testing and are not certified by the automated checks.
 
 ## Lost Signal provenance
@@ -74,3 +74,19 @@ The outside camera renders the same authored terrain, hatch, camera monument and
 Source repository: [ab19902020/Lost-signal-](https://github.com/ab19902020/Lost-signal-), commit `aa4c1d00d173b3aa98560617e2d541d3ff093dee`.
 
 The original `src/silo.js` and `blender/generate_habitat_v4.py` are preserved under `reference/lost-signal/`. The runtime reuses the original circle/arc/oriented-box collision implementation and character controller. Selected furniture, hydroponic, mechanical and service models are preserved under `dist/assets/lost-signal/`. The seven-level structure was redesigned around the television-scale 144-level model. Nothing was written back to Lost Signal.
+
+## Third environment build
+
+The [visual reference inventory](visual-reference-sources.json) records inspected production images and their provenance. The market photographs published by [Sally Crees](https://www.sallycreescostumedesign.co.uk/home/silo-apple-tv-seasons-1-and-2) support dense concrete alley frontages, deep rounded openings, ribbed projecting ledges, red food lamps, repair/food counters, conduits and festival dressing. [Arnaud Valette's market concept page](https://arnaudvalette.artstation.com/projects/Dvb9q0) credits collaboration with Gavin Bocquet. The implemented six-shop street is fitted to one modeled wing; **Level 100 is an inferred placement, not an established television floor number**. Upper shop windows are architectural frontage, not an extra numbered floor.
+
+A [Charles E J Downman production concept](https://www.artstation.com/artwork/oby0Dk) informed rounded kitchen alcoves, blue cabinets, warm upper residential plaster, cushions, pottery and desk fans. This does not establish identical homes throughout the silo. Workshop references inform box CRTs, test instruments, articulated lamps, hanging tools, copper coils, wiring and component trays. Their precise room-wide arrangement is inferred.
+
+The new rear service passages form a continuous circular route from radius 52 to 55.2 m. They link eligible wing back doors. Their routing is an explicit architectural reconstruction, not a traced production plan. Level 1 and the lower cafeteria do not receive a doorway through the screen wall. The standard galleries, stair and front exits remain available everywhere. Mine and excavator transitions still use exploration travel points.
+
+The invisible-wall regression was caused by integrating gravity before horizontal collision. This pushed the feet slightly below a supported floor, activating the next floor's facade wall at the same height. Horizontal collision now resolves at the previous supported height before vertical integration. Tests exercise real walking, including gravity, for all 864 wing exits and returns, the complete bazaar street and six shop doorways, and a full circle of the rear service gallery. Rounded shaft pylons have circle colliders matching their footprint.
+
+Four [Poly Haven CC0](https://polyhaven.com/license) surface sets supply real photographed albedo, OpenGL normals and roughness. Source URLs, authors and verified checksums are preserved in `dist/assets/materials/provenance.json`. Photographic repeats are projected at their physical scale; source TV images are references, not game textures. Device frame rate and visual equivalence are not certified by source/physics checks.
+
+## Pending supplied characters
+
+The requested cast is Juliette Nichols (Mechanical), Bernard Holland (IT / acting mayor), and Robert Sims (Judicial security). The earlier inspected uploads were static meshes without skins or animation; they need skeletal rigging, skin-weight review and locomotion verification before being called playable. Their three scratch attachment files were not present when this turn resumed. They were not read from Library because the attachment instructions explicitly prohibited that access path. No replacements, fabricated rigs or unverified playable-character claim is shipped. Reattach the three original GLBs to complete this part.
