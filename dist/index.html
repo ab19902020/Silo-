@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101614"><meta name="description" content="Explore all 144 levels of Silo 18, from the cafeteria and central stairs to Mechanical, the mines and the excavator.">
+  <title>Silo 18 · The underground world</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23101614'/%3E%3Ctext x='32' y='45' font-size='38' text-anchor='middle' fill='%23d6c196' font-family='serif'%3E18%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="world" aria-label="First person 3D view of Silo 18" tabindex="0"></canvas>
+  <div id="vignette" aria-hidden="true"></div>
+  <header id="hud">
+    <button class="brand" id="home" aria-label="Pause exploration"><span class="brand-ring">18</span><span>SILO <b>18</b><small id="zone">UP TOP</small></span></button>
+    <div class="location"><span class="eyebrow" id="levelLabel">LEVEL 001</span><strong id="locationName">The central staircase</strong><small id="depthLabel">0 m below the upper landing</small></div>
+    <nav aria-label="Exploration controls"><button id="directoryButton" class="nav-button"><span>☷</span> Directory</button><button id="settingsButton" class="icon-button" aria-label="Settings">⚙</button></nav>
+  </header>
+  <div id="crosshair" aria-hidden="true"></div>
+  <button id="interaction" hidden><kbd>E</kbd><span>Open door</span></button>
+  <aside id="levelRail" aria-hidden="true"><span>001</span><div><i id="depthMarker"></i></div><span>144</span></aside>
+  <div class="bottom-hud" id="bottomHud"><div><span class="mode-dot"></span><span id="modeLabel">ON FOOT</span></div><p id="controlHint"><kbd>W A S D</kbd> Move <span>·</span> Drag to look <span>·</span> <kbd>E</kbd> Use <span>·</span> <kbd>M</kbd> Directory</p><button id="torchButton" aria-label="Toggle torch">☀ <span>Torch</span></button></div>
+  <div id="touchControls"><div id="joystick" aria-label="Move"><i></i></div><div class="touch-actions"><button id="runButton" aria-label="Toggle running">Run</button><button id="touchUse" aria-label="Interact">Use</button></div><span id="lookHint">Drag the right side to look</span></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="fade" aria-hidden="true"></div>
+
+  <dialog id="welcome" class="welcome">
+    <div class="welcome-top"><span class="eyebrow">AN UNDERGROUND WORLD</span><span class="edition">EXPLORATION BUILD 01</span></div>
+    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>From the last window on the world<br>to the machine that made it.</p><div class="welcome-actions"><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="welcomeDirectory" class="secondary">Choose a location <span>↗</span></button></div><div class="welcome-meta"><span>FIRST PERSON</span><span>TOUCH & KEYBOARD</span><span>FULL SCALE</span></div></div>
+    <footer><span>A reconstruction of the television world.</span><button id="aboutButton">Research & accuracy</button></footer>
+  </dialog>
+
+  <dialog id="directory" class="panel">
+    <div class="panel-head"><div><span class="eyebrow accent">WAYFINDING</span><h2>Silo directory</h2></div><button class="close" data-close aria-label="Close directory">×</button></div>
+    <div class="directory-tabs" role="tablist" aria-label="Directory view"><button id="landmarksTab" class="active" role="tab" aria-selected="true">Landmarks</button><button id="allLevelsTab" role="tab" aria-selected="false">All 144 levels</button></div>
+    <label class="search"><span>⌕</span><input id="search" type="search" placeholder="Find a room, level or department" autocomplete="off"></label>
+    <div id="locationList" class="location-list"></div>
+    <div class="panel-foot"><span>Choose a destination to travel there.</span><small>Travel is an exploration shortcut. The central stairs connect all 144 levels.</small></div>
+  </dialog>
+
+  <dialog id="settings" class="panel compact">
+    <div class="panel-head"><div><span class="eyebrow accent">EXPLORATION</span><h2>Settings</h2></div><button class="close" data-close aria-label="Close settings">×</button></div>
+    <div class="settings-content"><label>Brightness <output id="brightnessValue">115%</output><input id="brightness" type="range" min="65" max="180" value="115"></label><label>Look sensitivity <output id="sensitivityValue">100%</output><input id="sensitivity" type="range" min="35" max="180" value="100"></label><label>Rendering detail<select id="quality"><option value="balanced">Balanced</option><option value="high">High</option><option value="low">Battery saver</option></select></label><label class="toggle">Ambient sound <input id="sound" type="checkbox" checked></label><label class="toggle">Reduce camera motion <input id="reduceMotion" type="checkbox"></label><button id="fullscreen" class="secondary wide">Enter fullscreen</button><button id="resetPosition" class="secondary wide">Return to nearest landing</button><p class="help">Move: WASD / arrow keys. Look: drag or click to capture the mouse. E: interact. F: torch. Shift: run. M: directory. Esc: pause.<br><br>On a phone, use the left stick to walk and drag the right side to look.</p></div>
+  </dialog>
+
+  <dialog id="about" class="panel">
+    <div class="panel-head"><div><span class="eyebrow accent">THE RECONSTRUCTION</span><h2>Research & accuracy</h2></div><button class="close" data-close aria-label="Close research">×</button></div>
+    <div class="about-content"><p>This is an explorable fan reconstruction, built at human scale. The show establishes <strong>144 numbered levels</strong>, the great staircase and the principal departments. No complete, dimensioned, room-by-room production blueprint was available in the references reviewed.</p><p>The 10 m level spacing, 36 m central shaft diameter and room plans are reconstruction estimates. Unseen floors use furnished layouts fitted to the silo. Department locations without reliable television confirmation are marked in the directory.</p><p>The generator, cavern and digging machine follow published production references. The mines and hidden passage contain inferred details. Spoilers for the television world are present.</p><p>The circular collision system and selected interior models come from your Lost Signal repository. This is a separate world without its combat or exterior town.</p><h3>Reference sources</h3><div id="sources"></div></div>
+  </dialog>
+  <div id="fatal" hidden role="alert"><h2>The silo could not start</h2><p id="fatalText"></p><button onclick="location.reload()">Try again</button></div>
+  <script type="module" src="./src/main.js"></script>
+</body></html>

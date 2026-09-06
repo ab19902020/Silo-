@@ -1,0 +1,5783 @@
+{
+  "units": "metres",
+  "dimensions": {
+    "levels": 144,
+    "levelHeight": 10,
+    "bottomY": 80,
+    "wellRadius": 18,
+    "deckOuter": 25.6,
+    "shellRadius": 54,
+    "stairColumn": 3.1,
+    "stairRadius": 7.3,
+    "stairTurns": 1,
+    "stairSteps": 72,
+    "stairLandingSteps": 8,
+    "landingHalf": 1.8,
+    "roomDepth": 24,
+    "roomHalf": 10,
+    "roomHeight": 5.8
+  },
+  "notice": "All dimensions except the 144-level count are reconstruction estimates. Unverified placements are marked.",
+  "levels": [
+    {
+      "level": 1,
+      "zone": "UP TOP",
+      "name": "Cafeteria & the outside screen",
+      "type": "cafeteria",
+      "description": "The great viewing screen, radial ceiling, communal tables and the upper landing.",
+      "placement": "Shown in the series",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "cafeteria",
+          "name": "CAFETERIA"
+        },
+        {
+          "wing": 2,
+          "type": "airlock",
+          "name": "CLEANING AIRLOCK"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 2,
+      "zone": "UP TOP",
+      "name": "Sheriff’s office & holding cells",
+      "type": "sheriff",
+      "description": "Investigation desks, dispatch radio, evidence shelves and barred holding cells.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "sheriff",
+          "name": "SHERIFF"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 3,
+      "zone": "UP TOP",
+      "name": "Mayor’s office",
+      "type": "office",
+      "description": "Austere civic offices, records and meeting space overlooking the shaft.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "office",
+          "name": "ADMINISTRATION"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 4,
+      "zone": "UP TOP",
+      "name": "Residential · 004",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 5,
+      "zone": "UP TOP",
+      "name": "Residential · 005",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 6,
+      "zone": "UP TOP",
+      "name": "Residential · 006",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 7,
+      "zone": "UP TOP",
+      "name": "Residential · 007",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 8,
+      "zone": "UP TOP",
+      "name": "Residential · 008",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 9,
+      "zone": "UP TOP",
+      "name": "Workshop · 009",
+      "type": "workshop",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 10,
+      "zone": "UP TOP",
+      "name": "Residential · 010",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 11,
+      "zone": "UP TOP",
+      "name": "Supply · 011",
+      "type": "supply",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "supply",
+          "name": "SUPPLY"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 12,
+      "zone": "UP TOP",
+      "name": "Residential · 012",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 13,
+      "zone": "UP TOP",
+      "name": "Residential · 013",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 14,
+      "zone": "UP TOP",
+      "name": "Judicial",
+      "type": "judicial",
+      "description": "Stone corridors, the judge’s chamber and the hidden observation room.",
+      "placement": "TV location; interior plan reconstructed",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "judicial",
+          "name": "JUDICIAL"
+        },
+        {
+          "wing": 2,
+          "type": "surveillance",
+          "name": "OBSERVATION"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 15,
+      "zone": "UP TOP",
+      "name": "Residential · 015",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 16,
+      "zone": "UP TOP",
+      "name": "Farm · 016",
+      "type": "farm",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "farm",
+          "name": "AGRICULTURE"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 17,
+      "zone": "UP TOP",
+      "name": "Residential · 017",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 18,
+      "zone": "UP TOP",
+      "name": "Workshop · 018",
+      "type": "workshop",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 19,
+      "zone": "UP TOP",
+      "name": "IT & the vault",
+      "type": "it",
+      "description": "Workstations, server aisles, Bernard’s office and the restricted vault.",
+      "placement": "TV location; interior plan reconstructed",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "it",
+          "name": "INFORMATION TECHNOLOGY"
+        },
+        {
+          "wing": 2,
+          "type": "vault",
+          "name": "THE VAULT"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 20,
+      "zone": "UP TOP",
+      "name": "Recycling",
+      "type": "recycling",
+      "description": "Sorting tables, salvage cages, a conveyor and the refuse chute.",
+      "placement": "Episode-indexed location",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "recycling",
+          "name": "RECYCLING"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 21,
+      "zone": "UP TOP",
+      "name": "Residential · 021",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 22,
+      "zone": "UP TOP",
+      "name": "Supply · 022",
+      "type": "supply",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "supply",
+          "name": "SUPPLY"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 23,
+      "zone": "UP TOP",
+      "name": "Residential · 023",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 24,
+      "zone": "UP TOP",
+      "name": "Residential · 024",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 25,
+      "zone": "UP TOP",
+      "name": "Residential · 025",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 26,
+      "zone": "UP TOP",
+      "name": "Residential · 026",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 27,
+      "zone": "UP TOP",
+      "name": "Workshop · 027",
+      "type": "workshop",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 28,
+      "zone": "UP TOP",
+      "name": "Residential · 028",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 29,
+      "zone": "UP TOP",
+      "name": "Residential · 029",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 30,
+      "zone": "UP TOP",
+      "name": "Residential · 030",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 31,
+      "zone": "UP TOP",
+      "name": "Residential · 031",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 32,
+      "zone": "UP TOP",
+      "name": "Farm · 032",
+      "type": "farm",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "farm",
+          "name": "AGRICULTURE"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 33,
+      "zone": "UP TOP",
+      "name": "Supply · 033",
+      "type": "supply",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "supply",
+          "name": "SUPPLY"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 34,
+      "zone": "UP TOP",
+      "name": "Residential · 034",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 35,
+      "zone": "UP TOP",
+      "name": "School & nursery",
+      "type": "school",
+      "description": "Classrooms, books, children’s desks and a communal nursery.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "school",
+          "name": "EDUCATION"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 36,
+      "zone": "UP TOP",
+      "name": "Workshop · 036",
+      "type": "workshop",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 37,
+      "zone": "UP TOP",
+      "name": "Residential · 037",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 38,
+      "zone": "UP TOP",
+      "name": "Residential · 038",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 39,
+      "zone": "UP TOP",
+      "name": "Residential · 039",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 40,
+      "zone": "UP TOP",
+      "name": "Residential · 040",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 41,
+      "zone": "UP TOP",
+      "name": "Residential · 041",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 42,
+      "zone": "UP TOP",
+      "name": "Residential · 042",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 43,
+      "zone": "UP TOP",
+      "name": "Residential · 043",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 44,
+      "zone": "UP TOP",
+      "name": "Supply · 044",
+      "type": "supply",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "supply",
+          "name": "SUPPLY"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 45,
+      "zone": "UP TOP",
+      "name": "Workshop · 045",
+      "type": "workshop",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 46,
+      "zone": "UP TOP",
+      "name": "Residential · 046",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 47,
+      "zone": "UP TOP",
+      "name": "Residential · 047",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 48,
+      "zone": "UP TOP",
+      "name": "Farm · 048",
+      "type": "farm",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "farm",
+          "name": "AGRICULTURE"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 49,
+      "zone": "THE MIDS",
+      "name": "Residential · 049",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 50,
+      "zone": "THE MIDS",
+      "name": "Medical",
+      "type": "medical",
+      "description": "Clinical wards, an examination room, dispensary and operating theatre.",
+      "placement": "TV-associated level; room plan reconstructed",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "medical",
+          "name": "MEDICAL"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 51,
+      "zone": "THE MIDS",
+      "name": "Residential · 051",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 52,
+      "zone": "THE MIDS",
+      "name": "Residential · 052",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 53,
+      "zone": "THE MIDS",
+      "name": "Residential · 053",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 54,
+      "zone": "THE MIDS",
+      "name": "Workshop · 054",
+      "type": "workshop",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 55,
+      "zone": "THE MIDS",
+      "name": "Water filtration",
+      "type": "water",
+      "description": "Filter vessels, treatment tanks, pipework and a pump control station.",
+      "placement": "Episode-indexed location",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "water",
+          "name": "WATER FILTRATION"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 56,
+      "zone": "THE MIDS",
+      "name": "Residential · 056",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 57,
+      "zone": "THE MIDS",
+      "name": "Residential · 057",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 58,
+      "zone": "THE MIDS",
+      "name": "Residential · 058",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 59,
+      "zone": "THE MIDS",
+      "name": "Residential · 059",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 60,
+      "zone": "THE MIDS",
+      "name": "Residential · 060",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 61,
+      "zone": "THE MIDS",
+      "name": "Residential · 061",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 62,
+      "zone": "THE MIDS",
+      "name": "Residential quarter",
+      "type": "residential",
+      "description": "Furnished family homes with living rooms, kitchens, bedrooms and bathrooms.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 63,
+      "zone": "THE MIDS",
+      "name": "Workshop · 063",
+      "type": "workshop",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 64,
+      "zone": "THE MIDS",
+      "name": "Farm · 064",
+      "type": "farm",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "farm",
+          "name": "AGRICULTURE"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 65,
+      "zone": "THE MIDS",
+      "name": "Residential · 065",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 66,
+      "zone": "THE MIDS",
+      "name": "Supply · 066",
+      "type": "supply",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "supply",
+          "name": "SUPPLY"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 67,
+      "zone": "THE MIDS",
+      "name": "Residential · 067",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 68,
+      "zone": "THE MIDS",
+      "name": "Residential · 068",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 69,
+      "zone": "THE MIDS",
+      "name": "Residential · 069",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 70,
+      "zone": "THE MIDS",
+      "name": "Residential · 070",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 71,
+      "zone": "THE MIDS",
+      "name": "Residential · 071",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 72,
+      "zone": "THE MIDS",
+      "name": "Workshop · 072",
+      "type": "workshop",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 73,
+      "zone": "THE MIDS",
+      "name": "Residential · 073",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 74,
+      "zone": "THE MIDS",
+      "name": "Residential · 074",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 75,
+      "zone": "THE MIDS",
+      "name": "Residential · 075",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 76,
+      "zone": "THE MIDS",
+      "name": "Residential · 076",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 77,
+      "zone": "THE MIDS",
+      "name": "Supply · 077",
+      "type": "supply",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "supply",
+          "name": "SUPPLY"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 78,
+      "zone": "THE MIDS",
+      "name": "Residential · 078",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 79,
+      "zone": "THE MIDS",
+      "name": "Residential · 079",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 80,
+      "zone": "THE MIDS",
+      "name": "Orchard & grow rooms",
+      "type": "farm",
+      "description": "A broad agricultural hall with soil beds, irrigation and artificial sunlight.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "farm",
+          "name": "AGRICULTURE"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 81,
+      "zone": "THE MIDS",
+      "name": "Workshop · 081",
+      "type": "workshop",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 82,
+      "zone": "THE MIDS",
+      "name": "Residential · 082",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 83,
+      "zone": "THE MIDS",
+      "name": "Residential · 083",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 84,
+      "zone": "THE MIDS",
+      "name": "Residential · 084",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 85,
+      "zone": "THE MIDS",
+      "name": "Residential · 085",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 86,
+      "zone": "THE MIDS",
+      "name": "Residential · 086",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 87,
+      "zone": "THE MIDS",
+      "name": "Residential · 087",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 88,
+      "zone": "THE MIDS",
+      "name": "Supply · 088",
+      "type": "supply",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "supply",
+          "name": "SUPPLY"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 89,
+      "zone": "THE MIDS",
+      "name": "Residential · 089",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 90,
+      "zone": "THE MIDS",
+      "name": "Workshop · 090",
+      "type": "workshop",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 91,
+      "zone": "THE MIDS",
+      "name": "Residential · 091",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 92,
+      "zone": "THE MIDS",
+      "name": "Residential · 092",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 93,
+      "zone": "THE MIDS",
+      "name": "Residential · 093",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 94,
+      "zone": "THE MIDS",
+      "name": "Residential · 094",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 95,
+      "zone": "THE MIDS",
+      "name": "Residential · 095",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 96,
+      "zone": "THE MIDS",
+      "name": "Farm · 096",
+      "type": "farm",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "farm",
+          "name": "AGRICULTURE"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 97,
+      "zone": "DOWN DEEP",
+      "name": "Agricultural terraces",
+      "type": "farm",
+      "description": "Crop rows, a propagation room and the boundary between the Mids and Down Deep.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "farm",
+          "name": "AGRICULTURE"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 98,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 098",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 99,
+      "zone": "DOWN DEEP",
+      "name": "Supply · 099",
+      "type": "supply",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "supply",
+          "name": "SUPPLY"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 100,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 100",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 101,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 101",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 102,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 102",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 103,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 103",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 104,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 104",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 105,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 105",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 106,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 106",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 107,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 107",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 108,
+      "zone": "DOWN DEEP",
+      "name": "Workshop · 108",
+      "type": "workshop",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 109,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 109",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 110,
+      "zone": "DOWN DEEP",
+      "name": "Supply",
+      "type": "supply",
+      "description": "Store rooms, textiles, repairable goods and porter collection points.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "supply",
+          "name": "SUPPLY"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 111,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 111",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 112,
+      "zone": "DOWN DEEP",
+      "name": "Farm · 112",
+      "type": "farm",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "farm",
+          "name": "AGRICULTURE"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 113,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 113",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 114,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 114",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 115,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 115",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 116,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 116",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 117,
+      "zone": "DOWN DEEP",
+      "name": "Workshop · 117",
+      "type": "workshop",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 118,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 118",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 119,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 119",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 120,
+      "zone": "DOWN DEEP",
+      "name": "Lower farms",
+      "type": "farm",
+      "description": "Food production close to the lower residential and engineering levels.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "farm",
+          "name": "AGRICULTURE"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 121,
+      "zone": "DOWN DEEP",
+      "name": "Supply · 121",
+      "type": "supply",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "supply",
+          "name": "SUPPLY"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 122,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 122",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 123,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 123",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 124,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 124",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 125,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 125",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 126,
+      "zone": "DOWN DEEP",
+      "name": "Down Deep cafeteria",
+      "type": "cafeteria",
+      "description": "Worn communal furniture and the gathering place of the lower levels.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "cafeteria",
+          "name": "CAFETERIA"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 127,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 127",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 128,
+      "zone": "DOWN DEEP",
+      "name": "Farm · 128",
+      "type": "farm",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "farm",
+          "name": "AGRICULTURE"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 129,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 129",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 130,
+      "zone": "DOWN DEEP",
+      "name": "Walker’s workshop",
+      "type": "workshop",
+      "description": "Workbenches, analogue instruments, spares and electrical repairs.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "utility",
+          "name": "SERVICES"
+        }
+      ]
+    },
+    {
+      "level": 131,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 131",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 132,
+      "zone": "DOWN DEEP",
+      "name": "Supply · 132",
+      "type": "supply",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "supply",
+          "name": "SUPPLY"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 133,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 133",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 134,
+      "zone": "DOWN DEEP",
+      "name": "Residential · 134",
+      "type": "residential",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 135,
+      "zone": "DOWN DEEP",
+      "name": "Mechanical · 135",
+      "type": "mechanical",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "mechanical",
+          "name": "MECHANICAL"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 136,
+      "zone": "DOWN DEEP",
+      "name": "Mechanical · 136",
+      "type": "mechanical",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "mechanical",
+          "name": "MECHANICAL"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 137,
+      "zone": "DOWN DEEP",
+      "name": "Mechanical · 137",
+      "type": "mechanical",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "mechanical",
+          "name": "MECHANICAL"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 138,
+      "zone": "DOWN DEEP",
+      "name": "Mechanical · 138",
+      "type": "mechanical",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "mechanical",
+          "name": "MECHANICAL"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 139,
+      "zone": "DOWN DEEP",
+      "name": "Mechanical · 139",
+      "type": "mechanical",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "mechanical",
+          "name": "MECHANICAL"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 140,
+      "zone": "DOWN DEEP",
+      "name": "Mechanical workshops",
+      "type": "mechanical",
+      "description": "Heavy engineering, pumps, stores and maintenance bays.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "mechanical",
+          "name": "MECHANICAL"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 141,
+      "zone": "DOWN DEEP",
+      "name": "Mechanical · 141",
+      "type": "mechanical",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "mechanical",
+          "name": "MECHANICAL"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 142,
+      "zone": "DOWN DEEP",
+      "name": "Mechanical · 142",
+      "type": "mechanical",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "mechanical",
+          "name": "MECHANICAL"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 143,
+      "zone": "DOWN DEEP",
+      "name": "Mechanical · 143",
+      "type": "mechanical",
+      "description": "A complete gallery with six furnished wings. Placement fills a gap in the published television layout.",
+      "placement": "Reconstructed placement",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "mechanical",
+          "name": "MECHANICAL"
+        },
+        {
+          "wing": 2,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    },
+    {
+      "level": 144,
+      "zone": "DOWN DEEP",
+      "name": "Mechanical & generator",
+      "type": "generator",
+      "description": "The lowest numbered landing and the great six-panel turbine below it.",
+      "placement": "Lowest numbered level shown; chamber dimensions reconstructed",
+      "wings": [
+        {
+          "wing": 1,
+          "type": "generator",
+          "name": "GENERATOR"
+        },
+        {
+          "wing": 2,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 3,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 4,
+          "type": "residential",
+          "name": "RESIDENCES"
+        },
+        {
+          "wing": 5,
+          "type": "workshop",
+          "name": "WORKSHOP"
+        },
+        {
+          "wing": 6,
+          "type": "supply",
+          "name": "SUPPLY"
+        }
+      ]
+    }
+  ]
+}
