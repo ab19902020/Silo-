@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import * as THREE from '../dist/vendor/three.module.js';
 import { GLTFLoader } from '../dist/vendor/GLTFLoader.js';
 import { SiloWorld } from '../dist/src/world.js';
-import { SILO, LEVELS, LANDMARKS, SPECIALS, TAU, levelY, roomType } from '../dist/src/data.js';
+import { SILO, LEVELS, LANDMARKS, SPECIALS, TAU, levelY, roomType, roomsForLevel } from '../dist/src/data.js';
 import { CharacterBody } from '../dist/src/physics.js';
 
 // Only a text-canvas adapter: no browser, DOM rendering or WebGL QA is implied.
@@ -14,7 +14,7 @@ world.setLevel(1);
 
 test('all 144 numbered levels and all requested landmark categories exist',()=>{
   assert.equal(LEVELS.length,144);assert.deepEqual(LEVELS.map(x=>x.level),Array.from({length:144},(_,i)=>i+1));
-  for(const type of ['cafeteria','it','judicial','medical','farm','water','recycling','workshop','generator'])assert.ok(LANDMARKS.some(l=>l.type===type),type);
+  for(const type of ['cafeteria','it','judicial','medical','farm','water','recycling','workshop','generator'])assert.ok([...LEVELS.flatMap(l=>roomsForLevel(l.level)),...SPECIALS].some(l=>l.type===type),type);
   for(const id of ['mines','excavator','tunnel'])assert.ok(SPECIALS.some(l=>l.id===id));
   assert.equal(SILO.stairSteps*(SILO.levels-1),10296);
 });
@@ -82,7 +82,7 @@ test('every furnished wing template can be constructed and contains actual inter
 });
 
 test('all directory destinations spawn on supported, unobstructed floor',()=>{
-  for(const id of [1,14,19,20,50,55,62,97,130,144,'airlock','mines','excavator','tunnel']){
+  for(const id of [1,14,19,20,50,55,62,97,130,144,'airlock','surface','generator','mines','excavator','tunnel']){
     const d=world.destination(id);world.setLevel(d.level,d.special||null);const p=d.position.clone(),c=world.colliders,y=p.y;
     assert.ok(Math.abs(c.floorAt(p.x,p.z,.28,y+.3)-y)<.03,`${id}: unsupported spawn`);c.resolve(p,.28,y+.01,y+1.7,.3);assert.ok(p.distanceTo(d.position)<.05,`${id}: spawn overlaps a wall`);
   }

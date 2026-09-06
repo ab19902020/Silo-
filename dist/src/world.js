@@ -4,16 +4,21 @@ import { ColliderSet } from './physics.js';
 import { SILO, TAU, levelY, levelAt, roomType, TYPE_NAMES, stairStepY } from './data.js';
 import { Kit, createMaterials, addSign, fixture, railing, disposeGroup } from './kit.js';
 import { buildRoom } from './rooms.js';
+import { buildTopFloor } from './top-floor.js';
+import { SurfaceWorld, topPoint, topLocal, groundY } from './surface.js';
+import { buildGeneratorHall } from './generator-hall.js';
 import { buildUnderground } from './underground.js';
 
 export class SiloWorld {
   constructor(scene) {
     this.scene=scene;this.m=createMaterials();this.assets={};this.loaded=new Map();this.activeLevel=1;this.doors=[];this.interactions=[];this.colliders=new ColliderSet();this.animated=[];this.screens=[];this.special=null;this.quality='balanced';
     scene.background=new THREE.Color(0x121c19);scene.fog=new THREE.FogExp2(0x18221e,.0065);
-    this.ambient=new THREE.HemisphereLight(0xd7e0cd,0x777765,2.3);scene.add(this.ambient);
+    this.ambient=new THREE.HemisphereLight(0xc2ccc4,0x282c26,.65);scene.add(this.ambient);
     this.sun=new THREE.DirectionalLight(0xd7d9bc,2);this.sun.position.set(15,levelY(1)+20,-8);this.sun.target.position.set(0,levelY(1),0);scene.add(this.sun,this.sun.target);
     this.localLights=Array.from({length:8},()=>{const l=new THREE.PointLight(0xf3d6a0,140,38,1.7);scene.add(l);return l;});
-    this.buildStructure();
+    this.buildStructure();this.surface=new SurfaceWorld(this.m);scene.add(this.surface.root);this.generator=buildGeneratorHall(this.m);scene.add(this.generator.root);this.generator.root.visible=false;
+    this.keyLight=new THREE.SpotLight(0xffd6a0,340,48,1.05,.8,1.65);this.keyLight.castShadow=true;this.keyLight.shadow.mapSize.set(1024,1024);this.keyLight.shadow.bias=-.00015;this.keyLight.shadow.normalBias=.045;this.keyLight.shadow.camera.near=.4;scene.add(this.keyLight,this.keyLight.target);
+    this.sun.castShadow=false;
     this.underground=buildUnderground(this.m);scene.add(this.underground.root);this.underground.root.visible=false;
   }
   async loadAssets(onProgress=()=>{}) {
@@ -65,7 +70,7 @@ export class SiloWorld {
     // Bridges have a narrow center stripe and real join plates at their ends.
     for(let x=S+.5;x<R;x+=1.4)k.box('yellow',x,.012,-1.56,.65,.025,.08);
     const transforms=Array.from({length:144},(_,i)=>new THREE.Matrix4().makeTranslation(0,levelY(i+1),0));
-    this.structure=k.group(transforms,true);this.scene.add(this.structure);
+    this.structure=k.group(transforms.slice(0,15),true);this.scene.add(this.structure);
     const sk=new Kit(this.m);
     sk.cylinder('concrete',0,H/2,0,C,H);
     for(let j=0;j<SILO.stairSteps;j++){
@@ -87,15 +92,24 @@ export class SiloWorld {
       return !(Math.abs(a)<openAngle&&(y<1.4||y>H-.4));
     });
     for(const y of [2.4,6.5]){sk.box('darkMetal',C+.06,y,0,.14,1.6,.35);sk.box('lamp',C+.14,y,0,.05,1.35,.16);}
-    this.stairs=sk.group(transforms.slice(1),true);this.scene.add(this.stairs);
+    this.stairs=sk.group(transforms.slice(1,16),true);this.scene.add(this.stairs);
+    // Far levels retain the full silhouette while nearby floors carry the
+    // individual treads, railings, windows and fittings. No floors are omitted.
+    const fk=new Kit(this.m);fk.arc('concrete',R,O,.42,-.42,0,TAU,36);fk.arc('darkConcrete',O-.12,O+.12,H,0,0,TAU,36);fk.arc('darkConcrete',R-.06,R+.16,.7,0,0,TAU,36);fk.box('concrete',(C+R)/2,-.21,0,R-C,.42,SILO.landingHalf*2);fk.cylinder('concrete',0,H/2,0,C-.01,H);
+    for(let j=0;j<24;j++)fk.arc('concrete',C,S,.16,(j+1)*H/24-.16,j*TAU/24,TAU/24,2);
+    this.distant=fk.group(transforms,true);this.scene.add(this.distant);this.updateStructure(1);
     // Crown closes the structure above the top landing; no exterior town.
     const crown=new Kit(this.m);crown.cylinder('darkConcrete',0,levelY(1)+H,0,O+1,.65);for(let i=0;i<12;i++){const a=i*TAU/12;crown.beam('concrete',[Math.cos(a)*C,levelY(1)+H-.6,Math.sin(a)*C],[Math.cos(a)*O,levelY(1)+H-.6,Math.sin(a)*O],.35);}this.scene.add(crown.group());
+  }
+  updateStructure(level){
+    const near=Array.from({length:15},(_,i)=>Math.max(1,Math.min(130,level-7))+i),stairs=near.filter(n=>n>1),far=Array.from({length:144},(_,i)=>i+1).filter(n=>!near.includes(n));
+    for(const [group,numbers] of [[this.structure,near],[this.stairs,stairs],[this.distant,far]])for(const mesh of group.children){mesh.count=numbers.length;for(let i=0;i<numbers.length;i++)mesh.setMatrixAt(i,new THREE.Matrix4().makeTranslation(0,levelY(numbers[i]),0));mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();}
   }
   loadLevel(level){
     if(this.loaded.has(level))return this.loaded.get(level);
     const root=new THREE.Group(),y=levelY(level),rooms=[],doors=[],interactions=[];root.position.y=y;
     for(let wing=0;wing<6;wing++){
-      const a=wing*TAU/6,ry=Math.PI/2-a,type=roomType(level,wing),room=buildRoom(this.m,type,level,wing,this.assets);
+      const a=wing*TAU/6,ry=Math.PI/2-a,type=roomType(level,wing),room=level===1&&wing===0?buildTopFloor(this.m):buildRoom(this.m,type,level,wing,this.assets);
       room.position.set(Math.cos(a)*SILO.deckOuter,0,Math.sin(a)*SILO.deckOuter);room.rotation.y=ry;root.add(room);rooms.push(room);
       const sg=addSign(root,String(level).padStart(3,'0'),[Math.cos(a)*(SILO.deckOuter-.56),2.15,Math.sin(a)*(SILO.deckOuter-.56)],1.8,1.25,ry+Math.PI,{font:'bold 200px Arial',background:'#34453b'});
       sg.position.x+=Math.sin(a)*3.3;sg.position.z-=Math.cos(a)*3.3;
@@ -103,26 +117,28 @@ export class SiloWorld {
       // A real double leaf door with a switchable oriented collision volume.
       const doorRoot=new THREE.Group();doorRoot.position.copy(room.position);doorRoot.rotation.y=ry;root.add(doorRoot);const leaves=[];
       for(const side of [-1,1]){const pivot=new THREE.Group();pivot.position.set(side*1.95,0,0);const dk=new Kit(this.m);dk.box('green',-side*.975,1.6,0,1.95,3.2,.12);dk.box('darkMetal',-side*.975,2.15,-.075,1.25,.85,.04);dk.box('glass',-side*.975,2.15,-.105,1.1,.7,.02);dk.box('brass',-side*1.7,1.35,-.12,.065,.34,.07);for(let z=0;z<5;z++)dk.box('metal',-side*.975,.38+z*.11,-.08,1.45,.03,.025);pivot.add(dk.group());doorRoot.add(pivot);leaves.push({pivot,side});}
-      const door={level,wing,position:new THREE.Vector3(room.position.x,y+1.5,room.position.z),ry,open:wing===0||type==='airlock',amount:wing===0||type==='airlock'?1:0,leaves,type,collider:null};doors.push(door);
+      const door={level,wing,position:new THREE.Vector3(room.position.x,y+1.5,room.position.z),ry,open:true,amount:1,leaves,type,collider:null};doors.push(door);
       for(const interact of room.userData.interactions){const p=new THREE.Vector3(...interact.position).applyAxisAngle(new THREE.Vector3(0,1,0),ry).add(room.position);p.y+=y;interactions.push({...interact,position:p});}
     }
     const bridgeSign=addSign(root,`LEVEL ${String(level).padStart(3,'0')}`,[SILO.wellRadius+1.9,1.6,-2.9],3,.8,-Math.PI/2);void bridgeSign;
     this.scene.add(root);const entry={level,root,rooms,doors,interactions};this.loaded.set(level,entry);return entry;
   }
   setLevel(level,special=null){
-    this.activeLevel=level;this.special=special;
+    this.activeLevel=level;this.special=special;this.updateStructure(level);
     for(const n of [level-1,level,level+1])if(n>=1&&n<=144)this.loadLevel(n);
     for(const [n,e]of this.loaded)if(Math.abs(n-level)>2){disposeGroup(e.root);this.loaded.delete(n);}
     this.doors=[...this.loaded.values()].flatMap(e=>e.doors);this.interactions=[...this.loaded.values()].flatMap(e=>e.interactions);
     this.animated=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>r.userData.animated));this.screens=[...this.loaded.values()].flatMap(e=>e.rooms.map(r=>r.userData.outsideScreen).filter(Boolean));
-    this.underground.root.visible=!!special;
+    this.underground.root.visible=!!special&&special!=='generator';this.generator.root.visible=special==='generator';this.surface.root.visible=!special;
+    if(special==='generator')this.animated=this.generator.animated;
     this.rebuildCollision();
   }
   rebuildCollision(){
     const c=new ColliderSet(),R=SILO.wellRadius,O=SILO.deckOuter,S=SILO.stairRadius,C=SILO.stairColumn,H=SILO.levelHeight;
     if(this.special){
-      for(const f of this.underground.walkways){if(f.kind==='ring')c.addRing({innerRadius:f.r0,outerRadius:f.r1,minY:f.y-.5,maxY:f.y,climbable:true});else c.addOrientedBox({cx:f.x,cz:f.z,halfX:f.w/2,halfZ:f.d/2,rotationY:0,minY:f.y-.4,maxY:f.y,climbable:true});}
-      for(const b of this.underground.solids)c.addOrientedBox({cx:b.x,cz:b.z,halfX:b.w/2,halfZ:b.d/2,rotationY:0,minY:b.y0,maxY:b.y1});
+      const below=this.special==='generator'?this.generator:this.underground;
+      for(const f of below.walkways){if(f.kind==='ring')c.addRing({innerRadius:f.r0,outerRadius:f.r1,minY:f.y-.5,maxY:f.y,climbable:true});else if(f.kind==='arc')c.addArc({innerRadius:f.r0,outerRadius:f.r1,minY:f.y-.17,maxY:f.y,centre:f.a,halfWidth:f.half,climbable:true});else c.addOrientedBox({cx:f.x,cz:f.z,halfX:f.w/2,halfZ:f.d/2,rotationY:0,minY:f.y-.4,maxY:f.y,climbable:true});}
+      for(const b of below.solids)if(b.ring)c.addRing({innerRadius:b.r0,outerRadius:b.r1,minY:b.y0,maxY:b.y1});else c.addOrientedBox({cx:b.x,cz:b.z,halfX:b.w/2,halfZ:b.d/2,rotationY:0,minY:b.y0,maxY:b.y1});
       if(this.special==='excavator'){
         c.addRing({innerRadius:74,outerRadius:77,minY:0,maxY:68});c.addRing({innerRadius:0,outerRadius:3.15,minY:0,maxY:60});
         // Guard rails have a gap for the bridge at positive X.
@@ -151,40 +167,63 @@ export class SiloWorld {
       const e=this.loaded.get(level);if(!e)continue;
       for(const room of e.rooms){
         const ry=room.rotation.y,cos=Math.cos(ry),sin=Math.sin(ry),ox=room.position.x,oz=room.position.z;
-        c.addOrientedBox({cx:ox+sin*SILO.roomDepth/2,cz:oz+cos*SILO.roomDepth/2,halfX:SILO.roomHalf,halfZ:SILO.roomDepth/2,rotationY:ry,minY:y-.36,maxY:y,climbable:true});
+        const floors=room.userData.floors||[{x:0,z:SILO.roomDepth/2,w:SILO.roomHalf*2,d:SILO.roomDepth,y:0}];
+        for(const f of floors)c.addOrientedBox({cx:ox+cos*f.x+sin*f.z,cz:oz-sin*f.x+cos*f.z,halfX:f.w/2,halfZ:f.d/2,rotationY:ry,minY:y+(f.y||0)-.4,maxY:y+(f.y||0),climbable:true});
+        for(const d of room.userData.doors||[])d.collider=c.addOrientedBox({cx:ox+cos*d.x+sin*d.z,cz:oz-sin*d.x+cos*d.z,halfX:d.w/2,halfZ:.22,rotationY:ry,minY:y,maxY:y+d.h,enabled:d.amount<.96});
         for(const b of room.userData.solids)c.addOrientedBox({cx:ox+cos*b.x+sin*b.z,cz:oz-sin*b.x+cos*b.z,halfX:b.w/2,halfZ:b.d/2,rotationY:ry+(b.ry||0),minY:y+b.y0,maxY:y+b.y1});
       }
       for(const d of e.doors)d.collider=c.addOrientedBox({cx:d.position.x,cz:d.position.z,halfX:1.95,halfZ:.08,rotationY:d.ry,minY:y,maxY:y+3.2,enabled:d.amount<.8});
     }
     c.addRing({innerRadius:0,outerRadius:C,minY:0,maxY:levelY(1)+H});
+    if(this.activeLevel===1){
+      for(const b of this.surface.solids){const p=topPoint(b.x,0,b.z);c.addOrientedBox({cx:p.x,cz:p.z,halfX:b.w/2,halfZ:b.d/2,rotationY:Math.PI/2,minY:levelY(1)+b.y0,maxY:levelY(1)+b.y1});}
+      const floorAt=c.floorAt.bind(c);c.floorAt=(x,z,r,h)=>Math.max(floorAt(x,z,r,h),this.surface.floorAt(x,z,r,h));
+    }
     this.colliders=c;
   }
   spawn(level,wing=null){const y=levelY(level);if(wing===null)return new THREE.Vector3(20.6,y,0);const a=wing*TAU/6;return new THREE.Vector3(Math.cos(a)*29,y,Math.sin(a)*29);}
   destination(id){
+    if(typeof id==='string'&&id.startsWith('room:')){const [,n,w]=id.split(':').map(Number);return {level:n,position:this.spawn(n,w),yaw:Math.PI/2-w*TAU/6+Math.PI};}
+    if(id==='surface')return {level:1,position:topPoint(26,groundY(26,114),114),yaw:-Math.PI/2};
+    if(id==='generator')return {level:144,special:id,position:new THREE.Vector3(0,52,-20),yaw:Math.PI};
     if(id==='mines')return {level:144,special:id,position:new THREE.Vector3(105,48,-26),yaw:Math.PI};
     if(id==='excavator')return {level:144,special:id,position:new THREE.Vector3(71,12,0),yaw:Math.PI/2};
     if(id==='tunnel')return {level:144,special:id,position:new THREE.Vector3(105,8,74),yaw:Math.PI};
-    if(id==='airlock')return {level:1,position:this.spawn(1,1),yaw:Math.PI/2-TAU/6+Math.PI};
+    if(id==='airlock')return {level:1,position:topPoint(26,0,50),yaw:-Math.PI/2};
     return {level:Number(id),position:this.spawn(Number(id)),yaw:-Math.PI/2};
   }
   nearestInteraction(position,direction){
-    const pool=this.special?this.underground.interactions.map(v=>({...v,position:new THREE.Vector3(...v.position)})):[...this.doors.map(d=>({position:d.position,label:`${d.open?'Close':'Open'} ${TYPE_NAMES[d.type].toLowerCase()} door`,door:d})),...this.interactions];
+    const pool=this.special?(this.special==='generator'?this.generator:this.underground).interactions.map(v=>({...v,position:new THREE.Vector3(...v.position)})):[...this.doors.map(d=>({position:d.position,label:`${d.open?'Close':'Open'} ${TYPE_NAMES[d.type].toLowerCase()} door`,door:d})),...this.interactions];
+    if(!this.special&&this.activeLevel===1)pool.push({position:this.surface.cleaningPoint,label:this.surface.cleaning?'Cleaning lens…':this.surface.cleanliness>.99?'Clean camera lens again':'Clean the outside camera lens',action:'clean-camera'});
     let nearest=null,best=5;
     for(const i of pool){const delta=i.position.clone().sub(position),dist=delta.length();if(dist>best||dist<.05)continue;if(delta.normalize().dot(direction)<.32)continue;best=dist;nearest=i;}return nearest;
   }
+  cycleAirlock(id){
+    const doors=this.loaded.get(1)?.rooms[0].userData.doors;if(!doors)return;
+    const wanted=doors.find(d=>d.id===id),other=doors.find(d=>d.id!==id);
+    if(!wanted||!other)return;
+    if(wanted.open||wanted.requested){wanted.open=false;wanted.requested=false;return;}
+    other.open=false;other.requested=false;wanted.requested=true;
+  }
   update(dt,position){
+    this.surface.update(dt);const top=topLocal(position);this.outside=!this.special&&this.activeLevel===1&&top.z>99&&position.y>levelY(1)+10;
+    const airlocks=this.loaded.get(1)?.rooms[0].userData.doors||[];
+    for(const door of airlocks){const other=airlocks.find(d=>d!==door);if(door.requested&&other.amount<.01){door.open=true;door.requested=false;}door.amount=THREE.MathUtils.damp(door.amount,door.open?1:0,3.5,dt);door.pivot.position.y=door.amount*4.35;if(door.collider)door.collider.enabled=door.amount<.96;}
+
     if(!this.special){const level=levelAt(position.y);if(level!==this.activeLevel)this.setLevel(level);}
     for(const door of this.doors){door.amount=THREE.MathUtils.damp(door.amount,door.open?1:0,6,dt);for(const leaf of door.leaves)leaf.pivot.rotation.y=-leaf.side*door.amount*Math.PI*.52;if(door.collider)door.collider.enabled=door.amount<.8;}
     for(const a of this.animated)a.object.rotation[a.axis]+=dt*a.speed;
     for(const [level,e]of this.loaded){e.root.visible=!this.special&&Math.abs(level-this.activeLevel)<=1;for(let i=0;i<e.rooms.length;i++){const room=e.rooms[i],center=new THREE.Vector3(0,1.5,10).applyMatrix4(room.matrixWorld);room.visible=level===this.activeLevel||center.distanceTo(position)<38;}}
     const y=levelY(this.activeLevel);
     for(let i=0;i<this.localLights.length;i++){
-      const l=this.localLights[i];l.visible=true;
+      const l=this.localLights[i];l.visible=!this.outside;l.distance=38;
       if(this.special){l.position.set(position.x+Math.cos(i*TAU/8)*7,position.y+3,position.z+Math.sin(i*TAU/8)*7);l.intensity=i<4?95:0;l.color.setHex(i%2?0xcda575:0xadc5bf);}
-      else if(i<6){const a=i*TAU/6;l.position.set(Math.cos(a)*21,y+4.8,Math.sin(a)*21);l.intensity=170;l.color.setHex(i%3?0xf4d39b:0xc0d4c3);}
-      else {const angle=Math.atan2(position.z,position.x);l.position.set(Math.cos(angle)*(i===6?33:44),y+4.7,Math.sin(angle)*(i===6?33:44));l.intensity=210;l.color.setHex(roomType(this.activeLevel,Math.round(angle/TAU*6+6)%6)==='medical'?0xc1dcd5:0xe7d3a5);}
+      else if(i<6){const a=i*TAU/6;l.position.set(Math.cos(a)*21,y+4.8,Math.sin(a)*21);l.intensity=105;l.color.setHex(i%3?0xf4d39b:0xc0d4c3);}
+      else {const angle=Math.atan2(position.z,position.x);l.position.set(Math.cos(angle)*(i===6?33:44),y+4.7,Math.sin(angle)*(i===6?33:44));l.intensity=150;l.color.setHex(roomType(this.activeLevel,Math.round(angle/TAU*6+6)%6)==='medical'?0xc1dcd5:0xe7d3a5);}
     }
-    this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.special?.45:1.7;
-    this.scene.fog.density=this.special==='excavator'?.004:this.special?.007:.0065;
+    this.keyLight.visible=!this.outside;this.keyLight.position.set(position.x+3,position.y+(this.special==='generator'?12:4.2),position.z+1.5);this.keyLight.target.position.set(position.x,position.y,position.z);this.keyLight.intensity=this.special?310:260;
+    if(this.activeLevel===1&&top.z>10&&!this.special){for(let i=0;i<8;i++){const l=this.localLights[i];l.position.copy(topPoint(i<4?(i%2?10:-10):26,i<4?6.7:3.7,i<4?(i<2?17:31):[29,40,50,59][i-4]));l.intensity=i<4?240:95;l.distance=28;}if(top.z>64){this.keyLight.position.copy(position).add(new THREE.Vector3(0,3.4,0));this.keyLight.intensity=170;}}
+    this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?2.4:.17;this.ambient.intensity=this.outside?1.65:.65;this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
+    this.scene.fog.density=this.outside?.0038:this.special==='excavator'?.004:this.special?.007:.009;this.scene.fog.color.setHex(this.outside?0xaaa99c:0x18221e);this.scene.background.setHex(this.outside?0xaaa99c:0x141b17);this.structure.visible=this.stairs.visible=this.distant.visible=!this.special&&!this.outside;
   }
 }

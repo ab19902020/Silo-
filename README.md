@@ -5,13 +5,15 @@ A browser-based, first-person reconstruction of the television silo, built in Ad
 ## Explore
 
 - **144 numbered levels**, all with circular galleries, connected concrete spiral stairs, full-depth landings and six furnished wings.
-- Cafeterias with an original rendered outside-screen view; residences with bedrooms, bathrooms and kitchens; the sheriff’s office, Judicial, IT, the vault, observation room, Medical, education, agriculture, recycling, water filtration, Supply and workshops.
-- Mechanical’s six-panel generator, exposed turbine, pipe banks, gantry and crane.
+- A broad curved cafeteria screen with a continuously rendered exterior feed; 2,476 reconstructed apartments, each with living/kitchen space, bedroom and bathroom; the sheriff’s office, Judicial, IT, the vault, observation room, Medical, education, agriculture, recycling, water filtration, Supply and workshops.
+- A 50 m diameter generator hall below Level 144, with six turbine panels, overhead crane, exposed rotor and a walkable upper gantry.
 - A separate excavator cavern with radial cutting arms, a central tower, water, catwalks and inspection access; supported mine workings, ore carts, a rock drill and a sealed lower tunnel.
+- A connected Level 1 cafeteria, sheriff’s station, Holding 3, preparation room, interlocked pressure doors and slatted ramp to the barren surface. A sunken hatch, squat camera monument, dead tree, rocky crater and ruined horizon. Use / E cleans the lens and clears the cafeteria feed.
+- Physically shaded material maps, surface normals and roughness, rounded furniture edges, local shadows, contact shading, reflection lighting, subtle bloom and moving exterior dust.
 - Openable doors, solid walls and furniture, inspection points, a torch, ambient machinery sound, a searchable floor directory and travel shortcuts.
 - Touch controls for phones, keyboard/mouse controls, fullscreen, brightness and rendering settings.
 
-The directory’s travel feature is a visitor shortcut, not an in-world elevator. The central stairs physically connect every numbered floor. Lower maintenance hatches use explicit travel transitions into the mines and cavern. The outer cleaning door and hidden tunnel door remain sealed.
+The directory’s travel feature is a visitor shortcut, not an in-world elevator. The central stairs physically connect every numbered floor. Lower maintenance hatches use explicit travel transitions into the mines and cavern. The cleaning route is continuously walkable in both directions. The hidden tunnel’s far door remains sealed. There are no characters, bodies or combat.
 
 ## Accuracy
 
@@ -26,7 +28,7 @@ See [research and reconstruction decisions](docs/reconstruction.md), [the full l
 | Move | WASD or arrow keys | Left joystick |
 | Look | Drag, or click to capture the mouse | Drag the right side |
 | Run | Hold Shift | Run button |
-| Open / inspect | E | Use button or the central prompt |
+| Open / inspect / clean lens | E | Use button or the central prompt |
 | Directory | M | Directory button |
 | Torch | F | Torch button |
 | Pause | Esc / Silo 18 mark | Silo 18 mark |
@@ -50,13 +52,17 @@ npm test
 npm run validate
 ```
 
-The tests construct the world and exercise all 144 bridge connections, all 143 stair intervals, walking in both directions, rotated doors, directory destinations, lower access and original glTF assets. They also check geometry finiteness and bounded floor streaming. These are geometry/physics and static checks; they do not constitute browser rendering, device performance or visual equivalence testing.
+The tests construct the world and exercise all 144 bridge connections, all 143 stair intervals, walking in both directions, rotated doors, directory destinations, lower access and original glTF assets. They also check the complete cleaning walk out and back, mutually exclusive pressure doors, lens cleaning state, domestic room openings, generator gantry access, all-level geometry coverage and bounded floor streaming. These are geometry/physics and static checks; they do not constitute browser rendering, device performance or visual equivalence testing.
 
 ## Project layout
 
 - `dist/src/data.js` — scale, complete level program and reference sources.
 - `dist/src/world.js` — full shaft, floor streaming, doors, lighting and collision.
 - `dist/src/rooms.js` — furnished department and residence templates.
+- `dist/src/top-floor.js` — connected cafeteria, sheriff, holding room and airlock.
+- `dist/src/surface.js` — ramp, terrain, camera, lens cleaning and live feed.
+- `dist/src/generator-hall.js` — lower turbine hall and maintenance stairs.
+- `dist/src/rendering.js` — contact shading, bloom and reflection environment.
 - `dist/src/underground.js` — mines, excavator, flooded void and sealed passage.
 - `dist/src/kit.js` — reusable meshes, material surfaces and instancing.
 - `dist/src/physics.js` — adapted Lost Signal collision and walking controller.

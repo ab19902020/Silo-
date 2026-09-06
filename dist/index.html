@@ -24,17 +24,17 @@
   <div id="fade" aria-hidden="true"></div>
 
   <dialog id="welcome" class="welcome">
-    <div class="welcome-top"><span class="eyebrow">AN UNDERGROUND WORLD</span><span class="edition">EXPLORATION BUILD 01</span></div>
-    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>From the last window on the world<br>to the machine that made it.</p><div class="welcome-actions"><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="welcomeDirectory" class="secondary">Choose a location <span>↗</span></button></div><div class="welcome-meta"><span>FIRST PERSON</span><span>TOUCH & KEYBOARD</span><span>FULL SCALE</span></div></div>
+    <div class="welcome-top"><span class="eyebrow">AN UNDERGROUND WORLD</span><span class="edition">EXPLORATION BUILD 02</span></div>
+    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>From the last window on the world<br>to the machine that made it.</p><div class="welcome-actions"><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="welcomeDirectory" class="secondary">Explore all 144 levels <span>↗</span></button></div><div class="welcome-meta"><span>FIRST PERSON</span><span>TOUCH & KEYBOARD</span><span>ENVIRONMENT ONLY</span></div></div>
     <footer><span>A reconstruction of the television world.</span><button id="aboutButton">Research & accuracy</button></footer>
   </dialog>
 
   <dialog id="directory" class="panel">
     <div class="panel-head"><div><span class="eyebrow accent">WAYFINDING</span><h2>Silo directory</h2></div><button class="close" data-close aria-label="Close directory">×</button></div>
-    <div class="directory-tabs" role="tablist" aria-label="Directory view"><button id="landmarksTab" class="active" role="tab" aria-selected="true">Landmarks</button><button id="allLevelsTab" role="tab" aria-selected="false">All 144 levels</button></div>
+    <div class="directory-tabs" role="tablist" aria-label="Directory view"><button id="allLevelsTab" class="active" role="tab" aria-selected="true">All 144 levels</button><button id="landmarksTab" role="tab" aria-selected="false">Landmarks & surface</button></div>
     <label class="search"><span>⌕</span><input id="search" type="search" placeholder="Find a room, level or department" autocomplete="off"></label>
     <div id="locationList" class="location-list"></div>
-    <div class="panel-foot"><span>Choose a destination to travel there.</span><small>Travel is an exploration shortcut. The central stairs connect all 144 levels.</small></div>
+    <div class="panel-foot"><span>144 levels · 864 enterable wings</span><small>Travel is an exploration shortcut. The central stairs connect all 144 levels.</small></div>
   </dialog>
 
   <dialog id="settings" class="panel compact">
@@ -44,7 +44,7 @@
 
   <dialog id="about" class="panel">
     <div class="panel-head"><div><span class="eyebrow accent">THE RECONSTRUCTION</span><h2>Research & accuracy</h2></div><button class="close" data-close aria-label="Close research">×</button></div>
-    <div class="about-content"><p>This is an explorable fan reconstruction, built at human scale. The show establishes <strong>144 numbered levels</strong>, the great staircase and the principal departments. No complete, dimensioned, room-by-room production blueprint was available in the references reviewed.</p><p>The 10 m level spacing, 36 m central shaft diameter and room plans are reconstruction estimates. Unseen floors use furnished layouts fitted to the silo. Department locations without reliable television confirmation are marked in the directory.</p><p>The generator, cavern and digging machine follow published production references. The mines and hidden passage contain inferred details. Spoilers for the television world are present.</p><p>The circular collision system and selected interior models come from your Lost Signal repository. This is a separate world without its combat or exterior town.</p><h3>Reference sources</h3><div id="sources"></div></div>
+    <div class="about-content"><p>This is an explorable fan reconstruction, built at human scale. The show establishes <strong>144 numbered levels</strong>, the great staircase and the principal departments. No complete, dimensioned, room-by-room production blueprint was available in the references reviewed.</p><p>The 10 m level spacing, 36 m central shaft diameter and room plans are reconstruction estimates. Unseen floors use furnished layouts fitted to the silo. Department locations without reliable television confirmation are marked in the directory.</p><p>The connected Level 1 cafeteria, sheriff’s station, preparation area, pressure doors and ramp lead to an explorable barren surface. Clean the exterior camera with Use / E; its live view feeds the wall screens. The generator hall now lies below Level 144. The cavern and digging machine follow published production references. The mines and hidden passage contain inferred details. Spoilers for the television world are present.</p><p>The circular collision system and selected interior models come from your Lost Signal repository. This is an empty environment: no characters, bodies or combat.</p><h3>Reference sources</h3><div id="sources"></div></div>
   </dialog>
   <div id="fatal" hidden role="alert"><h2>The silo could not start</h2><p id="fatalText"></p><button onclick="location.reload()">Try again</button></div>
   <script type="module" src="./src/main.js"></script>

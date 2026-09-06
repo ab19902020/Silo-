@@ -10,9 +10,14 @@ export const SILO = Object.freeze({
 export const levelY = level => SILO.bottomY + (SILO.levels - level) * SILO.levelHeight;
 export const stairStepY = index => Math.max(0,Math.min(1,(index+1-SILO.stairLandingSteps)/(SILO.stairSteps-2*SILO.stairLandingSteps)))*SILO.levelHeight;
 export const levelAt = y => Math.max(1, Math.min(144, Math.round((levelY(1) - y) / SILO.levelHeight) + 1));
-export const zoneFor = n => n <= 48 ? 'UP TOP' : n <= 96 ? 'THE MIDS' : 'DOWN DEEP';
+export const zoneFor = n => n < 50 ? 'UP TOP' : n <= 100 ? 'THE MIDS' : 'DOWN DEEP';
 
 export const SOURCES = [
+  { title: 'Silo Wiki · Silo 18', url: 'https://silo.fandom.com/wiki/Silo_18', note: 'Requested reference. Indexed department and translated wiki entries informed the corrected television floor schedule; the main English page blocks automated fetching.' },
+  { title: 'Silo Wiki · television floor index', url: 'https://silo.fandom.com/de/wiki/Silo_18', note: 'Numbered locations including janitorial on 20, Medical on 62, recycling on 126, and the electronics workshop on 144.' },
+  { title: 'Silo Wiki · Level 1 cafeteria', url: 'https://silo.fandom.com/wiki/Level_1_Cafeteria', note: 'The outside screen and access through the cafeteria to the sheriff’s station.' },
+  { title: 'Lux Machina · Silo production', url:'https://www.luxmc.com/silo', note:'Curved outside LED wall, dust and panel treatment in the practical cafeteria set.' },
+  { title:'Apple TV trailer · ramp reference', url:'https://www.this-is-cool.co.uk/official-trailer-for-silo-a-new-sci-fi-series-coming-to-apple-tv/', note:'Reference frames: ribbed ramp, chamfered tunnel walls and cyan lighting.' },
   { title: 'VFX Voice · production interview', url: 'https://vfxvoice.com/unraveling-the-mysteries-of-silo/', note: '144 levels, apartments, farms, cafeteria screen and central shaft.' },
   { title: 'Outpost VFX · generator & excavator', url: 'https://www.outpost-vfx.com/en/news/silo-s1-modelling-the-machines-of-an-underground-city/', note: 'Six generator panels; excavator tower, radial arms, cranes and cutting heads.' },
   { title: 'Arnaud Valette · shaft concept design', url: 'https://arnaudvalette.artstation.com/projects/39xAqA', note: 'Credited production concept art for the central shaft.' },
@@ -23,48 +28,79 @@ export const SOURCES = [
 
 const landmark = (level, name, type, description, placement = 'Reconstructed placement') => ({ level, name, type, description, placement });
 export const LANDMARKS = [
-  landmark(1, 'Cafeteria & the outside screen', 'cafeteria', 'The great viewing screen, radial ceiling, communal tables and the upper landing.', 'Shown in the series'),
-  landmark(2, 'Sheriff’s office & holding cells', 'sheriff', 'Investigation desks, dispatch radio, evidence shelves and barred holding cells.'),
-  landmark(3, 'Mayor’s office', 'office', 'Austere civic offices, records and meeting space overlooking the shaft.'),
-  landmark(14, 'Judicial', 'judicial', 'Stone corridors, the judge’s chamber and the hidden observation room.', 'TV location; interior plan reconstructed'),
-  landmark(19, 'IT & the vault', 'it', 'Workstations, server aisles, Bernard’s office and the restricted vault.', 'TV location; interior plan reconstructed'),
-  landmark(20, 'Recycling', 'recycling', 'Sorting tables, salvage cages, a conveyor and the refuse chute.', 'Episode-indexed location'),
-  landmark(35, 'School & nursery', 'school', 'Classrooms, books, children’s desks and a communal nursery.'),
-  landmark(50, 'Medical', 'medical', 'Clinical wards, an examination room, dispensary and operating theatre.', 'TV-associated level; room plan reconstructed'),
-  landmark(55, 'Water filtration', 'water', 'Filter vessels, treatment tanks, pipework and a pump control station.', 'Episode-indexed location'),
-  landmark(62, 'Residential quarter', 'residential', 'Furnished family homes with living rooms, kitchens, bedrooms and bathrooms.'),
-  landmark(80, 'Orchard & grow rooms', 'farm', 'A broad agricultural hall with soil beds, irrigation and artificial sunlight.'),
-  landmark(97, 'Agricultural terraces', 'farm', 'Crop rows, a propagation room and the boundary between the Mids and Down Deep.'),
-  landmark(110, 'Supply', 'supply', 'Store rooms, textiles, repairable goods and porter collection points.'),
-  landmark(120, 'Lower farms', 'farm', 'Food production close to the lower residential and engineering levels.'),
-  landmark(126, 'Down Deep cafeteria', 'cafeteria', 'Worn communal furniture and the gathering place of the lower levels.'),
-  landmark(130, 'Walker’s workshop', 'workshop', 'Workbenches, analogue instruments, spares and electrical repairs.'),
-  landmark(140, 'Mechanical workshops', 'mechanical', 'Heavy engineering, pumps, stores and maintenance bays.'),
-  landmark(144, 'Mechanical & generator', 'generator', 'The lowest numbered landing and the great six-panel turbine below it.', 'Lowest numbered level shown; chamber dimensions reconstructed'),
+  landmark(1, 'Cafeteria · sheriff · cleaning exit', 'cafeteria', 'Great viewing hall, sheriff’s station, Holding 3, preparation, airlock and the surface ramp.', 'Television location · connected rooms reconstructed'),
+  landmark(3, 'Mayor’s office & civic records', 'office', 'Council desk, meeting room and civic archives.'),
+  landmark(6, 'Holston & Allison’s residential level', 'residential', 'Apartments with kitchens, bedrooms and bathrooms.', 'Wiki-associated residence · interior reconstructed'),
+  landmark(9, 'Marnes’s residential level', 'residential', 'Upper residential quarters.', 'Wiki-associated residence'),
+  landmark(10, 'Porter dispatch', 'porter', 'Dispatch counter, pigeonholes, parcel cages and porter equipment.', 'Wiki-associated department'),
+  landmark(14, 'Judicial', 'judicial', 'Administrative offices, interview space and records.', 'Television department · interior reconstructed'),
+  landmark(15, 'Manager’s Row', 'residential', 'More spacious upper administrative residences.', 'Wiki-associated residences'),
+  landmark(17, 'Upper residential quarter', 'residential', 'Residential level associated with Gloria and the Sims household.', 'Wiki-associated residences'),
+  landmark(19, 'IT · vault · head of IT', 'it', 'Workstations, server aisles, office and restricted vault.', 'Television department · interior reconstructed'),
+  landmark(20, 'Janitorial · Watcher Room · recycling', 'janitorial', 'A service entrance conceals the observation room; recycling occupies a separate wing.', 'Television locations · interior reconstructed'),
+  landmark(22, 'Kennedy’s residential level', 'residential', 'Upper residential homes.', 'Wiki-associated residence'),
+  landmark(26, 'The bar', 'bar', 'A worn communal bar with tables, booths and a store room.', 'Wiki-associated location'),
+  landmark(30, 'Judicial checkpoint', 'judicial', 'Checkpoint, interview room and service offices.', 'Wiki-associated checkpoint'),
+  landmark(35, 'School & nursery', 'school', 'Classrooms, library and education supplies.'),
+  landmark(42, 'Upper residential homes', 'residential', 'A level associated with George Wilkins’s earlier residence.', 'Wiki-associated residence'),
+  landmark(50, 'Upper Mids medical', 'medical', 'Clinic, ward, dispensary and examination spaces.', 'Wiki-associated department'),
+  landmark(55, 'Water filtration', 'water', 'Treatment vessels, pumps and distribution pipework.', 'Episode-indexed department'),
+  landmark(61, 'Mids recycling', 'recycling', 'Recovery, sorting and reuse.', 'Wiki-associated recycling station'),
+  landmark(62, 'Mids Medical', 'medical', 'Medical ward, examination bays and theatre.', 'Wiki-associated department'),
+  landmark(68, 'Mids residential homes', 'residential', 'A level associated with George Wilkins’s residence.', 'Wiki-associated residence'),
+  landmark(72, 'School & residential quarter', 'school', 'Education and homes in the Mids.', 'School placement reconstructed'),
+  landmark(80, 'Agricultural level', 'farm', 'Soil beds, irrigation, grow lights, propagation and orchard wing.', 'Wiki-associated agriculture'),
+  landmark(90, 'Park & common rooms', 'park', 'An underground garden and communal space.', 'Park shown in series · level reconstructed'),
+  landmark(105, 'Down Deep deputy station', 'sheriff', 'Lower law-enforcement offices and holding rooms.', 'Wiki-associated deputy station'),
+  landmark(110, 'Supply & textiles', 'supply', 'Stores, repairable goods and porter collections.'),
+  landmark(124, 'Lower residential quarter', 'residential', 'Homes and shared domestic services.', 'Wiki-associated residences'),
+  landmark(126, 'Recycling & IT signal relay', 'recycling', 'Lower recycling and the IT signal booster.', 'Wiki-associated departments'),
+  landmark(140, 'Juliette’s residential level', 'residential', 'Lower homes close to Mechanical.', 'Wiki-associated residence'),
+  landmark(144, 'Mechanical · Walker’s workshop', 'mechanical', 'The last numbered landing, electronics workshop, common room and access below to the generator.', 'Television locations · interior reconstructed'),
 ];
 export const SPECIALS = [
-  { id: 'airlock', name: 'Cleaning airlock', level: 1, type: 'airlock', description: 'Suit preparation and the double-door cleaning chamber.' },
-  { id: 'mines', name: 'The mines', level: 144, type: 'mines', description: 'Supported rock tunnels, rail carts, drill faces and an ore working.' },
-  { id: 'excavator', name: 'The excavator & flooded void', level: 144, type: 'excavator', description: 'The abandoned digging machine, its radial cutting arms and the water beneath the silo.' },
-  { id: 'tunnel', name: 'The hidden tunnel', level: 144, type: 'tunnel', description: 'A lower maintenance passage and the sealed door beneath the waterline.' },
+  { id: 'airlock', name: 'Cleaning airlock & ramp', level: 1, type: 'airlock', description: 'Walk through the pressure doors and up the ramp.' },
+  { id: 'surface', name: 'Surface & cleaning camera', level: 1, type: 'surface', description: 'Barren crater, dead tree, ruined horizon and cleanable camera.' },
+  { id: 'generator', name: 'Generator hall · below 144', level: 144, type: 'generator', description: 'Turbine, six removable panels, overhead crane and maintenance gantry.' },
+  { id: 'mines', name: 'The mines', level: 144, type: 'mines', description: 'Rock tunnels, ore carts, drill faces and salvage working.' },
+  { id: 'excavator', name: 'Excavator & flooded void', level: 144, type: 'excavator', description: 'The abandoned digging machine beneath the silo.' },
+  { id: 'tunnel', name: 'The hidden tunnel', level: 144, type: 'tunnel', description: 'Lower passage ending at the enormous sealed door.' },
 ];
 export const LEVELS = Array.from({ length: 144 }, (_, i) => {
-  const level = i + 1;
-  const known = LANDMARKS.find(x => x.level === level);
-  const defaultType = level > 134 ? 'mechanical' : level % 16 === 0 ? 'farm' : level % 11 === 0 ? 'supply' : level % 9 === 0 ? 'workshop' : 'residential';
-  return { level, zone: zoneFor(level), ...(known || { name: `${defaultType === 'residential' ? 'Residential' : defaultType[0].toUpperCase() + defaultType.slice(1)} · ${String(level).padStart(3, '0')}`, type: defaultType, description: 'A complete gallery with six furnished wings. Placement fills a gap in the published television layout.', placement: 'Reconstructed placement' }) };
+  const level = i + 1, known = LANDMARKS.find(x => x.level === level);
+  const defaultType = level > 140 ? 'mechanical' : level % 16 === 0 ? 'farm' : level % 11 === 0 ? 'supply' : level % 9 === 0 ? 'workshop' : 'residential';
+  return { level, zone: zoneFor(level), ...(known || { name: `${defaultType === 'residential' ? 'Residential' : defaultType[0].toUpperCase() + defaultType.slice(1)} · ${String(level).padStart(3, '0')}`, type: defaultType, description: 'Six furnished, enterable wings around a complete numbered gallery.', placement: 'Unseen level · reconstructed rooms' }) };
 });
+// Named rooms from the television wiki. Names identify empty environments,
+// never spawn characters. Apartment numbers are retained where reported.
+export const RESIDENCES = {
+  '6:0':'HOLSTON & ALLISON', '9:0':'MARNES · 9129', '15:0':'MANAGER’S ROW',
+  '17:0':'GLORIA · 1727', '17:1':'SIMS FAMILY', '22:0':'KENNEDY · 2215',
+  '31:0':'TRUDEAU · 31325', '31:1':'REGINA JACKSON', '36:0':'TRUMBULL',
+  '42:0':'WILKINS · 42311', '45:0':'BROWN · 4529', '52:0':'GANTRY · 52346',
+  '63:0':'MELBY · 63324', '68:0':'WILKINS · 68328', '76:0':'WILKINS · 76213',
+  '78:0':'WILKINS · 78329', '98:0':'RESIDENTIAL HOMES', '124:0':'MCLAIN',
+  '125:0':'LOWER RESIDENCES', '140:0':'JULIETTE NICHOLS', '144:4':'WILKINS · 14413',
+};
+for(const key of Object.keys(RESIDENCES)){const [level,wing]=key.split(':').map(Number);if(wing===0&&!LANDMARKS.some(l=>l.level===level))Object.assign(LEVELS[level-1],{type:'residential',name:`Residential · ${RESIDENCES[key]}`,placement:'Wiki-associated residence · interior reconstructed'});}
+export const RECYCLING_LEVELS = [8,20,32,44,56,61,73,85,97,109,126,138];
 export function roomType(level, wing) {
+  if(RESIDENCES[`${level}:${wing}`])return 'residential';
   if (wing === 0) return LEVELS[level - 1].type;
-  if (level === 1 && wing === 1) return 'airlock';
-  if (level === 14 && wing === 1) return 'surveillance';
   if (level === 19 && wing === 1) return 'vault';
+  if (level === 19 && wing === 2) return 'office';
+  if (level === 20 && wing === 1) return 'recycling';
+  if (level === 126 && wing === 1) return 'it';
   if (level === 144 && wing === 1) return 'workshop';
-  if (wing === 5) return level > 130 ? 'supply' : 'utility';
+  if (level === 144 && wing === 2) return 'cafeteria';
+  if (level === 144 && wing === 3) return 'supply';
+  if (level === 80 && wing === 1) return 'park';
+  if (wing === 5) return RECYCLING_LEVELS.includes(level) ? 'recycling' : level % 2 === 0 ? 'laundry' : 'utility';
   if (wing === 4 && level % 3 === 0) return 'workshop';
   return 'residential';
 }
-export const TYPE_NAMES = { cafeteria: 'CAFETERIA', sheriff: 'SHERIFF', office: 'ADMINISTRATION', judicial: 'JUDICIAL', it: 'INFORMATION TECHNOLOGY', recycling: 'RECYCLING', school: 'EDUCATION', medical: 'MEDICAL', water: 'WATER FILTRATION', residential: 'RESIDENCES', farm: 'AGRICULTURE', supply: 'SUPPLY', workshop: 'WORKSHOP', mechanical: 'MECHANICAL', generator: 'GENERATOR', airlock: 'CLEANING AIRLOCK', surveillance: 'OBSERVATION', vault: 'THE VAULT', utility: 'SERVICES' };
+export const TYPE_NAMES = { cafeteria: 'CAFETERIA', sheriff: 'SHERIFF', office: 'ADMINISTRATION', judicial: 'JUDICIAL', it: 'INFORMATION TECHNOLOGY', recycling: 'RECYCLING', school: 'EDUCATION', medical: 'MEDICAL', water: 'WATER FILTRATION', residential: 'RESIDENCES', farm: 'AGRICULTURE', supply: 'SUPPLY', workshop: 'WORKSHOP', mechanical: 'MECHANICAL', generator: 'GENERATOR', airlock: 'CLEANING AIRLOCK', surveillance: 'WATCHER ROOM', vault: 'THE VAULT', utility: 'SERVICES', janitorial:'JANITORIAL', porter:'PORTER DISPATCH', bar:'BAR', park:'PARK & ORCHARD', laundry:'LAUNDRY' };
+export const roomsForLevel = level => Array.from({length:6},(_,wing)=>({id:`room:${level}:${wing}`,level,wing,type:roomType(level,wing),name:RESIDENCES[`${level}:${wing}`]||TYPE_NAMES[roomType(level,wing)]}));
 export const normalizeAngle = a => ((a % TAU) + TAU) % TAU;
 export function stairHeight(x, z, nearY) {
   const angle = normalizeAngle(Math.atan2(z, x));

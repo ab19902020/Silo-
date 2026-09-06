@@ -1,13 +1,14 @@
 import * as THREE from '../vendor/three.module.js';
 import { SiloWorld } from './world.js';
 import { CharacterBody } from './physics.js';
-import { LEVELS, LANDMARKS, SPECIALS, SOURCES, SILO, TAU, TYPE_NAMES, levelY, roomType } from './data.js';
+import { LEVELS, LANDMARKS, SPECIALS, SOURCES, SILO, TAU, TYPE_NAMES, levelY, roomType, roomsForLevel, zoneFor } from './data.js';
 import { SiloAudio } from './audio.js';
-import { makeOutsideScreen } from './outside-screen.js';
+import { Rendering, makeEnvironment } from './rendering.js';
+import { topLocal } from './surface.js';
 
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about');
 const dialogs=[welcome,directory,settings,about],coarse=matchMedia('(pointer:coarse)').matches;
-let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=false,lastHUD=0,lastScreen=null,toastTimer;
+let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false;
 let yaw=Math.PI/2,pitch=0,lookSensitivity=1,running=false,torchOn=false,quality='balanced';
 const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3}),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,2300),audio=new SiloAudio();
 const keys=new Set(),stick={x:0,y:0},desired=new THREE.Vector3(),direction=new THREE.Vector3(),clock=new THREE.Clock();
@@ -24,20 +25,21 @@ function updateSettings(){
   if(renderer)renderer.toneMappingExposure=Number($('brightness').value)/100;
   $('brightnessValue').textContent=`${$('brightness').value}%`;$('sensitivityValue').textContent=`${$('sensitivity').value}%`;lookSensitivity=Number($('sensitivity').value)/100;
   audio.setEnabled($('sound').checked);quality=$('quality').value;
-  if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?2:quality==='low'?1:1.5));renderer.setSize(innerWidth,innerHeight,false);}
+  if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?2:quality==='low'?1:1.5));renderer.setSize(innerWidth,innerHeight,false);renderer.shadowMap.enabled=quality!=='low';if(world){world.quality=quality;world.keyLight.castShadow=quality!=='low';}if(rendering){rendering.enabled=quality!=='low';rendering.resize();rendering.material.uniforms.strength.value=quality==='high'?.38:.24;}}
   saveSettings();
 }
 function renderDirectory(){
   const query=$('search').value.trim().toLowerCase(),items=showAll?LEVELS:LANDMARKS;const target=$('locationList');target.replaceChildren();
-  const selected=items.filter(i=>`${i.level} ${i.name} ${i.type} ${i.zone||''}`.toLowerCase().includes(query));
+  const selected=items.filter(i=>`${i.level} ${i.name} ${i.type} ${i.zone||''} ${roomsForLevel(i.level).map(r=>r.name).join(' ')}`.toLowerCase().includes(query));
   let lastZone='';
   const addItem=(item,special=false)=>{
-    const zone=special?'BENEATH & BEYOND':item.level<=48?'UP TOP · 001–048':item.level<=96?'THE MIDS · 049–096':'DOWN DEEP · 097–144';
+    const zone=special?'BENEATH & BEYOND':item.level<50?'UP TOP · 001–049':item.level<=100?'THE MIDS · 050–100':'DOWN DEEP · 101–144';
     if(lastZone!==zone){const div=document.createElement('div');div.className='zone-divider';div.textContent=zone;target.append(div);lastZone=zone;}
     const button=document.createElement('button');button.className='location-item';
     const n=document.createElement('span');n.className='location-number';n.textContent=special?'↓':String(item.level).padStart(3,'0');
-    const copy=document.createElement('span');copy.className='location-copy';const title=document.createElement('strong');title.textContent=item.name;const sub=document.createElement('small');sub.textContent=special?item.description:item.placement;
+    const copy=document.createElement('span');copy.className='location-copy';const title=document.createElement('strong');title.textContent=item.name;const sub=document.createElement('small');sub.textContent=special?item.description:`6 enterable wings · ${item.placement}`;
     copy.append(title,sub);const arrow=document.createElement('span');arrow.textContent='↗';button.append(n,copy,arrow);button.addEventListener('click',()=>travel(special?item.id:item.level));target.append(button);
+    if(!special){const rooms=document.createElement('div');rooms.className='room-links';for(const room of roomsForLevel(item.level)){const b=document.createElement('button');b.textContent=`${String.fromCharCode(65+room.wing)} · ${room.name.toLowerCase()}`;b.addEventListener('click',()=>travel(room.id));rooms.append(b);}target.append(rooms);}
   };
   selected.forEach(i=>addItem(i));
   for(const i of SPECIALS.filter(i=>!query||`${i.name} ${i.type}`.toLowerCase().includes(query)))addItem(i,true);
@@ -53,17 +55,18 @@ async function travel(id){
   world.setLevel(dest.level,dest.special||null);body.teleport(dest.position.x,dest.position.y,dest.position.z);yaw=dest.yaw;pitch=0;started=true;audio.start();
   await new Promise(r=>requestAnimationFrame(r));
   $('fade').classList.remove('show');traveling=false;syncPause();updateHUD();
-  const name=SPECIALS.find(s=>s.id===id)?.name||LEVELS[dest.level-1].name;notify(name);canvas.focus();
+  const name=SPECIALS.find(s=>s.id===id)?.name||(typeof id==='string'&&id.startsWith('room:')?`${LEVELS[dest.level-1].name} · Wing ${String.fromCharCode(65+Number(id.split(':')[2]))}`:LEVELS[dest.level-1].name);notify(name);canvas.focus();
 }
 function begin(){if(!ready)return;started=true;welcome.close();syncPause();audio.start();canvas.focus();notify(coarse?'Left stick to walk. Drag on the right to look.':'WASD to move. Drag to look, or click to capture the mouse.');}
 function updateHUD(){
   if(!world)return;
   const n=world.activeLevel,data=LEVELS[n-1],r=Math.hypot(body.position.x,body.position.z),wing=Math.round(Math.atan2(body.position.z,body.position.x)/TAU*6+6)%6;
   let name=r<SILO.stairRadius+.6?'The central staircase':r<SILO.deckOuter?'The gallery':TYPE_NAMES[roomType(n,wing)].toLowerCase();name=name[0].toUpperCase()+name.slice(1);
+  if(n===1&&!world.special){const p=topLocal(body.position);if(p.z>=108)name='Surface · exterior camera';else if(p.z>=64)name='Cleaning ramp';else if(p.z>=54)name='Cleaning airlock';else if(p.z>=44&&p.x>14)name='Holding 3 & preparation';else if(p.x>18&&p.z>24)name='Sheriff’s station';else if(wing===0&&r>SILO.deckOuter)name='Cafeteria · outside screen';}
   if(world.special)name=SPECIALS.find(x=>x.id===world.special)?.name||name;
-  $('zone').textContent=world.special?'LOWER ACCESS':data.zone;$('levelLabel').textContent=world.special?'BELOW MECHANICAL':`LEVEL ${String(n).padStart(3,'0')}`;$('locationName').textContent=name;
+  $('zone').textContent=world.outside?'THE SURFACE':world.special?'LOWER ACCESS':data.zone;$('levelLabel').textContent=world.outside?'OUTSIDE':world.special?'BELOW MECHANICAL':`LEVEL ${String(n).padStart(3,'0')}`;$('locationName').textContent=name;
   $('depthLabel').textContent=`${Math.max(0,Math.round(levelY(1)-body.position.y)).toLocaleString()} m below the upper landing`;$('depthMarker').style.top=`${(n-1)/143*94}%`;
-  $('modeLabel').textContent=running?'RUNNING':'ON FOOT';audio.setLocation(world.special||roomType(n,wing));
+  $('modeLabel').textContent=running?'RUNNING':'ON FOOT';audio.setLocation(world.outside?'surface':world.special||roomType(n,wing));
 }
 const inspectionText={
   generator:'Six removable panels protect the turbine. The rear panel is held open for inspection; the rotor, gantry and crane can be seen around the housing.',
@@ -71,12 +74,12 @@ const inspectionText={
   vault:'The Head of IT’s restricted space. The computer and vault interiors are a reconstruction of the television setting.',
   surveillance:'The concealed observation room watches the residences. Its exact floor plan is reconstructed.',
   workshop:'Salvaged electronics, analogue test equipment and spare parts. Almost everything here has to be repaired and used again.',
-  airlock:'Cleaning preparation lies beyond the public spaces. The outer door remains sealed in this exploration build.',
+  airlock:'Cycle the inner door, enter the chamber, then cycle the outer door. The other door closes before the selected door opens. The ramp leads up to the surface.',
   chute:'The refuse chute carries discarded material down for recovery. It is not a passenger route.',
   mines:'An inferred mining working with ore carts, timber supports and a rock drill. A complete filmed mine plan was not available in the sources.',
   tunnel:'A sealed lower passage beneath the silo. This build does not invent an open route into another silo.',
 };
-function use(){if(!interaction||paused())return;audio.click();if(interaction.door){interaction.door.open=!interaction.door.open;}else if(interaction.destination!==undefined){travel(interaction.destination);}else notify(inspectionText[interaction.action]||interaction.label);}
+function use(){if(!interaction||paused())return;audio.click();if(interaction.action==='clean-camera'){world.surface.beginCleaning();notify('Cleaning the camera lens. The cafeteria feed clears as you wipe.');return;}if(interaction.action?.startsWith('airlock-')){world.cycleAirlock(interaction.action.slice(8));return;}if(interaction.door){interaction.door.open=!interaction.door.open;}else if(interaction.destination!==undefined){travel(interaction.destination);}else notify(inspectionText[interaction.action]||interaction.label);}
 function toggleTorch(){torchOn=!torchOn;torch.visible=torchOn;$('torchButton').classList.toggle('active',torchOn);$('torchButton').setAttribute('aria-pressed',String(torchOn));}
 
 for(const d of dialogs){d.addEventListener('cancel',e=>{e.preventDefault();if(d===welcome&&ready){if(started){d.close();syncPause();}else begin();}else closeDialog(d);});d.querySelector('[data-close]')?.addEventListener('click',()=>closeDialog(d));}
@@ -120,7 +123,7 @@ function moveStick(e){if(movePointer!==e.pointerId)return;const r=joystick.getBo
 joystick.addEventListener('pointerdown',e=>{if(paused())return;e.preventDefault();movePointer=e.pointerId;joystick.setPointerCapture(e.pointerId);moveStick(e);});joystick.addEventListener('pointermove',moveStick);
 const releaseStick=e=>{if(e.pointerId!==movePointer)return;movePointer=null;stick.x=stick.y=0;joystick.firstElementChild.style.transform='';};for(const event of ['pointerup','pointercancel','lostpointercapture'])joystick.addEventListener(event,releaseStick);
 
-function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer?.setSize(innerWidth,innerHeight,false);}addEventListener('resize',resize);
+function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer?.setSize(innerWidth,innerHeight,false);rendering?.resize();}addEventListener('resize',resize);
 function fatal(error){console.error(error);for(const d of dialogs)if(d.open)d.close();$('fatal').hidden=false;$('fatalText').textContent=`${error.message||error}. Try refreshing, or use a browser with WebGL 2 enabled.`;}
 
 function frame(){
@@ -142,19 +145,21 @@ function frame(){
     const top=levelY(1);camera.position.set(21,top+3.4,5);camera.lookAt(-1,top-5,-1);world.update(dt,new THREE.Vector3(21,top,5));
   }else{world.update(dt,body.position);}
   if(time-lastHUD>.25){updateHUD();lastHUD=time;}
+  world.surface.renderFeed(renderer,time);
+  if(cleanWasRunning&&!world.surface.cleaning)notify('Camera lens clean. The outside view is clear on the cafeteria screens.');cleanWasRunning=world.surface.cleaning;
   if(outsideTarget&&lastScreen!==world.screens[0]){for(const screen of world.screens){screen.material.map=outsideTarget.texture;screen.material.color.setHex(0xffffff);screen.material.needsUpdate=true;}lastScreen=world.screens[0];}
   torch.position.copy(camera.position);camera.getWorldDirection(direction);torch.target.position.copy(camera.position).addScaledVector(direction,15);torch.visible=torchOn&&started;
-  renderer.render(scene,camera);
+  rendering.render(scene,camera);
 }
 
 async function boot(){
   welcome.showModal();syncPause();
   try{
-    renderer=new THREE.WebGLRenderer({canvas,antialias:!coarse,alpha:false,powerPreference:'high-performance'});renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.setClearColor(0x111b17);updateSettings();resize();
-    world=new SiloWorld(scene);
+    renderer=new THREE.WebGLRenderer({canvas,antialias:!coarse,alpha:false,powerPreference:'high-performance'});renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.setClearColor(0x111b17);updateSettings();resize();
+    world=new SiloWorld(scene);rendering=new Rendering(renderer);makeEnvironment(renderer,scene);updateSettings();
     await world.loadAssets(progress=>{$('enterButton').textContent=`Preparing the silo · ${Math.round(progress*100)}%`;});
     world.setLevel(1);body.teleport(20.6,levelY(1),0);world.update(0,body.position);
-    outsideTarget=makeOutsideScreen(renderer,world.m);renderer.compile(scene,camera);
+    outsideTarget=world.surface.initFeed(renderer);renderer.compile(scene,camera);setDirectoryMode(true);
     ready=true;$('enterButton').disabled=false;$('enterButton').textContent='Enter Silo 18';
     if(world.assetFailures)notify('Some Lost Signal props could not load. The complete architectural reconstruction is still available.');
     frame();

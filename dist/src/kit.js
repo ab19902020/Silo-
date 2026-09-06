@@ -5,31 +5,43 @@ export function random(seed = 18) {
   return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 }
 
+// Deterministic, seamless multilayer material maps. Height, roughness and
+// normal data are linear; albedo alone uses the sRGB transfer function.
 function surfaceTexture(seed, kind) {
-  const n = 256, rng = random(seed), data = new Uint8Array(n * n * 4);
-  const grain = new Float32Array(n * n);
-  for (let i = 0; i < grain.length; i++) grain[i] = rng();
-  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-    const broad = Math.sin(x * .064 + Math.sin(y * .032) * 2) * Math.sin(y * .046) * 10;
-    let value = 185 + broad + (grain[y*n+x] - .5) * (kind === 'metal' ? 25 : 45);
-    if (kind === 'concrete') { if (y % 64 < 2) value -= 38; if (x % 128 === 5 && y % 64 < 8) value -= 30; }
-    if (kind === 'tile') { if (x % 32 < 2 || y % 32 < 2) value -= 65; }
-    if (kind === 'wood') value += Math.sin(x * 1.5 + Math.sin(y * .02)) * 18;
-    if (kind === 'rock') value += Math.sin(x * .18 + y * .05) * Math.cos(y * .09) * 32;
-    const i = (y * n + x) * 4;
-    data[i] = data[i+1] = data[i+2] = THREE.MathUtils.clamp(value, 15, 245); data[i+3] = 255;
+  const n=512, rng=random(seed), field=new Float32Array(64*64);
+  for(let i=0;i<field.length;i++)field[i]=rng();
+  const noise=(x,y,scale)=>{x=x/scale%64;y=y/scale%64;const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy,u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);const at=(a,b)=>field[(b%64)*64+a%64];return THREE.MathUtils.lerp(THREE.MathUtils.lerp(at(ix,iy),at(ix+1,iy),u),THREE.MathUtils.lerp(at(ix,iy+1),at(ix+1,iy+1),u),v);};
+  const height=new Float32Array(n*n),albedo=new Uint8Array(n*n*4),normal=new Uint8Array(n*n*4),rough=new Uint8Array(n*n*4);
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    const fine=rng(),broad=noise(x,y,8),mid=noise(x,y,2),grain=noise(x,y,1);
+    let h=.38+broad*.3+mid*.16+fine*.08;
+    if(kind==='concrete'){if(y%128<2)h-=.15;if((x+((y/128|0)%2)*256)%512<2)h-=.09;if(fine>.987)h-=.13;}
+    if(kind==='tile'&&(x%64<3||y%64<3))h-=.28;
+    if(kind==='wood')h=.55+.07*Math.sin(x*.48+noise(x,y,8)*4)+grain*.1;
+    if(kind==='metal')h=.65+mid*.025+fine*.02-(x%97===0?.08:0);
+    if(kind==='rock')h=.2+broad*.5+mid*.25+grain*.1;
+    height[y*n+x]=h;
+    const i=(y*n+x)*4,v=THREE.MathUtils.clamp(170+h*78+(fine-.5)*12,30,250),stain=kind==='metal'?Math.max(0,.25-broad)*90:Math.max(0,.3-broad)*42;
+    albedo[i]=v;albedo[i+1]=v-stain*.42;albedo[i+2]=v-stain;albedo[i+3]=255;
+    const r=kind==='metal'?135+mid*70:205+mid*40;rough[i]=rough[i+1]=rough[i+2]=r;rough[i+3]=255;
   }
-  const t = new THREE.DataTexture(data,n,n); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(kind==='tile'?3:4,kind==='tile'?3:2); t.magFilter=THREE.LinearFilter; t.minFilter=THREE.LinearMipmapLinearFilter; t.generateMipmaps=true; t.colorSpace=THREE.SRGBColorSpace; t.needsUpdate=true; return t;
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    const strength=kind==='rock'?4:kind==='metal'?1.2:2.8,dx=(height[y*n+(x+1)%n]-height[y*n+(x+n-1)%n])*strength,dy=(height[((y+1)%n)*n+x]-height[((y+n-1)%n)*n+x])*strength,inv=1/Math.hypot(dx,dy,1),i=(y*n+x)*4;
+    normal[i]=(-dx*inv*.5+.5)*255;normal[i+1]=(-dy*inv*.5+.5)*255;normal[i+2]=(inv*.5+.5)*255;normal[i+3]=255;
+  }
+  const texture=(data,color=false)=>{const t=new THREE.DataTexture(data,n,n);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(kind==='tile'?3:4,kind==='tile'?3:2);t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=8;if(color)t.colorSpace=THREE.SRGBColorSpace;t.needsUpdate=true;return t;};
+  const map=texture(albedo,true);map.userData={normal:texture(normal),roughness:texture(rough)};return map;
 }
 
 export function createMaterials() {
   const concreteMap=surfaceTexture(18,'concrete'), metalMap=surfaceTexture(34,'metal'), tileMap=surfaceTexture(14,'tile'), woodMap=surfaceTexture(97,'wood'), rockMap=surfaceTexture(144,'rock');
-  const standard = (color, extra={}) => new THREE.MeshStandardMaterial({ color, roughness:.84, ...extra });
+  const standard = (color, extra={}) => { const map=extra.map;return new THREE.MeshStandardMaterial({ color, roughness:.84, envMapIntensity:.38, ...(map?{normalMap:map.userData.normal,normalScale:new THREE.Vector2(.48,.48),roughnessMap:map.userData.roughness}:{}),...extra,bumpMap:null }); };
   return {
-    concrete: standard(0x9a9583,{map:concreteMap,bumpMap:concreteMap,bumpScale:.075}),
+    concrete: standard(0xb6aea0,{map:concreteMap,bumpMap:concreteMap,bumpScale:.075}),
     pale: standard(0xb4b19e,{map:concreteMap,bumpMap:concreteMap,bumpScale:.025}),
-    darkConcrete: standard(0x585c54,{map:concreteMap,bumpMap:concreteMap,bumpScale:.05}),
-    floor: standard(0x777f70,{map:concreteMap,roughness:.88}),
+    darkConcrete: standard(0x74756a,{map:concreteMap,bumpMap:concreteMap,bumpScale:.05}),
+    floor: standard(0x8b8b7e,{map:concreteMap,roughness:.88}),
+    airlockTile: standard(0x94785a,{map:tileMap,roughness:.83}),
     tile: standard(0x8c9788,{map:tileMap,bumpMap:tileMap,bumpScale:.025}),
     green: standard(0x476050,{map:metalMap,metalness:.32}),
     metal: standard(0x4d5956,{map:metalMap,metalness:.7,roughness:.46}),
@@ -47,8 +59,8 @@ export function createMaterials() {
     leaf: standard(0x477646,{side:THREE.DoubleSide,roughness:.95}),
     leafLight: standard(0x7a9352,{side:THREE.DoubleSide,roughness:.95}),
     rock: standard(0x656a64,{map:rockMap,bumpMap:rockMap,bumpScale:.35,roughness:1}),
-    lamp: new THREE.MeshBasicMaterial({color:0xf6db9f}),
-    coldLamp: new THREE.MeshBasicMaterial({color:0xb9d8d1}),
+    lamp: new THREE.MeshBasicMaterial({color:new THREE.Color(3.1,2.1,1.1),toneMapped:false}),
+    coldLamp: new THREE.MeshBasicMaterial({color:new THREE.Color(1.6,2.6,2.5),toneMapped:false}),
     indicator: new THREE.MeshBasicMaterial({color:0x85be86}),
     redLamp: new THREE.MeshBasicMaterial({color:0xff7951}),
     screen: new THREE.MeshBasicMaterial({color:0x86a6a0}),
@@ -62,6 +74,7 @@ const geometries = new Map();
 const cached=(id,fn)=>{ if(!geometries.has(id)) geometries.set(id,fn()); return geometries.get(id); };
 const boxGeometry=cached('box',()=>new THREE.BoxGeometry(1,1,1));
 const cylinderGeometry=cached('cylinder',()=>new THREE.CylinderGeometry(1,1,1,24));
+const bevelGeometry=cached('bevel',()=>{const g=new THREE.BoxGeometry(1,1,1,4,4,4),p=g.attributes.position;for(let i=0;i<p.count;i++){const v=new THREE.Vector3().fromBufferAttribute(p,i),q=v.clone().clampScalar(-.445,.445),d=v.sub(q).normalize().multiplyScalar(.055);q.add(d);p.setXYZ(i,q.x,q.y,q.z);}g.computeVertexNormals();return g;});
 const sphereGeometry=cached('sphere',()=>new THREE.SphereGeometry(1,16,10));
 const leafGeometry=cached('leaf',()=>new THREE.SphereGeometry(1,8,5));
 const temp=new THREE.Object3D(), matrix=new THREE.Matrix4();
@@ -89,6 +102,7 @@ export class Kit {
     this.parts.push({geometry,material:typeof material==='string'?this.m[material]:material,matrix:temp.matrix.clone()});return this;
   }
   box(mat,x,y,z,w,h,d,ry=0,rx=0,rz=0){return this.mesh(boxGeometry,mat,x,y,z,w,h,d,rx,ry,rz);}
+  bevel(mat,x,y,z,w,h,d,ry=0){return this.mesh(bevelGeometry,mat,x,y,z,w,h,d,0,ry,0);}
   cylinder(mat,x,y,z,r,h,rx=0,ry=0,rz=0){return this.mesh(cylinderGeometry,mat,x,y,z,r,h,r,rx,ry,rz);}
   sphere(mat,x,y,z,rx,ry=rx,rz=rx){return this.mesh(sphereGeometry,mat,x,y,z,rx,ry,rz);}
   leaf(mat,x,y,z,sx,sy,sz,rot=0){return this.mesh(leafGeometry,mat,x,y,z,sx,sy,sz,0,rot,.4);}
@@ -102,7 +116,7 @@ export class Kit {
       let geometry=parts[0].geometry,mats=parts.map(p=>p.matrix);
       if(merge){const gs=parts.map(p=>{const g=p.geometry.index?p.geometry.toNonIndexed():p.geometry.clone();g.applyMatrix4(p.matrix);return g;});geometry=mergeGeometries(gs);gs.forEach(g=>g.dispose());mats=[new THREE.Matrix4()];}
       const mesh=new THREE.InstancedMesh(geometry,parts[0].material,mats.length*transforms.length);
-      let i=0;for(const t of transforms)for(const m of mats){matrix.multiplyMatrices(t,m);mesh.setMatrixAt(i++,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.castShadow=true;mesh.receiveShadow=true;mesh.computeBoundingSphere();root.add(mesh);
+      let i=0;for(const t of transforms)for(const m of mats){matrix.multiplyMatrices(t,m);mesh.setMatrixAt(i++,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.castShadow=true;mesh.receiveShadow=true;mesh.computeBoundingSphere();if(merge)mesh.userData.ownedGeometry=true;root.add(mesh);
     }
     return root;
   }
@@ -117,10 +131,10 @@ export function sign(text,w=3,h=.65,{color='#ddd7b5',background='#2d3e35',font='
     ctx.fillStyle=background;ctx.fillRect(0,0,canvas.width,canvas.height);if(border){ctx.strokeStyle='#b7b797';ctx.lineWidth=1.5;ctx.strokeRect(5,5,canvas.width-10,canvas.height-10);}
     ctx.fillStyle=color;ctx.font=font.replace(/(\d+)px/,(_,n)=>`${Number(n)/2}px`);ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,256,canvas.height/2,485);
     const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4;
-    material=new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide});textCache.set(key,material);
-    if(textCache.size>128){const oldest=textCache.keys().next().value;textCache.delete(oldest);}
+    material=new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide});material.userData.signRefs=0;material.userData.signCached=true;textCache.set(key,material);
+    if(textCache.size>128){const oldest=textCache.keys().next().value,oldMaterial=textCache.get(oldest);textCache.delete(oldest);oldMaterial.userData.signCached=false;if(!oldMaterial.userData.signRefs){oldMaterial.map.dispose();oldMaterial.dispose();}}
   }
-  return new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);material.userData.signRefs++;mesh._signMaterial=material;return mesh;
 }
 export function addSign(root,text,position,w=3,h=.65,ry=0,options={}){const s=sign(text,w,h,options);s.position.set(...position);s.rotation.y=ry;root.add(s);return s;}
 
@@ -134,19 +148,19 @@ export function railing(k,a,b,y=0){
   for(let i=0;i<=n;i++){const t=i/n;k.cylinder('metal',THREE.MathUtils.lerp(a[0],b[0],t),y+.52,THREE.MathUtils.lerp(a[1],b[1],t),.04,1.04);}
 }
 export function desk(k,x,z,angle=0){
-  k.box('wood',x,.82,z,2,.12,.95,angle);for(const dx of [-.8,.8])for(const dz of [-.32,.32])k.cylinder('darkMetal',x+dx,.38,z+dz,.045,.76);
-  k.box('green',x,1.13,z-.15,.65,.49,.43,angle);k.box('screen',x,1.15,z+.073,.5,.3,.012,angle);k.box('darkMetal',x,.91,z+.28,.65,.045,.2,angle);
+  k.bevel('wood',x,.82,z,2,.12,.95,angle);for(const dx of [-.8,.8])for(const dz of [-.32,.32])k.cylinder('darkMetal',x+dx,.38,z+dz,.045,.76);
+  k.bevel('green',x,1.13,z-.15,.65,.49,.43,angle);k.box('screen',x,1.15,z+.073,.5,.3,.012,angle);k.box('darkMetal',x,.91,z+.28,.65,.045,.2,angle);
 }
 export function chair(k,x,z,rot=0){
-  const base=new Kit(k.m);base.box('wood',0,.48,0,.5,.07,.51);base.box('wood',0,.89,-.23,.5,.6,.07);for(const dx of [-.2,.2])for(const dz of [-.2,.2])base.cylinder('metal',dx,.23,dz,.023,.46);
+  const base=new Kit(k.m);base.bevel('wood',0,.48,0,.5,.07,.51);base.bevel('wood',0,.89,-.23,.5,.6,.07);for(const dx of [-.2,.2])for(const dz of [-.2,.2])base.cylinder('metal',dx,.23,dz,.023,.46);
   temp.position.set(x,0,z);temp.rotation.set(0,rot,0);temp.scale.set(1,1,1);temp.updateMatrix();for(const p of base.parts)k.parts.push({...p,matrix:temp.matrix.clone().multiply(p.matrix)});
 }
-export function table(k,x,z,w=2,d=1){k.box('wood',x,.79,z,w,.09,d);for(const dx of [-w*.4,w*.4])for(const dz of [-d*.35,d*.35])k.cylinder('metal',x+dx,.37,z+dz,.04,.74);}
+export function table(k,x,z,w=2,d=1){k.bevel('wood',x,.79,z,w,.09,d);for(const dx of [-w*.4,w*.4])for(const dz of [-d*.35,d*.35])k.cylinder('metal',x+dx,.37,z+dz,.04,.74);}
 export function shelf(k,x,z,w=2,h=2.2){for(const dx of [-w/2,w/2])for(const dz of [-.34,.34])k.box('metal',x+dx,h/2,z+dz,.055,h,.055);for(const y of [.15,.8,1.45,2.1])k.box('metal',x,y,z,w,.06,.8);}
-export function bed(k,x,z){k.box('metal',x,.29,z,1.05,.12,2.15);k.box('linen',x,.45,z,1,.24,2);k.box('fabric',x,.61,z+.27,1.03,.08,1.32);k.box('white',x,.63,z-.68,.78,.14,.42);for(const dx of [-.45,.45])for(const dz of [-.9,.9])k.box('metal',x+dx,.15,z+dz,.06,.3,.06);}
+export function bed(k,x,z){k.box('metal',x,.29,z,1.05,.12,2.15);k.bevel('linen',x,.45,z,1,.24,2);k.box('fabric',x,.61,z+.27,1.03,.08,1.32);k.bevel('white',x,.63,z-.68,.78,.14,.42);for(const dx of [-.45,.45])for(const dz of [-.9,.9])k.box('metal',x+dx,.15,z+dz,.06,.3,.06);}
 export function pipe(k,x,z,y=3,length=8,r=.14,mat='rust'){k.cylinder(mat,x,y,z,r,length,Math.PI/2);for(let dz=-length/2;dz<=length/2;dz+=2)k.torus('metal',x,y,z+dz,r+.025,.025);}
 
 export function disposeGroup(group){
-  group.traverse(o=>{if(o.isInstancedMesh)o.dispose();else if(o.isMesh&&o.geometry?.type==='PlaneGeometry')o.geometry.dispose();});
+  group.traverse(o=>{if(o._signMaterial){const m=o._signMaterial;m.userData.signRefs--;if(!m.userData.signRefs&&!m.userData.signCached){m.map.dispose();m.dispose();}}if(o.userData.ownedGeometry)o.geometry?.dispose();if(o.userData.ownedMaterial)o.material?.dispose();if(o.isInstancedMesh){o.dispose();}else if(o.isMesh&&o.geometry?.type==='PlaneGeometry')o.geometry.dispose();});
   group.removeFromParent();
 }

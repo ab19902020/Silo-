@@ -37,20 +37,36 @@ The shaft uses the finished series’ rounded concrete language: a broad central
 
 The stair uses flat end sectors where the bridge joins. This provides full head clearance and prevents a bridge underside from blocking a character before the final tread. The visible geometry and collision share the same stair profile.
 
+## Second-build production references
+
+The user’s requested [Silo 18 wiki](https://silo.fandom.com/wiki/Silo_18) blocks automated full-page fetching. Its indexed department entries and [translated television floor index](https://silo.fandom.com/de/wiki/Silo_18) informed the location corrections. The reconstruction does not claim to have obtained a complete production blueprint from that page.
+
+- [Lux Machina’s production account](https://www.luxmc.com/silo) and its cafeteria image show the broad curved LED wall, heavy frame and radial ceiling feature. The new principal display is modeled at 30 m wide; this remains an estimate.
+- [Official trailer frames reproduced by This Is Cool](https://www.this-is-cool.co.uk/official-trailer-for-silo-a-new-sci-fi-series-coming-to-apple-tv/) show a slatted incline, angled upper tunnel corners, repeating ribs, cyan wall strips and red ceiling indicators.
+- [The cleaning-chamber still in Die Zukunft](https://diezukunft.de/review/film/silo-und-noch-eine-dystopie) shows brown wall tiles, a rounded rectangular blast-door surround and diagonal panel seams.
+- [A Season 2 exterior still](https://minhtuanmobile.com/tin-tuc/giai-thich-chi-tiet-ket-thuc-silo-mua-2/) shows the low sunken hatch, reinforced lid panels and a squat concrete sensor monument with splayed buttresses. The camera lens is obscured in that frame; its exact mount and position are inferred.
+
+Images were inspected as references and are not bundled in the game. The environment omits every character and body visible in those references.
+
 ## Floor program
 
-Levels without a documented television assignment are filled with residential or service wings. Every numbered level has six enterable wings. The directory exposes placement notes. Judicial at 14 and Medical at 50 are television-associated placements whose room arrangements remain inferred. Locations such as the mayor’s office, sheriff’s office, education, orchards, workshop and intermediate Supply levels are explicitly reconstruction placements.
+All 144 numbered galleries remain represented in the world. The directory opens on all levels and exposes six direct wing destinations for each, totaling 864 wings. Residential wings now contain four separate homes (2,476 apartments in the modeled schedule), with a central corridor and reachable domestic rooms. These counts describe this reconstruction, not a canonical room census.
 
-IT uses 19, recycling 20 and water filtration 55. The lowest numbered landing is 144. Its generator is included in the Mechanical wing; the scale and precise vertical relationship of the turbine hall have been simplified to keep the route usable. The mines, excavator access and hidden passage use lower maintenance travel points. The mines’ detailed layout and furnishing are inferred.
+The schedule corrects the main television locations: Level 1 cafeteria → sheriff’s station → holding/preparation → airlock; Judicial on 14; IT on 19; janitorial and the concealed Watcher Room on 20; Medical on 50 and 62; water on 55; agriculture on 80; lower recycling and IT relay on 126; Juliette’s residence on 140; Walker’s workshop and Mechanical on 144. Wiki-associated residential nameplates and porter/bar locations are included. Unknown level assignments and the precise unseen interior arrangements remain inferred.
+
+The generator occupies a separate 50 m diameter, 27 m high hall at y=52 m, below the last numbered landing at y=80 m. An annular maintenance deck is reachable by a half-turn stair. Mines, cavern and generator entry use explicit exploration travel points. The cleaning route, in contrast, is physically continuous: the 44 m ramp climbs 14 m to the surface; these are model dimensions, not verified set measurements.
+
+The outside camera renders the same authored terrain, hatch, camera monument and skyline used by the walkable surface, with shared geometry/materials and animated dust. Its lens soil clears over a four-second cleaning interaction, reflected on every loaded cafeteria display. The two pressure doors are interlocked; choosing one closes the other before opening it. Reentry is allowed for environment exploration.
 
 ## Coverage and limits
 
-- All 144 levels are generated, with persistent distant gallery/stair geometry and nearby furnished room streaming.
-- Apartment and department interiors share construction kits. They are not 864 unique verified television rooms.
+- All 144 levels are generated. Fifteen nearby levels use detailed structure; the remaining levels retain simpler physical silhouettes. The union always covers all 144, with no duplicate or omitted numbered landing. Nearby room contents stream independently.
+- Apartment and department interiors share construction kits. They are not individually verified television floor plans.
 - Furniture, doors and walls are collidable. The imported props retain their original Lost Signal geometry.
-- The outside view is an original rendered landscape; the player does not explore an exterior town.
+- The exterior is an original, walkable rocky landscape with distant ruined buildings, not an enterable town. The exact surface geography is reconstructed.
 - There is no simulation of 10,000 inhabitants, show dialogue, combat or story quests.
 - The digging machine is a detailed static environment; the generator rotor animates. Neither is an engineering simulator.
+- The visual upgrade includes 512 px layered albedo/normal/roughness maps, rounded furniture edges, local soft shadows, reflection lighting, depth-based contact shading and restrained bloom. Balanced/high settings use these effects; battery saver disables the shadow/composition passes. Unsupported floating-point color targets fall back to byte targets.
 - Touch input, keyboard input, renderer settings and error handling are implemented. Automated validation covers source, assets, geometry and physics. Visual equivalence, browser behavior and frame rate require device testing and are not certified by the automated checks.
 
 ## Lost Signal provenance
