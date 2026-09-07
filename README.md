@@ -25,8 +25,15 @@ A browser-based, first- and third-person reconstruction of the television silo, 
 - A separate excavator cavern with radial cutting arms, a central tower, water, catwalks and inspection access; supported mine workings, ore carts, a rock drill and a sealed lower tunnel.
 - A connected Level 1 cafeteria, sheriff’s station, Holding 3, preparation room, interlocked pressure doors and slatted ramp to the barren surface. A sunken hatch, squat camera monument, dead tree, rocky crater and barren rim. Use / E cleans the lens and clears the cafeteria feed.
 - Physically shaded material maps, surface normals and roughness, rounded furniture edges, local shadows, contact shading, reflection lighting, subtle bloom and moving exterior dust.
-- Openable doors, solid walls and furniture, inspection points, a torch, ambient machinery sound, a searchable floor directory and travel shortcuts.
+- Openable doors, solid walls and furniture, inspection points, a torch, a continuous soundtrack with surface-aware footsteps and located ambience, a searchable floor directory and travel shortcuts.
 - Touch controls for phones, keyboard/mouse controls, fullscreen, brightness and rendering settings.
+
+## Sound
+
+- The supplied **ten-minute soundtrack** plays continuously everywhere in the silo, from the moment you enter. It never restarts or ducks as you travel between levels, and its loop is gapless. Set its level with **Music** in settings; **Sound** silences everything.
+- **Footsteps** follow the floor you are on — concrete galleries, metal grating in Mechanical and the generator hall, rock in the mines, grit on the surface, soft floors in the residences — with per-step variation rather than one repeated sample.
+- Doors, the pressure-door airlock, the lens wipe, the torch and the interface each have their own sound; the mains hum, ventilation, wind and turbine throb change with the location, and a synthesised impulse response gives the shaft its concrete tail.
+- Only the soundtrack is a bundled file. Everything else is generated at runtime. See [the audio notes](AUDIO.md).
 
 The directory’s travel feature is a visitor shortcut, not an in-world elevator. The central stairs physically connect every numbered floor. Lower maintenance hatches use explicit travel transitions into the mines and cavern. The cleaning route is continuously walkable in both directions. The hidden tunnel’s far door remains sealed. There is no combat.
 
@@ -84,9 +91,11 @@ The tests construct the world and exercise all 144 bridge connections, all 143 s
 - `dist/src/kit.js` — reusable meshes, material surfaces and instancing.
 - `dist/src/physics.js` — adapted Lost Signal collision and walking controller.
 - `dist/src/main.js` — controls, directory, interaction, audio and render loop.
+- `dist/src/audio.js` — soundtrack playback, footsteps, interaction sounds, ambience and shaft reverb.
+- `dist/assets/audio/` — the supplied soundtrack and its provenance record.
 - `dist/assets/lost-signal/` — preserved interior GLBs.
 - `reference/lost-signal/` — the original silo source and Blender habitat generator.
 
 ## Credits
 
-The original Lost Signal source was read at commit `aa4c1d00d173b3aa98560617e2d541d3ff093dee`; that repository was not modified. New modeled geometry, material surfaces, interface, ambient synthesis and cafeteria-screen landscape are authored for this reconstruction. Three.js is provided under its [MIT license](dist/vendor/THREE-LICENSE.txt). Television and production art remain the property of their respective owners; reference links are provided, and show frames, music, extracted studio models are not bundled. The three character likeness meshes and hard-drive model were supplied by the user; their hashes and preparation metadata are in `dist/assets/characters/manifest.json`.
+The original Lost Signal source was read at commit `aa4c1d00d173b3aa98560617e2d541d3ff093dee`; that repository was not modified. New modeled geometry, material surfaces, interface, runtime audio synthesis and cafeteria-screen landscape are authored for this reconstruction. Three.js is provided under its [MIT license](dist/vendor/THREE-LICENSE.txt). Television and production art remain the property of their respective owners; reference links are provided, and show frames, show music and extracted studio models are not bundled. The bundled soundtrack was supplied by the repository owner and is not taken from the television production; its provenance and encoding are recorded in `dist/assets/audio/manifest.json`. The three character likeness meshes and hard-drive model were supplied by the user; their hashes and preparation metadata are in `dist/assets/characters/manifest.json`.
