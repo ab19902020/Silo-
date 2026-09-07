@@ -5,10 +5,11 @@ import { LEVELS, LANDMARKS, SPECIALS, SOURCES, SILO, TAU, TYPE_NAMES, levelY, ro
 import { SiloAudio } from './audio.js';
 import { Rendering, makeEnvironment } from './rendering.js';
 import { topLocal } from './surface.js';
+import { CharacterCast, CHARACTERS } from './characters.js';
 
-const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about');
-const dialogs=[welcome,directory,settings,about],coarse=matchMedia('(pointer:coarse)').matches;
-let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false;
+const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic');
+const dialogs=[welcome,directory,settings,about,characters,relic],coarse=matchMedia('(pointer:coarse)').matches;
+let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast;
 let yaw=Math.PI/2,pitch=0,lookSensitivity=1,running=false,torchOn=false,quality='balanced';
 const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3}),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,2300),audio=new SiloAudio();
 const keys=new Set(),stick={x:0,y:0},desired=new THREE.Vector3(),direction=new THREE.Vector3(),clock=new THREE.Clock();
@@ -20,13 +21,22 @@ function notify(message){$('toast').textContent=message;$('toast').classList.add
 function syncPause(){document.body.classList.toggle('paused',paused());$('hud').classList.toggle('hidden',welcome.open);keys.clear();stick.x=stick.y=0;$('joystick').firstElementChild.style.transform='';if(paused()&&document.pointerLockElement)document.exitPointerLock();}
 function openDialog(d){for(const x of dialogs)if(x.open)x.close();d.showModal();syncPause();}
 function closeDialog(d){d.close();if(!started&&d!==welcome)welcome.showModal();syncPause();}
-function saveSettings(){try{localStorage.setItem('silo18-settings',JSON.stringify({brightness:$('brightness').value,sensitivity:$('sensitivity').value,quality,sound:$('sound').checked,reduceMotion:$('reduceMotion').checked}));}catch{}}
+function saveSettings(){try{localStorage.setItem('silo18-settings',JSON.stringify({brightness:$('brightness').value,sensitivity:$('sensitivity').value,quality,sound:$('sound').checked,reduceMotion:$('reduceMotion').checked,character:cast?.selected||saved.character||'juliette',thirdPerson:cast?.thirdPerson??saved.thirdPerson??true}));}catch{}}
 function updateSettings(){
   if(renderer)renderer.toneMappingExposure=Number($('brightness').value)/100;
   $('brightnessValue').textContent=`${$('brightness').value}%`;$('sensitivityValue').textContent=`${$('sensitivity').value}%`;lookSensitivity=Number($('sensitivity').value)/100;
   audio.setEnabled($('sound').checked);quality=$('quality').value;
   if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?2:quality==='low'?1:1.5));renderer.setSize(innerWidth,innerHeight,false);renderer.shadowMap.enabled=quality!=='low';if(world){world.quality=quality;world.keyLight.castShadow=quality!=='low';}if(rendering){rendering.enabled=quality!=='low';rendering.resize();rendering.material.uniforms.strength.value=quality==='high'?.38:.24;}}
   saveSettings();
+}
+function syncCharacterUI(){
+  if(!cast)return;const active=cast.active.definition;$('characterStatus').textContent=`Playing as ${active.name}`;$('viewButton').textContent=cast.thirdPerson?'View: third person':'View: first person';
+  for(const b of $('characterList').children){const chosen=b.dataset.character===cast.selected;b.setAttribute('aria-pressed',String(chosen));b.querySelector('.selection-label').textContent=chosen?'SELECTED':'PLAY AS THIS CHARACTER';}
+}
+function chooseCharacter(id){if(!cast?.select(id))return;const height=cast.active.definition.height;body.standHeight=height;body.height=height;cast.active.heading=yaw+Math.PI;syncCharacterUI();saveSettings();closeDialog(characters);notify(`Playing as ${cast.active.definition.name}`);}
+function toggleView(){if(!cast)return;cast.thirdPerson=!cast.thirdPerson;syncCharacterUI();saveSettings();}
+function renderCharacters(){
+  $('characterList').replaceChildren();for(const c of CHARACTERS){const b=document.createElement('button');b.className='character-card';b.dataset.character=c.id;b.setAttribute('aria-pressed','false');const im=document.createElement('img');im.src=`./assets/characters/${c.id}.jpg`;im.alt=c.name;const copy=document.createElement('span');copy.className='character-copy';const name=document.createElement('strong');name.textContent=c.name;const role=document.createElement('small');role.textContent=c.role;const place=document.createElement('small');place.textContent=`Level ${String(c.level).padStart(3,'0')} · ${c.place}`;const label=document.createElement('span');label.className='selection-label';copy.append(name,role,place,label);b.append(im,copy);b.addEventListener('click',()=>chooseCharacter(c.id));$('characterList').append(b);}syncCharacterUI();
 }
 function renderDirectory(){
   const query=$('search').value.trim().toLowerCase(),items=showAll?LEVELS:LANDMARKS;const target=$('locationList');target.replaceChildren();
@@ -67,7 +77,7 @@ function updateHUD(){
   if(world.special)name=SPECIALS.find(x=>x.id===world.special)?.name||name;
   $('zone').textContent=world.outside?'THE SURFACE':world.special?'LOWER ACCESS':data.zone;$('levelLabel').textContent=world.outside?'OUTSIDE':world.special?'BELOW MECHANICAL':`LEVEL ${String(n).padStart(3,'0')}`;$('locationName').textContent=name;
   $('depthLabel').textContent=`${Math.max(0,Math.round(levelY(1)-body.position.y)).toLocaleString()} m below the upper landing`;$('depthMarker').style.top=`${(n-1)/143*94}%`;
-  $('modeLabel').textContent=running?'RUNNING':'ON FOOT';audio.setLocation(world.outside?'surface':world.special||roomType(n,wing));
+  $('modeLabel').textContent=`${cast?.active?.definition.short||'ON FOOT'}${running?' · RUNNING':''}`;audio.setLocation(world.outside?'surface':world.special||roomType(n,wing));
 }
 const inspectionText={
   generator:'Six removable panels protect the turbine. The rear panel is held open for inspection; the rotor, gantry and crane can be seen around the housing.',
@@ -80,12 +90,13 @@ const inspectionText={
   mines:'An inferred mining working with ore carts, timber supports and a rock drill. A complete filmed mine plan was not available in the sources.',
   tunnel:'A sealed lower passage beneath the silo. This build does not invent an open route into another silo.',
 };
-function use(){if(!interaction||paused())return;audio.click();if(interaction.action==='clean-camera'){world.surface.beginCleaning();notify('Cleaning the camera lens. The cafeteria feed clears as you wipe.');return;}if(interaction.action?.startsWith('airlock-')){world.cycleAirlock(interaction.action.slice(8));return;}if(interaction.door){interaction.door.open=!interaction.door.open;}else if(interaction.destination!==undefined){travel(interaction.destination);}else notify(inspectionText[interaction.action]||interaction.label);}
+function use(){if(!interaction||paused())return;audio.click();if(interaction.action==='hard-drive'){openDialog(relic);return;}if(interaction.action==='clean-camera'){world.surface.beginCleaning();notify('Cleaning the camera lens. The cafeteria feed clears as you wipe.');return;}if(interaction.action?.startsWith('airlock-')){world.cycleAirlock(interaction.action.slice(8));return;}if(interaction.door){interaction.door.open=!interaction.door.open;}else if(interaction.destination!==undefined){travel(interaction.destination);}else notify(inspectionText[interaction.action]||interaction.label);}
 function toggleTorch(){torchOn=!torchOn;torch.visible=torchOn;$('torchButton').classList.toggle('active',torchOn);$('torchButton').setAttribute('aria-pressed',String(torchOn));}
 
 for(const d of dialogs){d.addEventListener('cancel',e=>{e.preventDefault();if(d===welcome&&ready){if(started){d.close();syncPause();}else begin();}else closeDialog(d);});d.querySelector('[data-close]')?.addEventListener('click',()=>closeDialog(d));}
 $('enterButton').addEventListener('click',begin);$('home').addEventListener('click',()=>{if(started){$('enterButton').textContent='Resume exploration';}openDialog(welcome);});
 for(const id of ['directoryButton','welcomeDirectory'])$(id).addEventListener('click',()=>{renderDirectory();openDialog(directory);});
+$('characterButton').addEventListener('click',()=>{renderCharacters();openDialog(characters);});$('viewButton').addEventListener('click',toggleView);
 $('settingsButton').addEventListener('click',()=>openDialog(settings));$('aboutButton').addEventListener('click',()=>openDialog(about));
 for(const button of document.querySelectorAll('[data-travel]'))button.addEventListener('click',()=>travel(button.dataset.travel));
 $('landmarksTab').addEventListener('click',()=>setDirectoryMode(false));$('allLevelsTab').addEventListener('click',()=>setDirectoryMode(true));$('search').addEventListener('input',renderDirectory);
@@ -101,7 +112,9 @@ addEventListener('keydown',e=>{
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
   if(e.repeat){keys.add(e.code);return;}
   if(e.code==='KeyM'){if(directory.open)closeDialog(directory);else{renderDirectory();openDialog(directory);}return;}
+  if(e.code==='KeyC'){if(characters.open)closeDialog(characters);else{renderCharacters();openDialog(characters);}return;}
   if(paused())return;
+  if(e.code==='KeyV'){toggleView();return;}
   keys.add(e.code);if(e.code==='KeyE')use();if(e.code==='KeyF')toggleTorch();
   if(e.code==='Escape')openDialog(welcome);
 });
@@ -134,18 +147,17 @@ function frame(){
   if(!paused()){
     const forward=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-stick.y;
     const right=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0)+stick.x;
-    const speed=(running||keys.has('ShiftLeft')||keys.has('ShiftRight'))?5.8:3.2;
+    const speed=(running||keys.has('ShiftLeft')||keys.has('ShiftRight'))?4.3:1.7;
     desired.set(-Math.sin(yaw)*forward+Math.cos(yaw)*right,0,-Math.cos(yaw)*forward-Math.sin(yaw)*right);if(desired.length()>1)desired.normalize();desired.multiplyScalar(speed);
     // Bound movement substeps prevent thin rail/door tunneling after slow frames.
     const count=Math.max(1,Math.ceil(dt/(1/120)));for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders);
     if(body.position.y<2&&!world.special){const p=world.spawn(world.activeLevel);body.teleport(p.x,p.y,p.z);notify('Returned to the nearest safe landing.');}
     const bob=$('reduceMotion').checked?0:Math.sin(body.distanceWalked*8)*.018*Math.min(1,body.horizontalSpeed);
-    camera.position.copy(body.position);camera.position.y+=body.eyeHeight+bob;camera.rotation.set(pitch,yaw,0,'YXZ');
-    world.update(dt,body.position);camera.getWorldDirection(direction);interaction=world.nearestInteraction(camera.position,direction);$('interaction').hidden=!interaction;if(interaction)$('interaction').lastElementChild.textContent=interaction.label;
+    world.update(dt,body.position);cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;interaction=world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;if(interaction)$('interaction').lastElementChild.textContent=interaction.label;
     $('touchUse').style.opacity=interaction?'1':'.4';audio.step(body.distanceWalked,body.horizontalSpeed);
   }else if(!started){
     const top=levelY(1);camera.position.set(21,top+3.4,5);camera.lookAt(-1,top-5,-1);world.update(dt,new THREE.Vector3(21,top,5));
-  }else{world.update(dt,body.position);}
+  }else{world.update(dt,body.position);cast?.update(0,body,started);}
   if(time-lastHUD>.25){updateHUD();lastHUD=time;}
   world.surface.renderFeed(renderer,time);
   if(cleanWasRunning&&!world.surface.cleaning)notify('Camera lens clean. The outside view is clear on the cafeteria screens.');cleanWasRunning=world.surface.cleaning;
@@ -159,8 +171,9 @@ async function boot(){
   try{
     renderer=new THREE.WebGLRenderer({canvas,antialias:!coarse,alpha:false,powerPreference:'high-performance'});renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.setClearColor(0x111b17);updateSettings();resize();
     world=new SiloWorld(scene);rendering=new Rendering(renderer);makeEnvironment(renderer,scene);updateSettings();
-    await world.loadAssets(progress=>{$('enterButton').textContent=`Preparing the silo · ${Math.round(progress*100)}%`;});
-    world.setLevel(1);body.teleport(20.6,levelY(1),0);world.update(0,body.position);
+    await world.loadAssets(progress=>{$('enterButton').textContent=`Preparing the silo · ${Math.round(progress*45)}%`;});
+    cast=new CharacterCast(scene,world);await cast.load(progress=>{$('enterButton').textContent=`Preparing characters · ${Math.round(45+progress*55)}%`;});cast.select(saved.character||'juliette');cast.thirdPerson=saved.thirdPerson!==false;body.standHeight=body.height=cast.active.definition.height;cast.active.heading=yaw+Math.PI;renderCharacters();
+    world.setLevel(1);body.teleport(20.6,levelY(1),0);world.update(0,body.position);cast.update(0,body,false);
     outsideTarget=world.surface.initFeed(renderer);renderer.compile(scene,camera);setDirectoryMode(true);
     ready=true;$('enterButton').disabled=false;$('enterButton').textContent='Enter Silo 18';
     if(world.materialFailures)notify('Some surface materials could not load. Refresh to retry.');

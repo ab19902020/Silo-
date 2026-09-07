@@ -97,3 +97,24 @@ test('generator maintenance stairs connect ground to the upper gantry',()=>{
   for(let j=0;j<480;j++){const a=Math.PI+(j+.5)*Math.PI/480,x=Math.cos(a)*r,z=Math.sin(a)*r;const y=world.colliders.floorAt(x,z,.24,floor+.3);assert.ok(y>=floor-.02&&y-floor<=.3);floor=y;assert.ok(clearAt(new THREE.Vector3(x,y,z)));}
   assert.ok(Math.abs(floor-62.22)<.02);for(let x=17;x>11;x-=.2)assert.ok(world.colliders.floorAt(x,0,.24,62.5)>=62.2);
 });
+
+test('barren terrain supports the old hatch gap and continues past the former map edge',()=>{
+  world.setLevel(1);const dt=1/120;
+  // Walk directly over the old false cutout, beside both sides of the ramp.
+  for(const x of [20,22,30,32]){
+    const b=new CharacterBody();b.teleport(...topPoint(x,groundY(x,45),45).toArray());
+    for(let i=0;i<3000;i++){b.step(dt,new THREE.Vector3(3,0,0),world.colliders);assert.ok(b.position.y>levelY(1)+13,'Fell through the visible ground');}
+  }
+  for(const [x,z] of [[600,600],[-1500,1800],[2600,-2600],[4100,5200]]){
+    const b=new CharacterBody();b.teleport(...topPoint(x,groundY(x,z),z).toArray());world.update(0,b.position);
+    for(let i=0;i<240;i++){b.step(dt,new THREE.Vector3(2,0,1),world.colliders);world.update(dt,b.position);const p=topLocal(b.position);assert.ok(Math.abs(p.y-groundY(p.x,p.z))<.18);assert.equal(world.activeLevel,1);assert.ok(world.outside);}
+    assert.ok(world.surface.terrainTiles.has(world.surface.tileKey));assert.ok(world.surface.terrainTiles.size<=10);
+  }
+});
+
+test('camera feed contains only bowl terrain, debris and plants with the tree on the right',()=>{
+  const surface=world.surface;surface.camera.updateMatrixWorld(true);
+  for(const child of surface.feedRoot.children)assert.ok(['barren-ground','surface-scree','dead-tree','wind-dust'].includes(child.name));
+  const p=topPoint(49,groundY(49,68)+3,68).project(surface.camera);assert.ok(p.x>.3&&p.x<.75,`Tree composition ${p.x}`);
+  assert.ok(surface.camera.fov<30);assert.equal(surface.feedRoot.getObjectByName('18'),undefined);
+});

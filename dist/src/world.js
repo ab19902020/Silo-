@@ -8,7 +8,7 @@ import { buildBazaar } from './bazaar.js';
 import { buildPassages, PASSAGE, hasRearPassage } from './passages.js';
 import { loadPhotographicMaterials } from './materials.js';
 import { buildTopFloor } from './top-floor.js';
-import { SurfaceWorld, topPoint, topLocal, groundY } from './surface.js';
+import { SurfaceWorld, topPoint, topLocal, groundY, inRampCutout } from './surface.js';
 import { buildGeneratorHall } from './generator-hall.js';
 import { buildUnderground } from './underground.js';
 
@@ -35,7 +35,7 @@ export class SiloWorld {
       const bounds=new THREE.Box3().setFromObject(pivot),center=bounds.getCenter(new THREE.Vector3());original.position.x-=center.x;original.position.y-=bounds.min.y;original.position.z-=center.z;
       pivot.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});this.assets[name]=pivot;onProgress(++count/10);
     }));
-    this.assetFailures=results.filter(r=>r.status==='rejected').length;this.materialFailures=await materialLoad;
+    this.assetFailures=results.filter(r=>r.status==='rejected').length;this.materialFailures=await materialLoad;this.surface.refreshMaterials();
     return results;
   }
   buildStructure() {
@@ -209,6 +209,7 @@ export class SiloWorld {
   spawn(level,wing=null){const y=levelY(level);if(wing===null)return new THREE.Vector3(20.6,y,0);const a=wing*TAU/6;return new THREE.Vector3(Math.cos(a)*29,y,Math.sin(a)*29);}
   destination(id){
     if(typeof id==='string'&&id.startsWith('room:')){const [,n,w]=id.split(':').map(Number);return {level:n,position:this.spawn(n,w),yaw:Math.PI/2-w*TAU/6+Math.PI};}
+    if(id==='relic')return {level:144,position:new THREE.Vector3(-3.8,0,4.9).applyAxisAngle(new THREE.Vector3(0,1,0),Math.PI/6).add(new THREE.Vector3(SILO.deckOuter*.5,levelY(144),SILO.deckOuter*Math.sqrt(3)/2)),yaw:Math.PI*.786};
     if(id==='surface')return {level:1,position:topPoint(26,groundY(26,114),114),yaw:-Math.PI/2};
     if(id==='generator')return {level:144,special:id,position:new THREE.Vector3(0,52,-20),yaw:Math.PI};
     if(id==='mines')return {level:144,special:id,position:new THREE.Vector3(105,48,-26),yaw:Math.PI};
@@ -219,6 +220,7 @@ export class SiloWorld {
   }
   nearestInteraction(position,direction){
     const pool=this.special?(this.special==='generator'?this.generator:this.underground).interactions.map(v=>({...v,position:new THREE.Vector3(...v.position)})):[...this.doors.map(d=>({position:d.position,label:`${d.open?'Close':'Open'} ${TYPE_NAMES[d.type].toLowerCase()} door`,door:d})),...this.interactions];
+    if(this.actorInteractions)pool.push(...this.actorInteractions);
     if(!this.special&&this.activeLevel===1)pool.push({position:this.surface.cleaningPoint,label:this.surface.cleaning?'Cleaning lens…':this.surface.cleanliness>.99?'Clean camera lens again':'Clean the outside camera lens',action:'clean-camera'});
     let nearest=null,best=5;
     for(const i of pool){const delta=i.position.clone().sub(position),dist=delta.length();if(dist>best||dist<.05)continue;if(delta.normalize().dot(direction)<.32)continue;best=dist;nearest=i;}return nearest;
@@ -231,7 +233,7 @@ export class SiloWorld {
     other.open=false;other.requested=false;wanted.requested=true;
   }
   update(dt,position){
-    this.surface.update(dt);const top=topLocal(position);this.outside=!this.special&&this.activeLevel===1&&top.z>99&&position.y>levelY(1)+10;
+    this.surface.update(dt);const top=topLocal(position);this.outside=!this.special&&this.activeLevel===1&&(inRampCutout(top.x,top.z)?top.z>99&&top.y>10:top.y>=groundY(top.x,top.z)-.5);if(this.outside)this.surface.streamTerrain(top);
     const airlocks=this.loaded.get(1)?.rooms[0].userData.doors||[];
     for(const door of airlocks){const other=airlocks.find(d=>d!==door);if(door.requested&&other.amount<.01){door.open=true;door.requested=false;}door.amount=THREE.MathUtils.damp(door.amount,door.open?1:0,3.5,dt);door.pivot.position.y=door.amount*4.35;if(door.collider)door.collider.enabled=door.amount<.96;}
 
@@ -253,6 +255,6 @@ export class SiloWorld {
     this.keyLight.visible=!this.outside;this.keyLight.position.set(position.x+3,position.y+(this.special==='generator'?12:4.2),position.z+1.5);this.keyLight.target.position.set(position.x,position.y,position.z);this.keyLight.intensity=this.special?310:260;
     if(this.activeLevel===1&&top.z>10&&!this.special){for(let i=0;i<8;i++){const l=this.localLights[i];l.position.copy(topPoint(i<4?(i%2?10:-10):26,i<4?6.7:3.7,i<4?(i<2?17:31):[29,40,50,59][i-4]));l.intensity=i<4?240:95;l.distance=28;}if(top.z>64){this.keyLight.position.copy(position).add(new THREE.Vector3(0,3.4,0));this.keyLight.intensity=170;}}
     this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?2.4:.17;this.ambient.intensity=this.outside?1.65:.65;this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
-    this.scene.fog.density=this.outside?.0038:this.special==='excavator'?.004:this.special?.007:.009;this.scene.fog.color.setHex(this.outside?0xaaa99c:0x18221e);this.scene.background.setHex(this.outside?0xaaa99c:0x141b17);this.structure.visible=this.stairs.visible=this.distant.visible=!this.special&&!this.outside;
+    this.scene.fog.density=this.outside?.0038:this.special==='excavator'?.004:this.special?.007:.009;this.scene.fog.color.setHex(this.outside?0x929fa3:0x18221e);this.scene.background.setHex(this.outside?0x929fa3:0x141b17);this.structure.visible=this.stairs.visible=this.distant.visible=!this.special&&!this.outside;
   }
 }

@@ -87,6 +87,22 @@ The invisible-wall regression was caused by integrating gravity before horizonta
 
 Four [Poly Haven CC0](https://polyhaven.com/license) surface sets supply real photographed albedo, OpenGL normals and roughness. Source URLs, authors and verified checksums are preserved in `dist/assets/materials/provenance.json`. Photographic repeats are projected at their physical scale; source TV images are references, not game textures. Device frame rate and visual equivalence are not certified by source/physics checks.
 
-## Pending supplied characters
+## Supplied characters and relic
 
-The requested cast is Juliette Nichols (Mechanical), Bernard Holland (IT / acting mayor), and Robert Sims (Judicial security). The earlier inspected uploads were static meshes without skins or animation; they need skeletal rigging, skin-weight review and locomotion verification before being called playable. Their three scratch attachment files were not present when this turn resumed. They were not read from Library because the attachment instructions explicitly prohibited that access path. No replacements, fabricated rigs or unverified playable-character claim is shipped. Reattach the three original GLBs to complete this part.
+The four uploads were copied back into the local workspace after the earlier checkpoint was restored. The original uploaded files are unchanged. `scripts/prepare-characters.py` builds optimized derivatives with the original UV textures, a manually specified weighted skeleton, a relaxed bind pose, and procedural Idle, Walk and Run clips. Legs use two-bone inverse kinematics for planted stance feet and raised swing feet; coat panels have separate deformation bones. These are authored procedural animations, not captured performances. The runtime uses the supplied +Z forward direction, human-scale heights and speed-matched playback. Character selection keeps the player's current position. Nonselected characters stand at department posts with idle motion. First-person hides the active body; third-person shortens the camera arm against solid walls.
+
+| Character | Department post | Modeled height |
+| --- | --- | --- |
+| Juliette Nichols | Level 144, Walker's workshop | 1.73 m |
+| Robert Sims | Level 14, Judicial | 1.83 m |
+| Bernard Holland | Level 19, IT administration | 1.87 m |
+
+These heights and exact standing positions are reconstruction choices. The supplied hard-drive relic retains its texture and shape, scaled to a 147 mm longest dimension. It lies on a repair bench in Walker's workshop with an inspection shortcut.
+
+## Exterior and screen correction
+
+[Lux Machina](https://www.luxmc.com/silo) supplied the curved cafeteria LED display and dust layers. [VFX Voice's production interview](https://vfxvoice.com/unraveling-the-mysteries-of-silo/) describes a five-camera panorama with separately composited cleaning close-ups. The published screen frames support a low bowl view, a dead tree on the right, an uneven rim and substantial foreground. Exact focal length and world measurements are not supplied by those references.
+
+The reconstructed screen uses a 24-degree vertical field of view across the panoramic aspect ratio, gray-blue atmosphere, barren slopes, sparse trees and rocks. Sensor, hatch and city geometry are excluded; a terrain patch closes the sunken hatch only in the screen panorama. A separately animated copy of the active cleaner appears on the feed. Cleaning clears the dust overlay. The player's exterior retains the real open ramp and physical sensor.
+
+The old collision code omitted a 12 m wide rectangle around a 6 m ramp. Ground is now excluded only at the actual open hatch; the covered tunnel retains ground above it. Terrain streams around the player, with matching ground height support beyond the earlier map edge. Regression checks walk the previous gap and terrain thousands of meters away, verify all character skins and clip samples, and retain the complete 864-wing and 143-stair-interval checks. These checks do not certify frame rate on the user's phone or an exact visual reproduction of every filmed room.

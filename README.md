@@ -1,8 +1,15 @@
 # Silo 18
 
-A browser-based, first-person reconstruction of the television silo, built in Adam’s **Silo-** repository using the circular collision system and selected interior assets from **Lost Signal**.
+A browser-based, first- and third-person reconstruction of the television silo, built in Adam’s **Silo-** repository using the circular collision system and selected interior assets from **Lost Signal**.
 
-## Latest environment update
+## Latest character and exterior update
+
+- Three supplied characters are rigged and selectable: Juliette Nichols, Robert Sims and Bernard Holland. Each has idle, walk and run clips, a relaxed bind pose, foot planting, and first/third-person views. The other two stay at their departments.
+- The supplied hard-drive relic is on Walker’s repair bench; use the directory shortcut to inspect it.
+- Fixed the false ground gap around the exit and added streaming exterior terrain without a finite collision edge.
+- Reframed the live cafeteria panorama around the barren bowl and right-hand dead tree. The sensor housing, ramp and city skyline are absent from the panorama. The exterior contains no city geometry.
+
+## Earlier environment update
 
 - Fixed gravity-induced invisible walls at wing entrances. A regression walks out of and back into all **864 destinations** on all **144 levels**.
 - Added a dedicated bazaar: six enterable shops, narrow market street, deep rounded shopfronts, ribbed overhangs, red food lamps, bunting, repair counters and merchandise. Its location on Level 100 is inferred, not confirmed TV canon.
@@ -16,12 +23,12 @@ A browser-based, first-person reconstruction of the television silo, built in Ad
 - A broad curved cafeteria screen with a continuously rendered exterior feed; reconstructed apartments, each with living/kitchen space, bedroom and bathroom; the sheriff’s office, Judicial, IT, the vault, observation room, Medical, education, agriculture, recycling, water filtration, Supply and workshops.
 - A 50 m diameter generator hall below Level 144, with six turbine panels, overhead crane, exposed rotor and a walkable upper gantry.
 - A separate excavator cavern with radial cutting arms, a central tower, water, catwalks and inspection access; supported mine workings, ore carts, a rock drill and a sealed lower tunnel.
-- A connected Level 1 cafeteria, sheriff’s station, Holding 3, preparation room, interlocked pressure doors and slatted ramp to the barren surface. A sunken hatch, squat camera monument, dead tree, rocky crater and ruined horizon. Use / E cleans the lens and clears the cafeteria feed.
+- A connected Level 1 cafeteria, sheriff’s station, Holding 3, preparation room, interlocked pressure doors and slatted ramp to the barren surface. A sunken hatch, squat camera monument, dead tree, rocky crater and barren rim. Use / E cleans the lens and clears the cafeteria feed.
 - Physically shaded material maps, surface normals and roughness, rounded furniture edges, local shadows, contact shading, reflection lighting, subtle bloom and moving exterior dust.
 - Openable doors, solid walls and furniture, inspection points, a torch, ambient machinery sound, a searchable floor directory and travel shortcuts.
 - Touch controls for phones, keyboard/mouse controls, fullscreen, brightness and rendering settings.
 
-The directory’s travel feature is a visitor shortcut, not an in-world elevator. The central stairs physically connect every numbered floor. Lower maintenance hatches use explicit travel transitions into the mines and cavern. The cleaning route is continuously walkable in both directions. The hidden tunnel’s far door remains sealed. There is no combat. The requested Juliette, Bernard and Sims character integration is pending restoration of the three uploaded GLBs; those attachment copies were absent from the resumed workspace. No substitute character models are included.
+The directory’s travel feature is a visitor shortcut, not an in-world elevator. The central stairs physically connect every numbered floor. Lower maintenance hatches use explicit travel transitions into the mines and cavern. The cleaning route is continuously walkable in both directions. The hidden tunnel’s far door remains sealed. There is no combat.
 
 ## Accuracy
 
@@ -39,6 +46,8 @@ See [research and reconstruction decisions](docs/reconstruction.md), [the full l
 | Open / inspect / clean lens | E | Use button or the central prompt |
 | Directory | M | Directory button |
 | Torch | F | Torch button |
+| Character | C | Character button |
+| First / third person | V | View button |
 | Pause | Esc / Silo 18 mark | Silo 18 mark |
 
 ## Run locally
@@ -80,4 +89,4 @@ The tests construct the world and exercise all 144 bridge connections, all 143 s
 
 ## Credits
 
-The original Lost Signal source was read at commit `aa4c1d00d173b3aa98560617e2d541d3ff093dee`; that repository was not modified. New modeled geometry, material surfaces, interface, ambient synthesis and cafeteria-screen landscape are authored for this reconstruction. Three.js is provided under its [MIT license](dist/vendor/THREE-LICENSE.txt). Television and production art remain the property of their respective owners; reference links are provided, and show frames, music, actor likenesses and extracted studio models are not bundled.
+The original Lost Signal source was read at commit `aa4c1d00d173b3aa98560617e2d541d3ff093dee`; that repository was not modified. New modeled geometry, material surfaces, interface, ambient synthesis and cafeteria-screen landscape are authored for this reconstruction. Three.js is provided under its [MIT license](dist/vendor/THREE-LICENSE.txt). Television and production art remain the property of their respective owners; reference links are provided, and show frames, music, extracted studio models are not bundled. The three character likeness meshes and hard-drive model were supplied by the user; their hashes and preparation metadata are in `dist/assets/characters/manifest.json`.

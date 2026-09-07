@@ -8,24 +8,24 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <canvas id="world" aria-label="First person 3D view of Silo 18" tabindex="0"></canvas>
+  <canvas id="world" aria-label="Explorable 3D view of Silo 18" tabindex="0"></canvas>
   <div id="vignette" aria-hidden="true"></div>
   <header id="hud">
     <button class="brand" id="home" aria-label="Pause exploration"><span class="brand-ring">18</span><span>SILO <b>18</b><small id="zone">UP TOP</small></span></button>
     <div class="location"><span class="eyebrow" id="levelLabel">LEVEL 001</span><strong id="locationName">The central staircase</strong><small id="depthLabel">0 m below the upper landing</small></div>
-    <nav aria-label="Exploration controls"><button id="directoryButton" class="nav-button"><span>☷</span> Directory</button><button id="settingsButton" class="icon-button" aria-label="Settings">⚙</button></nav>
+    <nav aria-label="Exploration controls"><button id="directoryButton" class="nav-button"><span>☷</span> Directory</button><button id="characterButton" class="nav-button" aria-label="Choose character">Character</button><button id="settingsButton" class="icon-button" aria-label="Settings">⚙</button></nav>
   </header>
   <div id="crosshair" aria-hidden="true"></div>
   <button id="interaction" hidden><kbd>E</kbd><span>Open door</span></button>
   <aside id="levelRail" aria-hidden="true"><span>001</span><div><i id="depthMarker"></i></div><span>144</span></aside>
-  <div class="bottom-hud" id="bottomHud"><div><span class="mode-dot"></span><span id="modeLabel">ON FOOT</span></div><p id="controlHint"><kbd>W A S D</kbd> Move <span>·</span> Drag to look <span>·</span> <kbd>E</kbd> Use <span>·</span> <kbd>M</kbd> Directory</p><button id="torchButton" aria-label="Toggle torch">☀ <span>Torch</span></button></div>
+  <div class="bottom-hud" id="bottomHud"><div><span class="mode-dot"></span><span id="modeLabel">ON FOOT</span></div><p id="controlHint"><kbd>W A S D</kbd> Move <span>·</span> Drag to look <span>·</span> <kbd>E</kbd> Use <span>·</span> <kbd>M</kbd> Directory</p><button id="viewButton" aria-label="Switch first or third person">View: third person</button><button id="torchButton" aria-label="Toggle torch">☀ <span>Torch</span></button></div>
   <div id="touchControls"><div id="joystick" aria-label="Move"><i></i></div><div class="touch-actions"><button id="runButton" aria-label="Toggle running">Run</button><button id="touchUse" aria-label="Interact">Use</button></div><span id="lookHint">Drag the right side to look</span></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="fade" aria-hidden="true"></div>
 
   <dialog id="welcome" class="welcome">
-    <div class="welcome-top"><span class="eyebrow">AN UNDERGROUND WORLD</span><span class="edition">EXPLORATION BUILD 03</span></div>
-    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>From the last window on the world<br>to the machine that made it.</p><div class="welcome-actions"><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="welcomeDirectory" class="secondary">Explore all 144 levels <span>↗</span></button></div><div class="welcome-meta"><span>FIRST PERSON</span><span>TOUCH & KEYBOARD</span><span>FREE EXPLORATION</span></div></div>
+    <div class="welcome-top"><span class="eyebrow">AN UNDERGROUND WORLD</span><span class="edition">EXPLORATION BUILD 04</span></div>
+    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>From the last window on the world<br>to the machine that made it.</p><div class="welcome-actions"><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="welcomeDirectory" class="secondary">Explore all 144 levels <span>↗</span></button></div><div class="welcome-meta"><span>THREE PLAYABLE CHARACTERS</span><span>TOUCH & KEYBOARD</span><span>FREE EXPLORATION</span></div></div>
     <footer><span>A reconstruction of the television world.</span><button id="aboutButton">Research & accuracy</button></footer>
   </dialog>
 
@@ -33,14 +33,25 @@
     <div class="panel-head"><div><span class="eyebrow accent">WAYFINDING</span><h2>Silo directory</h2></div><button class="close" data-close aria-label="Close directory">×</button></div>
     <div class="directory-tabs" role="tablist" aria-label="Directory view"><button id="allLevelsTab" class="active" role="tab" aria-selected="true">All 144 levels</button><button id="landmarksTab" role="tab" aria-selected="false">Landmarks & surface</button></div>
     <label class="search"><span>⌕</span><input id="search" type="search" placeholder="Find a room, level or department" autocomplete="off"></label>
-    <div class="landmark-shortcuts" aria-label="Featured locations"><button data-travel="room:100:0">Bazaar</button><button data-travel="room:144:1">Walker’s workshop</button><button data-travel="room:1:0">Cafeteria</button><button data-travel="surface">Surface</button></div>
+    <div class="landmark-shortcuts" aria-label="Featured locations"><button data-travel="room:100:0">Bazaar</button><button data-travel="relic">Hard-drive relic</button><button data-travel="room:1:0">Cafeteria</button><button data-travel="surface">Surface</button></div>
     <div id="locationList" class="location-list"></div>
     <div class="panel-foot"><span>144 levels · 864 enterable wings</span><small>Travel is an exploration shortcut. The central stairs connect all 144 levels.</small></div>
   </dialog>
 
+  <dialog id="characters" class="panel cast-panel">
+    <div class="panel-head"><div><span class="eyebrow accent">THE PEOPLE OF SILO 18</span><h2>Choose your character</h2></div><button class="close" data-close aria-label="Close characters">×</button></div>
+    <p class="cast-intro">Explore as Juliette, Sims or Bernard. The other two return to their departments.</p>
+    <div id="characterList" class="character-list"></div>
+    <div class="panel-foot"><span id="characterStatus">Preparing characters…</span><small>Switch between first and third person with View or V.</small></div>
+  </dialog>
+  <dialog id="relic" class="panel compact">
+    <div class="panel-head"><div><span class="eyebrow accent">A FORBIDDEN RELIC</span><h2>The hard drive</h2></div><button class="close" data-close aria-label="Close relic">×</button></div>
+    <div class="about-content"><img src="./assets/characters/relic.jpg" class="relic-image" alt="The supplied hard-drive relic"><p>The hard-drive relic rests on the repair bench in Walker’s workshop. Its secrets connect George’s discoveries with Juliette’s search for the truth.</p><p class="help">This is the object you supplied, preserved as a three-dimensional prop.</p></div>
+  </dialog>
+
   <dialog id="settings" class="panel compact">
     <div class="panel-head"><div><span class="eyebrow accent">EXPLORATION</span><h2>Settings</h2></div><button class="close" data-close aria-label="Close settings">×</button></div>
-    <div class="settings-content"><label>Brightness <output id="brightnessValue">115%</output><input id="brightness" type="range" min="65" max="180" value="115"></label><label>Look sensitivity <output id="sensitivityValue">100%</output><input id="sensitivity" type="range" min="35" max="180" value="100"></label><label>Rendering detail<select id="quality"><option value="balanced">Balanced</option><option value="high">High</option><option value="low">Battery saver</option></select></label><label class="toggle">Ambient sound <input id="sound" type="checkbox" checked></label><label class="toggle">Reduce camera motion <input id="reduceMotion" type="checkbox"></label><button id="fullscreen" class="secondary wide">Enter fullscreen</button><button id="resetPosition" class="secondary wide">Return to nearest landing</button><p class="help">Move: WASD / arrow keys. Look: drag or click to capture the mouse. E: interact. F: torch. Shift: run. M: directory. Esc: pause.<br><br>On a phone, use the left stick to walk and drag the right side to look.</p></div>
+    <div class="settings-content"><label>Brightness <output id="brightnessValue">115%</output><input id="brightness" type="range" min="65" max="180" value="115"></label><label>Look sensitivity <output id="sensitivityValue">100%</output><input id="sensitivity" type="range" min="35" max="180" value="100"></label><label>Rendering detail<select id="quality"><option value="balanced">Balanced</option><option value="high">High</option><option value="low">Battery saver</option></select></label><label class="toggle">Ambient sound <input id="sound" type="checkbox" checked></label><label class="toggle">Reduce camera motion <input id="reduceMotion" type="checkbox"></label><button id="fullscreen" class="secondary wide">Enter fullscreen</button><button id="resetPosition" class="secondary wide">Return to nearest landing</button><p class="help">Move: WASD / arrow keys. Look: drag or click to capture the mouse. E: interact. F: torch. V: change view. C: character. Shift: run. M: directory. Esc: pause.<br><br>On a phone, use the left stick to walk and drag the right side to look.</p></div>
   </dialog>
 
   <dialog id="about" class="panel">

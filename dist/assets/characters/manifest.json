@@ -1,0 +1,61 @@
+[
+  {
+    "id": "juliette",
+    "source": "8e2e4c15-7795-4f7e-afe8-b578b024090b_9e17638e5971fa0b585ff4065e0b9140(1).glb",
+    "sourceSha256": "aa32fb06f5e210c2ecd226c1a6fde18a13f0cd3dbc44dc94f45eb0aac6c3795d",
+    "file": "juliette.glb",
+    "heightMetres": 1.73,
+    "forward": "+Z",
+    "up": "+Y",
+    "triangles": 90000,
+    "bones": 19,
+    "clips": [
+      "Idle",
+      "Walk",
+      "Run"
+    ],
+    "method": "Spatial skin weights, relaxed bind pose and procedural two-bone IK foot planting; not motion capture."
+  },
+  {
+    "id": "bernard",
+    "source": "8fd09df0-c1a5-472e-bcf1-e4b460309f8a_c83059f4aa3949aad2fade3127765604(1).glb",
+    "sourceSha256": "66289a1af704824b6a4b7ddc4e48dc4cde08020d5f97a436691af627ee4b7724",
+    "file": "bernard.glb",
+    "heightMetres": 1.87,
+    "forward": "+Z",
+    "up": "+Y",
+    "triangles": 90000,
+    "bones": 21,
+    "clips": [
+      "Idle",
+      "Walk",
+      "Run"
+    ],
+    "method": "Spatial skin weights, relaxed bind pose and procedural two-bone IK foot planting; not motion capture."
+  },
+  {
+    "id": "sims",
+    "source": "f9c26c81-b3e5-4438-ab4f-9f2758470721_5c9c672665abff2d4fb57398c5dfa649(1).glb",
+    "sourceSha256": "23560cb5f9c2840ef1aaef8351ca8807dab475a6eed11310ef49418923e83f08",
+    "file": "sims.glb",
+    "heightMetres": 1.83,
+    "forward": "+Z",
+    "up": "+Y",
+    "triangles": 89999,
+    "bones": 21,
+    "clips": [
+      "Idle",
+      "Walk",
+      "Run"
+    ],
+    "method": "Spatial skin weights, relaxed bind pose and procedural two-bone IK foot planting; not motion capture."
+  },
+  {
+    "id": "hard-drive-relic",
+    "source": "8feac106-db52-4598-8248-79ccaff3ca97_762a6cca111a49e36fe62f13d4fa1a27.glb",
+    "sourceSha256": "4a5a1025189589dd94118382a446f53db42beabcece75ab3d2f6d1a57af3bfd7",
+    "file": "hard-drive-relic.glb",
+    "longestDimensionMetres": 0.147,
+    "note": "Identity supplied by the user; source shape and texture preserved."
+  }
+]
