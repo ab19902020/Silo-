@@ -6,7 +6,7 @@ export function projectMaterial(material,metres=1.8){
   material.userData.metreRepeat=metres;
   material.onBeforeCompile=shader=>{
     shader.uniforms.siloMetres={value:metres};
-    shader.vertexShader='uniform float siloMetres;\n'+shader.vertexShader;
+    shader.vertexShader='uniform float siloMetres; varying vec3 siloSurfacePoint; varying vec3 siloSurfaceNormal;\n'+shader.vertexShader;
     shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>',`#include <worldpos_vertex>
       vec4 siloP = vec4(transformed, 1.0);
       #ifdef USE_INSTANCING
@@ -14,6 +14,7 @@ export function projectMaterial(material,metres=1.8){
       #endif
       siloP = modelMatrix * siloP;
       vec3 siloN = abs(inverseTransformDirection(transformedNormal, viewMatrix));
+      siloSurfacePoint=siloP.xyz;siloSurfaceNormal=siloN;
       vec2 siloUV = siloN.y > max(siloN.x,siloN.z) ? siloP.xz :
         (siloN.x > siloN.z ? siloP.zy : siloP.xy);
       siloUV /= siloMetres;
@@ -27,8 +28,18 @@ export function projectMaterial(material,metres=1.8){
         vRoughnessMapUv = siloUV;
       #endif
     `);
+    if(material.userData.patina){
+      shader.uniforms.siloPatina={value:material.userData.patina};
+      shader.fragmentShader='uniform float siloPatina; varying vec3 siloSurfacePoint; varying vec3 siloSurfaceNormal;\n'+shader.fragmentShader;
+      shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+        float wall=1.-smoothstep(.45,.85,normalize(siloSurfaceNormal).y);
+        float foot=exp(-mod(siloSurfacePoint.y+1000.,10.)*2.2);
+        float damp=.5+.5*sin(siloSurfacePoint.x*.31+siloSurfacePoint.z*.47+sin(siloSurfacePoint.y*.35));
+        diffuseColor.rgb*=1.-siloPatina*wall*(foot*.55+damp*.25);
+      `);
+    }
   };
-  material.customProgramCacheKey=()=>`silo-metre-surface-v1:${metres}`;
+  material.customProgramCacheKey=()=>`silo-metre-surface-v2:${metres}:${material.userData.patina||0}`;
   material.needsUpdate=true;return material;
 }
 
@@ -45,7 +56,9 @@ export async function loadPhotographicMaterials(materials){
     maps.forEach((t,i)=>{t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;t.colorSpace=i===0?THREE.SRGBColorSpace:THREE.NoColorSpace;});
     for(const [name,color] of Object.entries(set.materials)){
       const mat=materials[name];mat.map=maps[0];mat.normalMap=maps[1];mat.roughnessMap=maps[2];mat.normalScale.setScalar(name==='rock'?.9:.6);mat.color.setHex(color);
-      mat.roughness=name==='metal'?.65:.94;mat.envMapIntensity=.52;projectMaterial(mat,set.metres);
+      mat.roughness=['metal','darkMetal','green','blue','yellow'].includes(name)?.58:name==='rust'?.76:.90;
+      mat.userData.patina=['concrete','darkConcrete','plaster','pale'].includes(name)?.32:0;
+      mat.envMapIntensity=.60;projectMaterial(mat,set.metres);
     }
   }));
   return results.filter(r=>r.status==='rejected').length;

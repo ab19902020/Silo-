@@ -65,7 +65,7 @@ export const LANDMARKS = [
 ];
 export const SPECIALS = [
   { id: 'airlock', name: 'Cleaning airlock & ramp', level: 1, type: 'airlock', description: 'Walk through the pressure doors and up the ramp.' },
-  { id: 'surface', name: 'Surface & cleaning camera', level: 1, type: 'surface', description: 'Barren crater, dead tree, ruined horizon and cleanable camera.' },
+  { id: 'surface', name: 'Surface & cleaning camera', level: 1, type: 'surface', description: 'Barren crater, dead tree, enclosing earth bank and cleanable camera.' },
   { id: 'generator', name: 'Generator hall · below 144', level: 144, type: 'generator', description: 'Turbine, six removable panels, overhead crane and maintenance gantry.' },
   { id: 'mines', name: 'The mines', level: 144, type: 'mines', description: 'Rock tunnels, ore carts, drill faces and salvage working.' },
   { id: 'excavator', name: 'Excavator & flooded void', level: 144, type: 'excavator', description: 'The abandoned digging machine beneath the silo.' },

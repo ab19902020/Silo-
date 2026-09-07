@@ -12,9 +12,16 @@
     "clips": [
       "Idle",
       "Walk",
-      "Run"
+      "Run",
+      "StairUp",
+      "StairDown",
+      "TurnLeft",
+      "TurnRight",
+      "Fall"
     ],
-    "method": "Spatial skin weights, relaxed bind pose and procedural two-bone IK foot planting; not motion capture."
+    "method": "Measured-joint two-bone IK, continuous gait, world-space stance locking, terrain-aware feet and corrected coat/trouser weights; procedural motion, not motion capture.",
+    "rigRevision": 2,
+    "repairedTrouserVertices": 0
   },
   {
     "id": "bernard",
@@ -29,9 +36,16 @@
     "clips": [
       "Idle",
       "Walk",
-      "Run"
+      "Run",
+      "StairUp",
+      "StairDown",
+      "TurnLeft",
+      "TurnRight",
+      "Fall"
     ],
-    "method": "Spatial skin weights, relaxed bind pose and procedural two-bone IK foot planting; not motion capture."
+    "method": "Measured-joint two-bone IK, continuous gait, world-space stance locking, terrain-aware feet and corrected coat/trouser weights; procedural motion, not motion capture.",
+    "rigRevision": 2,
+    "repairedTrouserVertices": 2644
   },
   {
     "id": "sims",
@@ -46,9 +60,16 @@
     "clips": [
       "Idle",
       "Walk",
-      "Run"
+      "Run",
+      "StairUp",
+      "StairDown",
+      "TurnLeft",
+      "TurnRight",
+      "Fall"
     ],
-    "method": "Spatial skin weights, relaxed bind pose and procedural two-bone IK foot planting; not motion capture."
+    "method": "Measured-joint two-bone IK, continuous gait, world-space stance locking, terrain-aware feet and corrected coat/trouser weights; procedural motion, not motion capture.",
+    "rigRevision": 2,
+    "repairedTrouserVertices": 2232
   },
   {
     "id": "hard-drive-relic",

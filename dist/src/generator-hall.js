@@ -1,6 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit, railing, pipe, addSign, fixture } from './kit.js';
 import { TAU } from './data.js';
+import { wallGauge } from './environment-details.js';
 export function buildGeneratorHall(m){
   const root=new THREE.Group(),k=new Kit(m),walkways=[],solids=[],interactions=[],animated=[];root.position.y=52;
   k.arc('floor',0,25,.6,-.6);walkways.push({kind:'ring',r0:0,r1:25,y:52});
@@ -31,6 +32,16 @@ export function buildGeneratorHall(m){
   for(const x of [-8.7,-7.3]){k.cylinder('metal',x,17,0,.045,11);k.cylinder('darkMetal',x,11.7,0,.55,.22,Math.PI/2);}
   k.torus('rust',-8,10.8,0,.65,.16);k.box('metal',-8,11.6,0,2,.8,.4);
   for(const x of [-15,-10,10,15]){k.bevel('green',x,.65,-19,3,1.3,1.4);for(let i=0;i<4;i++){k.cylinder('white',x-1+i*.65,1.2,-18.26,.19,.045,Math.PI/2);k.beam('black',[x-1+i*.65,1.2,-18.23],[x-.91+i*.65,1.27,-18.23],.012);}solids.push({x,z:-19,w:3,d:1.4,y0:52,y1:53.5});}
+  for(const x of [-15,-10,10,15]){for(let i=0;i<4;i++)wallGauge(k,x-1+i*.65,1.2,-18.19,.17);for(let i=0;i<7;i++){k.cylinder(i%3?'brass':'red',x-.95+i*.31,.83,-18.26,.035,.055,Math.PI/2);k.box('paper',x-.95+i*.31,.70,-18.27,.15,.052,.01);}}
+  // Bolted flanges, pressure lines and segmented deck plating resolve the
+  // machine at human scale without placing objects in the maintenance route.
+  for(let j=0;j<48;j++){
+    const a=j*TAU/48;for(const r of [7.6,8.8])k.cylinder('brass',Math.cos(a)*r,1.13,Math.sin(a)*r,.07,.09);
+    k.beam('metal',[Math.cos(a)*10.25,10.235,Math.sin(a)*10.25],[Math.cos(a)*13.7,10.235,Math.sin(a)*13.7],.016);
+  }
+  for(const x of [-22,22])for(const y of [2,4,6,19,21])for(const z of [-14,-7,0,7,14]){
+    k.torus('metal',x,y,z,.38,.045);for(let j=0;j<8;j++){const a=j*TAU/8;k.cylinder('brass',x+Math.cos(a)*.37,y+Math.sin(a)*.37,z,.025,.14,Math.PI/2);}
+  }
   addSign(root,'MECHANICAL · GENERATOR HALL',[0,5,-24.28],9,1,0);addSign(root,'LEVEL 144 ↑',[-6,2,-23.7],4,.6,0);addSign(root,'MINES ↓',[6,2,-23.7],4,.6,0);
   interactions.push({position:[-6,53.5,-22.5],label:'Return to Level 144',destination:144},{position:[6,53.5,-22.5],label:'Descend to the mines',destination:'mines'},{position:[0,53.5,-10],label:'Inspect the generator',action:'generator'});
   root.add(k.group());return {root,walkways,solids,interactions,animated};

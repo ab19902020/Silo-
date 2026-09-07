@@ -1,5 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit, addSign, fixture, table, chair, desk, bed, pipe } from './kit.js';
+import { dressCafeteria } from './environment-details.js';
 
 export function makeDisplayGeometry(w,h,radius=34){
   const positions=[],uv=[],indices=[],cols=96,rows=16,r=1.15;
@@ -73,6 +74,6 @@ export function buildTopFloor(m) {
   for(const z of [56,60,63]){fixture(k,23.32,2.7,z,1.4,true,true);fixture(k,28.68,2.7,z,1.4,true,true);}
   for(const x of [24,28])pipe(k,x,59,4.4,9,.08,'metal');
   for(let z=55;z<64;z+=.35)k.box('darkMetal',26,.008,z,4.8,.012,.06);
-  root.add(k.group());
-  root.userData={solids,floors,interactions,animated,doors,type:'cafeteria',outsideScreen:screen,bespoke:true};return root;
+  dressCafeteria(k,root);root.add(k.group());
+  root.userData={...root.userData,solids,floors,interactions,animated,doors,type:'cafeteria',outsideScreen:screen,bespoke:true};return root;
 }

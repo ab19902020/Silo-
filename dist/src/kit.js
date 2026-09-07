@@ -1,5 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
+import { projectMaterial } from './materials.js';
 
 export function random(seed = 18) {
   return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -18,6 +19,7 @@ function surfaceTexture(seed, kind) {
     if(kind==='concrete'){if(y%128<2)h-=.15;if((x+((y/128|0)%2)*256)%512<2)h-=.09;if(fine>.987)h-=.13;}
     if(kind==='tile'&&(x%64<3||y%64<3))h-=.28;
     if(kind==='wood')h=.55+.07*Math.sin(x*.48+noise(x,y,8)*4)+grain*.1;
+    if(kind==='cloth')h=.5+.08*Math.sin(x*Math.PI/3)*Math.cos(y*Math.PI/3)+fine*.025;
     if(kind==='metal')h=.65+mid*.025+fine*.02-(x%97===0?.08:0);
     if(kind==='rock')h=.2+broad*.5+mid*.25+grain*.1;
     height[y*n+x]=h;
@@ -34,9 +36,12 @@ function surfaceTexture(seed, kind) {
 }
 
 export function createMaterials() {
-  const concreteMap=surfaceTexture(18,'concrete'), metalMap=surfaceTexture(34,'metal'), tileMap=surfaceTexture(14,'tile'), woodMap=surfaceTexture(97,'wood'), rockMap=surfaceTexture(144,'rock');
-  const standard = (color, extra={}) => { const map=extra.map;return new THREE.MeshStandardMaterial({ color, roughness:.84, envMapIntensity:.38, ...(map?{normalMap:map.userData.normal,normalScale:new THREE.Vector2(.48,.48),roughnessMap:map.userData.roughness}:{}),...extra,bumpMap:null }); };
-  return {
+  const concreteMap=surfaceTexture(18,'concrete'), metalMap=surfaceTexture(34,'metal'), tileMap=surfaceTexture(14,'tile'), woodMap=surfaceTexture(97,'wood'), rockMap=surfaceTexture(144,'rock'),clothMap=surfaceTexture(71,'cloth');
+  const terminal=document.createElement('canvas');terminal.width=512;terminal.height=384;const ctx=terminal.getContext('2d');ctx.fillStyle='#07100c';ctx.fillRect(0,0,512,384);ctx.fillStyle='#b0c3a2';ctx.font='19px monospace';
+  ['SILO 18 / SYSTEM OPERATIONS','──────────────────────────','STATION 018       LOCAL LINK','', 'GENERATOR     NOMINAL','AIR PRESSURE  101.3 kPa','WATER SUPPLY  CIRCULATING','', 'ARCHIVE  /  RECORDS  /  LOG','', '> AUTHORIZED TERMINAL _'].forEach((line,i)=>ctx.fillText(line,20,32+i*29));
+  ctx.fillStyle='#557457';for(let y=0;y<384;y+=3)ctx.fillRect(0,y,512,.28);const terminalMap=new THREE.CanvasTexture(terminal);terminalMap.colorSpace=THREE.SRGBColorSpace;
+  const standard = (color, extra={}) => { const map=extra.map;return new THREE.MeshStandardMaterial({ color, roughness:.84, envMapIntensity:.38, ...(map?.userData.normal?{normalMap:map.userData.normal,normalScale:new THREE.Vector2(.48,.48),roughnessMap:map.userData.roughness}:{}),...extra,bumpMap:null }); };
+  const materials={
     concrete: standard(0xb6aea0,{map:concreteMap,bumpMap:concreteMap,bumpScale:.075}),
     pale: standard(0xb4b19e,{map:concreteMap,bumpMap:concreteMap,bumpScale:.025}),
     plaster: standard(0xb58d7f,{map:concreteMap,roughness:.94}),
@@ -53,9 +58,13 @@ export function createMaterials() {
     red: standard(0x823f2e,{metalness:.18}),
     blue: standard(0x4e717b,{map:metalMap}),
     white: standard(0xd0d1bc,{roughness:.8}),
-    fabric: standard(0x928d72,{roughness:1}),
+    fabric: standard(0x777b6b,{map:clothMap,roughness:1}),
+    rug: standard(0x6f483e,{map:clothMap,roughness:1}),
+    paper: standard(0xc1bda6,{roughness:.95}),
+    enamel: standard(0x849281,{map:metalMap,metalness:.22,roughness:.32}),
+    ochre: standard(0xa58244,{metalness:.18,roughness:.42}),
     bread: standard(0xc18d50,{map:rockMap,roughness:1}),
-    linen: standard(0xb1b6a5,{roughness:1}),
+    linen: standard(0xb1b6a5,{map:clothMap,roughness:1}),
     wood: standard(0x82704b,{map:woodMap,roughness:.8}),
     soil: standard(0x3d3022,{map:rockMap}),
     leaf: standard(0x477646,{side:THREE.DoubleSide,roughness:.95}),
@@ -65,11 +74,13 @@ export function createMaterials() {
     coldLamp: new THREE.MeshBasicMaterial({color:new THREE.Color(1.6,2.6,2.5),toneMapped:false}),
     indicator: new THREE.MeshBasicMaterial({color:0x85be86}),
     redLamp: new THREE.MeshBasicMaterial({color:0xff7951}),
-    screen: new THREE.MeshBasicMaterial({color:0x86a6a0}),
+    screen: standard(0xffffff,{map:terminalMap,emissive:0xd2dfc4,emissiveMap:terminalMap,emissiveIntensity:.8,roughness:.28}),
     black: standard(0x0d1513,{roughness:.55}),
     water: standard(0x273f3d,{metalness:.65,roughness:.17,transparent:true,opacity:.88}),
     glass: standard(0x86b9af,{metalness:.12,roughness:.2,transparent:true,opacity:.21,depthWrite:false}),
   };
+  for(const name of ['wood','fabric','linen','rug'])projectMaterial(materials[name],name==='wood'?.7:.42);
+  return materials;
 }
 
 const geometries = new Map();
@@ -78,7 +89,7 @@ const boxGeometry=cached('box',()=>new THREE.BoxGeometry(1,1,1));
 const cylinderGeometry=cached('cylinder',()=>new THREE.CylinderGeometry(1,1,1,24));
 const bevelGeometry=cached('bevel',()=>{const g=new THREE.BoxGeometry(1,1,1,4,4,4),p=g.attributes.position;for(let i=0;i<p.count;i++){const v=new THREE.Vector3().fromBufferAttribute(p,i),q=v.clone().clampScalar(-.445,.445),d=v.sub(q).normalize().multiplyScalar(.055);q.add(d);p.setXYZ(i,q.x,q.y,q.z);}g.computeVertexNormals();return g;});
 const sphereGeometry=cached('sphere',()=>new THREE.SphereGeometry(1,16,10));
-const leafGeometry=cached('leaf',()=>new THREE.SphereGeometry(1,8,5));
+const leafGeometry=cached('leaf',()=>{const g=new THREE.PlaneGeometry(2,2,4,10),p=g.attributes.position;for(let i=0;i<p.count;i++){const t=(p.getY(i)+1)/2,edge=Math.pow(Math.max(0,Math.sin(t*Math.PI)),.7);p.setXYZ(i,p.getX(i)*edge,.18*Math.sin(t*Math.PI)-.08*Math.abs(p.getX(i))*edge,p.getY(i));}g.computeVertexNormals();return g;});
 const temp=new THREE.Object3D(), matrix=new THREE.Matrix4();
 
 function roundedPath(path,x,y,w,h,r){
@@ -125,6 +136,7 @@ export class Kit {
     return this.mesh(g,mat,x,y,z);
   }
   cylinder(mat,x,y,z,r,h,rx=0,ry=0,rz=0){return this.mesh(cylinderGeometry,mat,x,y,z,r,h,r,rx,ry,rz);}
+  lathe(mat,x,y,z,points,scale=1){return this.mesh(cached('lathe:'+JSON.stringify(points),()=>new THREE.LatheGeometry(points.map(p=>new THREE.Vector2(...p)),24)),mat,x,y,z,scale,scale,scale);}
   sphere(mat,x,y,z,rx,ry=rx,rz=rx){return this.mesh(sphereGeometry,mat,x,y,z,rx,ry,rz);}
   leaf(mat,x,y,z,sx,sy,sz,rot=0){return this.mesh(leafGeometry,mat,x,y,z,sx,sy,sz,0,rot,.4);}
   arc(mat,inner,outer,height,y,start=0,angle=Math.PI*2,segments=96){return this.mesh(arcGeometry(inner,outer,height,start,angle,segments),mat,0,y,0);}
@@ -191,7 +203,11 @@ export function railing(k,a,b,y=0){
 }
 export function desk(k,x,z,angle=0){
   k.bevel('wood',x,.82,z,2,.12,.95,angle);for(const dx of [-.8,.8])for(const dz of [-.32,.32])k.cylinder('darkMetal',x+dx,.38,z+dz,.045,.76);
-  k.bevel('green',x,1.13,z-.15,.65,.49,.43,angle);k.box('screen',x,1.15,z+.073,.5,.3,.012,angle);k.box('darkMetal',x,.91,z+.28,.65,.045,.2,angle);
+  k.bevel('enamel',x,1.16,z-.15,.79,.59,.54,angle);k.bevel('darkMetal',x,1.19,z+.129,.66,.46,.04,angle);k.bevel('screen',x,1.19,z+.158,.59,.38,.015,angle);
+  k.bevel('enamel',x,.91,z+.32,.77,.065,.27,angle);
+  for(let row=0;row<4;row++)for(let col=0;col<11;col++)k.bevel('darkMetal',x-.31+col*.06,.952,z+.235+row*.05,.045,.012,.034,angle);
+  for(const dx of [-.33,.33]){k.cylinder('brass',x+dx,.94,z-.35,.04,.09);}
+  for(let j=0;j<8;j++)k.box('black',x-.30+j*.085,1.465,z-.18,.035,.008,.24,angle);
 }
 export function chair(k,x,z,rot=0){
   const base=new Kit(k.m);base.bevel('wood',0,.48,0,.5,.07,.51);base.bevel('wood',0,.89,-.23,.5,.6,.055);for(const dx of [-.2,.2]){base.beam('metal',[dx,.05,.24],[dx,.45,.19],.024);base.beam('metal',[dx,.05,-.25],[dx,1.08,-.21],.024);base.beam('metal',[dx,.22,-.23],[dx,.22,.22],.016);for(const y of [.7,1.08])base.cylinder('brass',dx,y,-.273,.019,.02,Math.PI/2);}

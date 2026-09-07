@@ -2,6 +2,7 @@ import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { clone } from '../vendor/SkeletonUtils.js';
 import { SILO, levelY } from './data.js';
+import { SkeletalMotion } from './locomotion.js';
 
 export const CHARACTERS=Object.freeze([
   {id:'juliette',name:'Juliette Nichols',short:'Juliette',role:'Mechanical · engineer',level:144,wing:1,place:'Walker’s workshop',height:1.73},
@@ -15,9 +16,9 @@ function actorFrom(gltf,definition){
   const root=new THREE.Group();root.name=definition.id;const model=gltf.scene;root.add(model);const meshes=[],bones=[];
   model.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true;o.frustumCulled=false;meshes.push(o);}if(o.isBone)bones.push(o);});
   if(!meshes.some(o=>o.isSkinnedMesh))throw Error(`${definition.name} is missing its skeleton`);
-  const mixer=new THREE.AnimationMixer(model),actions={};for(const name of ['Idle','Walk','Run']){const clip=gltf.animations.find(c=>c.name===name);if(!clip)throw Error(`${definition.name}: missing ${name}`);actions[name]=mixer.clipAction(clip);}
-  actions.Idle.play();const feed=clone(root);feed.name=`cleaner-${definition.id}`;const feedBones=[];feed.traverse(o=>{if(o.isBone)feedBones.push(o);});feed.visible=false;
-  return {definition,root,model,meshes,bones,feed,feedBones,mixer,actions,state:'Idle',heading:0,post:roomPoint(definition.level,definition.wing,2.8,5.5)};
+  for(const name of ['Idle','Walk','Run'])if(!gltf.animations.some(c=>c.name===name))throw Error(`${definition.name}: missing ${name}`);
+  const motion=new SkeletalMotion(model,definition.height),feed=clone(root);feed.name=`cleaner-${definition.id}`;const feedBones=[];feed.traverse(o=>{if(o.isBone)feedBones.push(o);});feed.visible=false;
+  return {definition,root,model,meshes,bones,feed,feedBones,motion,state:'Idle',heading:0,visualY:null,post:roomPoint(definition.level,definition.wing,2.8,5.5)};
 }
 export class CharacterCast{
   constructor(scene,world){this.scene=scene;this.world=world;this.actors=new Map();this.selected='juliette';this.thirdPerson=true;this.relic=null;}
@@ -26,25 +27,24 @@ export class CharacterCast{
     await Promise.all(CHARACTERS.map(async d=>{const gltf=await loader.loadAsync(new URL(`../assets/characters/${d.id}.glb`,import.meta.url).href),actor=actorFrom(gltf,d);this.actors.set(d.id,actor);this.scene.add(actor.root);this.world.surface.feedScene.add(actor.feed);onProgress(++count/4);}));
     const relic=await loader.loadAsync(new URL('../assets/characters/hard-drive-relic.glb',import.meta.url).href);this.relic=new THREE.Group();this.relic.add(relic.scene);this.relic.name='Hard drive relic';this.relic.rotation.order='YXZ';this.relic.rotation.x=-Math.PI/2;this.relic.rotation.y=Math.PI/2-Math.PI/3;this.relic.position.copy(roomPoint(144,1,-5.28,5.48));this.relic.position.y+=.863;this.relic.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true;}});this.scene.add(this.relic);onProgress(1);
   }
-  select(id){if(!this.actors.has(id))return false;this.selected=id;return true;}
+  select(id){if(!this.actors.has(id))return false;this.selected=id;this.active.motion.reset();this.active.visualY=null;return true;}
   get active(){return this.actors.get(this.selected);}
-  setAnimation(a,name,speed=0){
-    if(name!==a.state){const prev=a.actions[a.state],next=a.actions[name];next.reset().play();next.crossFadeFrom(prev,.22,false);a.state=name;}
-    const h=a.definition.height,stance=name==='Run'?.54:.60,reach=(name==='Run'?.23:.15)*h,duration=a.actions[name].getClip().duration;
-    a.actions[name].timeScale=name==='Idle'?1:Math.max(.25,Math.min(3,speed*stance*duration/(2*reach)));
-  }
   update(dt,body,started=true){
     const speed=body.horizontalSpeed;this.world.actorInteractions=[];
     for(const a of this.actors.values()){
       const selected=a.definition.id===this.selected,near=!this.world.special&&this.world.activeLevel===a.definition.level;
       if(selected){
-        a.root.position.copy(body.position);if(speed>.08){const goal=forwardYaw(body.velocity.x,body.velocity.z),delta=Math.atan2(Math.sin(goal-a.heading),Math.cos(goal-a.heading));a.heading+=delta*(1-Math.exp(-18*dt));}
-        a.root.rotation.y=a.heading;this.setAnimation(a,started&&speed>.08?(speed>2.6?'Run':'Walk'):'Idle',speed);a.root.visible=started&&this.thirdPerson;
+        if(a.visualY===null||a.root.position.distanceTo(body.position)>2.5){a.visualY=body.position.y;a.motion.reset();}
+        a.visualY=THREE.MathUtils.damp(a.visualY,body.position.y,22,dt);a.root.position.copy(body.position);a.root.position.y=a.visualY;
+        if(speed>.035){const goal=forwardYaw(body.velocity.x,body.velocity.z),delta=Math.atan2(Math.sin(goal-a.heading),Math.cos(goal-a.heading)),limit=(speed>2.6?7:5)*dt;a.heading+=THREE.MathUtils.clamp(delta*(1-Math.exp(-11*dt)),-limit,limit);}
+        a.root.rotation.y=a.heading;a.root.updateMatrixWorld(true);
+        const ground=(x,z)=>{const f=this.world.colliders.floorAt(x,z,.035,body.position.y+.35);return Number.isFinite(f)&&Math.abs(f-body.position.y)<.48?f:body.position.y;};
+        a.motion.update(dt,{speed:started?speed:0,position:body.position,grounded:body.grounded,heading:a.heading,ground,active:started});a.state=a.motion.state;a.root.visible=started&&this.thirdPerson;
       }else{
-        a.root.position.copy(a.post);a.root.rotation.y=-a.definition.wing*Math.PI/3-Math.PI/2;this.setAnimation(a,'Idle');a.root.visible=near;
+        a.root.position.copy(a.post);a.root.rotation.y=-a.definition.wing*Math.PI/3-Math.PI/2;a.root.updateMatrixWorld(true);if(near)a.motion.update(dt,{position:a.post,active:false});a.state='Idle';a.root.visible=near;
         if(near){const p=a.root.position.clone();p.y+=1.3;this.world.actorInteractions.push({position:p,label:`${a.definition.name} · ${a.definition.role}`,action:`person-${a.definition.id}`});}
       }
-      a.mixer.update(dt);a.root.updateMatrixWorld(true);a.feed.visible=selected&&this.world.outside&&started;
+      a.root.updateMatrixWorld(true);a.feed.visible=selected&&this.world.outside&&started;
       if(a.feed.visible){a.feed.position.copy(a.root.position);a.feed.quaternion.copy(a.root.quaternion);for(let i=0;i<a.bones.length;i++){const b=a.bones[i],f=a.feedBones[i];f.position.copy(b.position);f.quaternion.copy(b.quaternion);f.scale.copy(b.scale);}a.feed.updateMatrixWorld(true);}
     }
     if(this.relic){this.relic.visible=!this.world.special&&this.world.activeLevel===144;if(this.relic.visible)this.world.actorInteractions.push({position:this.relic.position.clone(),label:'Inspect the hard-drive relic',action:'hard-drive'});}

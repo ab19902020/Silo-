@@ -21,8 +21,13 @@ export class Rendering {
       void main(){
         vec3 c=texture2D(colorMap,vUv).rgb;float z=distanceAt(vUv),occlusion=0.;vec3 glow=vec3(0.);
         vec2 pixel=1./resolution;float radius=clamp(90./max(z,1.),2.,14.);
-        for(int i=0;i<8;i++){float a=float(i)*.785398;vec2 dir=vec2(cos(a),sin(a));float sampleZ=distanceAt(vUv+dir*pixel*radius);float delta=z-sampleZ;occlusion+=smoothstep(.055,.34,delta)*(1.-smoothstep(.6,2.7,delta));vec3 sampleColor=texture2D(colorMap,vUv+dir*pixel*4.).rgb;glow+=max(sampleColor-vec3(1.35),vec3(0.));}
-        c*=1.-occlusion*.125*strength;c+=glow*.0125;
+        for(int i=0;i<12;i++){float a=float(i)*2.399963;vec2 dir=vec2(cos(a),sin(a));float r=radius*(.35+.65*sqrt((float(i)+1.)/12.));vec2 uv=clamp(vUv+dir*pixel*r,pixel,1.-pixel);float sampleZ=distanceAt(uv);float delta=z-sampleZ;occlusion+=smoothstep(.04,.27,delta)*(1.-smoothstep(.5,2.1,delta));vec3 sampleColor=texture2D(colorMap,clamp(vUv+dir*pixel*5.,pixel,1.-pixel)).rgb;glow+=max(sampleColor-vec3(1.35),vec3(0.));}
+        c*=1.-occlusion*.083333*strength;c+=glow*.0083;
+        // Restrained tungsten highlights, cool concrete shadows and retained
+        // colour in the domestic rooms; no film grain obscuring mobile detail.
+        float light=dot(c,vec3(.2126,.7152,.0722));
+        c*=mix(vec3(.975,1.008,1.025),vec3(1.026,1.012,.975),smoothstep(.05,.85,light));
+        c=mix(vec3(light),c,1.035);
         float vignette=dot(vUv-.5,vUv-.5);c*=1.-vignette*.16;
         gl_FragColor=vec4(c,1.);
         #include <tonemapping_fragment>

@@ -250,10 +250,14 @@ export class SiloAudio {
   live(){return this.context&&this.enabled&&this.master;}
 
   // --- footsteps ----------------------------------------------------------
-  step(distance,speed){
+  step(distance,speed,contactCount=null){
     if(!this.live()||speed<.4)return;
-    const running=speed>4,stride=running?1.05:.72;
-    if(distance-this.lastStep<stride)return;
+    const running=speed>2.6,stride=running?1.05:.72;
+    // When a rig is present, its actual planted-foot transitions own cadence.
+    // The original distance path remains available to older callers.
+    if(Number.isFinite(contactCount)){
+      const landed=contactCount>0&&contactCount!==this.lastContact;this.lastContact=contactCount;if(!landed)return;
+    }else if(distance-this.lastStep<stride)return;
     this.lastStep=distance;this.foot=-this.foot;
     const surface=SURFACES[this.stepSurface]||SURFACES.concrete,t=this.context.currentTime+.005;
     const force=(running?1:.62)*rand(.86,1.14),out=this.voice(this.foot*.16);

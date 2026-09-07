@@ -157,14 +157,14 @@ function frame(){
   if(!paused()){
     const forward=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-stick.y;
     const right=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0)+stick.x;
-    const speed=(running||keys.has('ShiftLeft')||keys.has('ShiftRight'))?4.3:1.7;
+    const speed=(running||keys.has('ShiftLeft')||keys.has('ShiftRight'))?3.8:1.45;
     desired.set(-Math.sin(yaw)*forward+Math.cos(yaw)*right,0,-Math.cos(yaw)*forward-Math.sin(yaw)*right);if(desired.length()>1)desired.normalize();desired.multiplyScalar(speed);
     // Bound movement substeps prevent thin rail/door tunneling after slow frames.
     const count=Math.max(1,Math.ceil(dt/(1/120)));for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders);
     if(body.position.y<2&&!world.special){const p=world.spawn(world.activeLevel);body.teleport(p.x,p.y,p.z);notify('Returned to the nearest safe landing.');}
     const bob=$('reduceMotion').checked?0:Math.sin(body.distanceWalked*8)*.018*Math.min(1,body.horizontalSpeed);
     world.update(dt,body.position);cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;interaction=world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;if(interaction)$('interaction').lastElementChild.textContent=interaction.label;
-    $('touchUse').style.opacity=interaction?'1':'.4';audio.step(body.distanceWalked,body.horizontalSpeed);
+    $('touchUse').style.opacity=interaction?'1':'.4';audio.step(body.distanceWalked,body.horizontalSpeed,cast.active?.motion.stepCount);
   }else if(!started){
     const top=levelY(1);camera.position.set(21,top+3.4,5);camera.lookAt(-1,top-5,-1);world.update(dt,new THREE.Vector3(21,top,5));
   }else{world.update(dt,body.position);cast?.update(0,body,started);}

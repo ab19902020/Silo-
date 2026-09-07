@@ -1,5 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit, random, addSign, railing, fixture, pipe, desk, bed, shelf, table, chair } from './kit.js';
+import { wallGauge } from './environment-details.js';
 
 export function buildUnderground(m) {
   const root=new THREE.Group(),k=new Kit(m),solids=[],interactions=[],walkways=[];
@@ -133,6 +134,14 @@ export function buildUnderground(m) {
   solids.push({x:100.5,z:0,w:1.3,d:64,y0:47.5,y1:54},{x:109.5,z:0,w:1.3,d:64,y0:47.5,y1:54});
   for(let z=-30;z<=30;z+=4){for(const x of [-3.65,3.65])mk.box('wood',x,2,z,.4,4.2,.4);mk.box('wood',0,4,z,7.7,.5,.5);fixture(mk,0,3.9,z,1,false);for(let x=-1.5;x<=1.5;x+=3)mk.box('metal',x,.16,z, .09,.14,4.15);}
   for(let z=-31;z<32;z+=.8)mk.box('wood',0,.05,z,3.8,.1,.17);
+  for(let z=-30;z<=30;z+=4){
+    for(const x of [-3.65,3.65]){
+      for(const y of [.25,3.8]){mk.box('darkMetal',x,y,z-.225,.46,.26,.035);for(const dx of [-.14,.14])mk.cylinder('brass',x+dx,y,z-.251,.023,.037,Math.PI/2);}
+      mk.box('darkMetal',x,3.31,z,.13,.16,.18);
+    }
+    for(const x of [-1.5,1.5])for(const dz of [-.7,0,.7])mk.box('rust',x,.195,z+dz,.22,.025,.10);
+  }
+  for(const x of [-3.72,-3.61,-3.5])mk.cylinder('black',x,3.27,0,.025,62,Math.PI/2);
   for(const z of [-8,7,21]){
     mk.box('rust',0,1.1,z,2.2,1.6,3);mk.box('black',0,1.94,z,1.9,.05,2.7);for(const x of [-1.1,1.1])for(const dz of [-1.05,1.05])mk.cylinder('darkMetal',x,.44,z+dz,.38,.18,0,0,Math.PI/2);
     for(let i=0;i<12;i++)mk.sphere('rock',(rng()-.5)*1.7,2+rng()*.2,z+(rng()-.5)*2.5,.25+rng()*.25,.3,.3);
@@ -141,6 +150,8 @@ export function buildUnderground(m) {
   for(let i=0;i<60;i++){const side=i%2?1:-1;mk.sphere('rock',side*(3.2+rng()*.6),rng()*3.8,-30+rng()*60,.5+rng()*.5,.5,.7);}
   mk.box('rock',0,2.1,32,8,4.8,1);mk.box('rock',0,2.1,-32,8,4.8,1);solids.push({x:105,z:32,w:8,d:1,y0:48,y1:54},{x:105,z:-32,w:8,d:1,y0:48,y1:54});
   mk.cylinder('yellow',2.5,1.3,29,.4,2,Math.PI/2);mk.cylinder('metal',2.5,1.3,30.3,.13,1.2,Math.PI/2);
+  for(let z=28.1;z<30;z+=.2)mk.torus('metal',2.5,1.3,z,.405,.025);
+  wallGauge(mk,2.5,1.95,28.5,.15);for(let j=0;j<7;j++){const z=27.6+j*.4;mk.torus('black',2.6,.12,z,.22,.028,Math.PI/2);}
   addSign(mines,'MINING · ORE WORKING 18',[0,3.2,-28],5,.7);addSign(mines,'MECHANICAL ↑',[0,2.5,-31.4],4,.65);
   interactions.push({position:[105,49,-29],label:'Return to Mechanical',destination:144},{position:[107,49,28],label:'Inspect the rock drill',action:'mines'});
   mines.add(mk.group());
@@ -149,6 +160,7 @@ export function buildUnderground(m) {
   const tunnel=new THREE.Group();tunnel.position.set(105,8,88);root.add(tunnel);const tk=new Kit(m);
   tk.box('darkConcrete',0,-.2,0,5,.4,36);tk.box('darkConcrete',-2.6,1.7,0,.3,3.4,36);tk.box('darkConcrete',2.6,1.7,0,.3,3.4,36);tk.box('darkConcrete',0,3.5,0,5.5,.25,36);
   for(const x of [-2.1,2.1])pipe(tk,x,0,2.9,36,.18);for(let z=-16;z<17;z+=5)fixture(tk,0,3.28,z,.8);
+  for(let z=-16;z<17;z+=3){tk.portal('metal',0,0,z,4.7,3.28,.14,0,.48,.09);for(const x of [-2.1,2.1]){tk.torus('metal',x,2.9,z,.215,.026);for(const dx of [-.14,.14])tk.cylinder('brass',x+dx,3.04,z,.019,.09,Math.PI/2);}}
   tk.box('darkMetal',0,1.65,17.8,4.8,3.3,.3);tk.torus('metal',0,1.7,17.58,.65,.075);for(const x of [-1.9,1.9])for(const y of [.4,1.2,2,2.8])tk.cylinder('brass',x,y,17.58,.07,.1,Math.PI/2);
   addSign(tunnel,'SEALED ACCESS',[0,2.8,17.6],3,.45,Math.PI);addSign(tunnel,'VOID ACCESS ↑',[0,2.6,-17.7],3,.5);
   walkways.push({kind:'box',x:105,z:88,w:5,d:36,y:8});

@@ -4,6 +4,7 @@ import { makeDisplayGeometry } from './top-floor.js';
 import { SILO, TYPE_NAMES, RESIDENCES } from './data.js';
 import { hasRearPassage } from './passages.js';
 import { dressWorkshop } from './workshop-details.js';
+import { dressRoom } from './environment-details.js';
 
 const TAU=Math.PI*2;
 export function buildRoom(materials,type,level,wing,assets) {
@@ -233,7 +234,7 @@ export function buildRoom(materials,type,level,wing,assets) {
   for(const z of [4.5,11.5,18.5])for(const x of [-W+.22,W-.22]){k.cylinder('metal',x,2.3,z,.035,4.6);k.bevel('green',x<0?x+.08:x-.08,1.6,z,.19,.36,.25);}
   for(const x of [-7,-3.5,3.5,7]){k.box('metal',x,H-.13,D/2,.055,.05,D-.4);}
   for(const x of [-1.96,1.96]){k.bevel('metal',x,1.62,.05,.15,3.26,.27);for(const y of [.3,1.4,2.8])k.cylinder('brass',x,y,-.12,.035,.06,Math.PI/2);}
-  root.add(k.group());
+  dressRoom(k,root,type,level,wing);root.add(k.group());
   root.userData={...root.userData,solids,interactions,animated,type};
   return root;
 }

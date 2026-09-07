@@ -2,9 +2,18 @@
 
 A browser-based, first- and third-person reconstruction of the television silo, built in Adam’s **Silo-** repository using the circular collision system and selected interior assets from **Lost Signal**.
 
-## Latest character and exterior update
+## Latest animation and visual update
 
-- Three supplied characters are rigged and selectable: Juliette Nichols, Robert Sims and Bernard Holland. Each has idle, walk and run clips, a relaxed bind pose, foot planting, and first/third-person views. The other two stay at their departments.
+- Repaired trouser skin weights below Sims’s and Bernard’s coat hems. All three supplied models now include eight looping motions, with a continuous runtime gait, terrain-aware planted feet, measured leg joints, smoother turns, stair transitions and landing recovery.
+- Footsteps follow planted-foot contacts; Claude’s soundtrack, ambience and interaction sounds remain in place.
+- Added household objects, kitchen tile relief, woven runners, enamel pendants, dressed desks, market scales and shop valances, medical bed fittings, service pipes, gauges, generator bolts and mine hardware.
+- Added shaft fascia layers and fluted columns, finer cloth and foliage, CRT terminal detail, wall patina and revised contact shading. Apartment lights now sit inside the rooms, beneath their ceilings.
+
+See [the animation and visual upgrade notes](docs/visual-upgrade.md) for references, validation and reconstruction limits.
+
+## Character and exterior foundation
+
+- Three supplied characters are rigged and selectable: Juliette Nichols, Robert Sims and Bernard Holland. Each has a relaxed bind pose, foot planting, and first/third-person views. The other two stay at their departments.
 - The supplied hard-drive relic is on Walker’s repair bench; use the directory shortcut to inspect it.
 - Fixed the false ground gap around the exit and added streaming exterior terrain without a finite collision edge.
 - Reframed the live cafeteria panorama around the barren bowl and right-hand dead tree. The sensor housing, ramp and city skyline are absent from the panorama. The exterior contains no city geometry.

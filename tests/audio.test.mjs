@@ -83,6 +83,15 @@ test('footsteps follow distance walked, not frame rate',()=>{
   assert.ok(ran<walked,`running (${ran}) must take longer strides than walking (${walked})`);
 });
 
+test('rig contact events trigger one footstep each, including after character selection',()=>{
+  const {audio}=silo();let fired=0;
+  for(const [distance,contact] of [[0,0],[.1,1],[.2,1],[.3,1],[.4,2],[.5,2],[.6,0],[.7,0],[.8,1],[.9,1]]){
+    const before=audio.foot;audio.step(distance,1.45,contact);if(audio.foot!==before)fired++;
+  }
+  assert.equal(fired,3,'only new planted contacts should schedule sound; a reset must stay silent');
+  const before=audio.foot;audio.step(9,0,9);assert.equal(audio.foot,before,'standing still must stay silent');
+});
+
 test('the sound toggle and the music slider only ever move their own bus',()=>{
   const {audio}=silo();
   const music=audio.musicBus.gain,master=audio.master.gain;

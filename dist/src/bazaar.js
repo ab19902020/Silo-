@@ -1,5 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit, addSign, fixture, table, shelf, pipe, random } from './kit.js';
+import { dressBazaar } from './environment-details.js';
 
 // Shopfront proportions and dressing follow Sally Crees's Silo set photographs.
 // The street arrangement and level assignment remain a reconstruction.
@@ -75,5 +76,5 @@ export function buildBazaar(m){
   // Grated drains along the food counters, with no collision across the aisle.
   for(const x of [-2.12,2.12])for(let z=1;z<24;z+=.26)k.box('darkMetal',x,.018,z,.2,.02,.09);
   for(const x of [-9.6,9.6])pipe(k,x,12,8.5,23,.18,'rust');
-  root.add(k.group());root.userData={solids,floors,interactions:[],animated:[],type:'bazaar',lightPoints};return root;
+  dressBazaar(k,root);root.add(k.group());root.userData={...root.userData,solids,floors,interactions:[],animated:[],type:'bazaar',lightPoints};return root;
 }
