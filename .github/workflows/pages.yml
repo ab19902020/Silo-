@@ -1,0 +1,41 @@
+# Publishes dist/ to GitHub Pages so the silo can be opened and played in a
+# browser. It touches nothing in the game; delete this file to stop publishing.
+name: Publish the playable build
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # Reported separately so a failure here never leaves the playable link stale.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - run: npm test
+      - run: npm run validate
+
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        with: {enablement: true}
+      - uses: actions/upload-pages-artifact@v3
+        with: {path: dist}
+      - id: deployment
+        uses: actions/deploy-pages@v4
