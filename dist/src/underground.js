@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.js';
-import { Kit, random, addSign, railing, fixture, pipe, desk } from './kit.js';
+import { Kit, random, addSign, railing, fixture, pipe, desk, bed, shelf, table, chair } from './kit.js';
 
 export function buildUnderground(m) {
   const root=new THREE.Group(),k=new Kit(m),solids=[],interactions=[],walkways=[];
@@ -45,6 +45,86 @@ export function buildUnderground(m) {
   interactions.push({position:[72,13,0],label:'Climb to Mechanical',destination:144});
   addSign(root,'MAINTENANCE PASSAGE →',[69,13.7,15],4,.6,-Math.PI/2);
   interactions.push({position:[70,13,15],label:'Enter the hidden passage',destination:'tunnel'});
+
+  // ---- The camp, the caged descent and the lower door ---------------------
+  // The inspection platform widens into a bay somebody has been living in, and
+  // a caged stair runs from the platform down the side of the void to a
+  // landing at the waterline, where a bulkhead is set into the tower's base.
+  // The show establishes the flooded depth, an improvised camp lived in out of
+  // sight, and a sealed lower door; no filmed plan of this space was
+  // available, so the layout here is a reconstruction, not a copy.
+  const CAMP_A=Math.PI,CAMP_HALF=.9,DECK=12;
+  k.arc('rust',3.1,12,.3,DECK-.3,CAMP_A-CAMP_HALF,CAMP_HALF*2,32);
+  walkways.push({kind:'arc',r0:3.1,r1:12,y:DECK,a:CAMP_A,half:CAMP_HALF});
+  k.arc('darkMetal',11.8,12.04,1.1,DECK,CAMP_A-CAMP_HALF,CAMP_HALF*2,32);
+  solids.push({arc:true,r0:11.8,r1:12.04,y0:DECK,y1:DECK+1.1,a:CAMP_A,half:CAMP_HALF});
+  for(const edge of [-1,1]){
+    const ea=CAMP_A+edge*CAMP_HALF;
+    railing(k,[Math.cos(ea)*3.3,Math.sin(ea)*3.3],[Math.cos(ea)*11.9,Math.sin(ea)*11.9],DECK);
+  }
+  // The camp itself is axis aligned on the -X side so its walls and its hidden
+  // cavity can carry ordinary box collision.
+  const camp=new THREE.Group();camp.position.set(-8,DECK,0);root.add(camp);const ck=new Kit(m);
+  const wall=(x,z,w,d,h=2.6)=>{ck.box('rust',x,h/2,z,w,h,d);solids.push({x:-8+x,z,w,d,y0:DECK,y1:DECK+h});};
+  wall(-3.3,0,.16,7.2);wall(0,-3.5,6.6,.16);wall(0,3.5,6.6,.16);           // three salvaged plate walls
+  ck.box('darkMetal',0,2.72,0,6.8,.12,7.2);                                 // a scavenged roof keeps the lamps in
+  for(const z of [-2.2,2.2])fixture(ck,-1.4,2.5,z,1.2,false);
+  bed(ck,-2.2,-2.1);
+  shelf(ck,-2.6,1.9,2.6,2.1);
+  table(ck,.9,1.4,1.5,.9);chair(ck,.9,.3,Math.PI);
+  // Salvaged relics on the shelf: tins, a bottle, books and a wound-up cable.
+  const relicMats=['brass','glass','wood','white','metal'];
+  for(let i=0;i<16;i++){
+    const shelfY=[.15,.8,1.45,2.1][i%4],off=-3.6+((i*.47)%2.2);
+    ck.box(relicMats[i%relicMats.length],off,shelfY+.14,1.9+((i%3)-1)*.18,.16+((i%4)*.05),.26,.14);
+  }
+  ck.cylinder('brass',-1.6,.3,1.9,.13,.34);ck.torus('metal',-1.1,.34,1.9,.16,.03,Math.PI/2);
+  // A hung curtain screens a cut-out in the outer plate: the hiding place.
+  ck.box('green',-3.15,1.25,-.9,.06,2.4,1.9);
+  ck.cylinder('metal',-3.15,2.5,-.9,.02,2,Math.PI/2,0,Math.PI/2);
+  camp.add(ck.group());
+  addSign(camp,'NO ENTRY · MAINTENANCE',[0,2.35,-3.58],2.6,.36,0,{background:'#4a2f22',color:'#d8c9a6'});
+  interactions.push({position:[-11,DECK+1,-.9],label:'Look behind the curtain',action:'camp'});
+  interactions.push({position:[-10.6,DECK+1,1.9],label:'Inspect the salvaged relics',action:'relics'});
+
+  // A caged stair descends clear of the tower rings and stanchions.
+  const STAIR_A=4.1,STAIR_SWEEP=1.745,TREADS=24,BASE=DECK-TREADS*.273;
+  for(let i=0;i<TREADS;i++){
+    const a0=STAIR_A+STAIR_SWEEP*i/TREADS,a1=STAIR_A+STAIR_SWEEP*(i+1)/TREADS,y=DECK-(i+1)*.273,half=(a1-a0)/2;
+    k.arc('rust',8,11,.16,y-.16,a0,a1-a0,3);
+    walkways.push({kind:'arc',r0:8,r1:11,y,a:a0+half,half:half*1.02});
+    k.arc('darkMetal',10.85,11.06,1.06,y,a0,a1-a0,3);
+    solids.push({arc:true,r0:10.85,r1:11.06,y0:y,y1:y+1.06,a:a0+half,half:half*1.02});
+    // The inner guard starts below the head of the run: carried all the way up
+    // it would wall the stair off from the platform it is reached from.
+    if(i>=2){k.arc('darkMetal',7.94,8.15,1.06,y,a0,a1-a0,3);
+      solids.push({arc:true,r0:7.94,r1:8.15,y0:y,y1:y+1.06,a:a0+half,half:half*1.02});}
+    // Ladder-style hoops over the run, and a lamp every sixth tread.
+    if(i%3===0){let prev=null;for(let h=0;h<=8;h++){const t=h/8,rr=8.06+t*2.88,yy=y+1.02+Math.sin(t*Math.PI)*1.3,pt=[Math.cos(a0)*rr,yy,Math.sin(a0)*rr];if(prev)k.beam('darkMetal',prev,pt,.035);prev=pt;}}
+    if(i%6===0)fixture(k,Math.cos(a0)*8.4,y+2.3,Math.sin(a0)*8.4,.9,false);
+  }
+  // Landing at the waterline, reaching in to the tower's base.
+  const END_A=STAIR_A+STAIR_SWEEP,LAND_HALF=.42;
+  k.arc('rust',3.3,11,.3,BASE-.3,END_A-.06,LAND_HALF*2,20);
+  walkways.push({kind:'arc',r0:3.3,r1:11,y:BASE,a:END_A-.06+LAND_HALF,half:LAND_HALF});
+  k.arc('darkMetal',10.8,11.04,1.1,BASE,END_A-.06,LAND_HALF*2,20);
+  solids.push({arc:true,r0:10.8,r1:11.04,y0:BASE,y1:BASE+1.1,a:END_A-.06+LAND_HALF,half:LAND_HALF});
+  const doorA=END_A-.06+LAND_HALF,dx=Math.cos(doorA),dz=Math.sin(doorA);
+  const lower=new THREE.Group();lower.position.set(dx*3.3,BASE,dz*3.3);lower.rotation.y=-doorA+Math.PI/2;root.add(lower);
+  const lk=new Kit(m);
+  // Local +z is radially outward here, so the door has to be built on that face
+  // or it presents its blank back to everyone coming down the stair.
+  lk.box('darkMetal',0,1.6,0,3.4,3.2,.34);lk.box('rust',0,1.55,.2,2.5,2.6,.14);
+  lk.torus('metal',0,1.5,.31,.52,.07);for(const x of [-1.05,1.05])for(const y of [.5,1.5,2.5])lk.cylinder('brass',x,y,.29,.06,.1,Math.PI/2);
+  fixture(lk,0,3.05,.26,1.4,false);
+  lower.add(lk.group());
+  addSign(lower,'LOWER ACCESS · SEALED',[0,3.42,.28],2.6,.4,0);
+  interactions.push({position:[dx*4.4,BASE+1,dz*4.4],label:'Open the lower door',destination:'tunnel'});
+  addSign(root,'DESCENT TO WATERLINE ↓',[Math.cos(STAIR_A)*9.4,DECK+1.5,Math.sin(STAIR_A)*9.4],3.4,.5,-STAIR_A+Math.PI/2);
+  // The water reads as a floor from the landing: standing here you are level
+  // with it, which is the point of the descent.
+  const landingLight=new THREE.PointLight(0x9fc2b6,120,34,1.8);landingLight.position.set(dx*7,BASE+2.6,dz*7);root.add(landingLight);
+  const campLight=new THREE.PointLight(0xe0b478,130,26,1.7);campLight.position.set(-7.4,DECK+2.2,0);root.add(campLight);
   // Mine workings are above the void, outside its upper rim. They are a
   // separate, inferred network reached by the Mechanical maintenance hatch.
   const mines=new THREE.Group();mines.position.set(105,48,0);root.add(mines);const mk=new Kit(m);

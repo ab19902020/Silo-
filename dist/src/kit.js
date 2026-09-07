@@ -144,18 +144,39 @@ export class Kit {
 }
 
 const textCache=new Map();
-export function sign(text,w=3,h=.65,{color='#ddd7b5',background='#2d3e35',font='bold 54px Arial',border=true}={}){
-  const key=[text,w,h,color,background,font,border].join('|');
+// Signs are physical objects in the silo, not decals. Every one is a printed
+// face on a shallow steel plate with a returned edge, so it catches the
+// gallery lighting, reads as mounted from an angle, and never vanishes when
+// seen edge-on the way a bare plane does. SIGN_DEPTH is the plate thickness:
+// mount a sign at SIGN_DEPTH/2 proud of its host surface and the plate backs
+// flat onto it. The face is unlit-bright enough to stay legible in the dark
+// levels but the plate itself shades with the room.
+export const SIGN_DEPTH=.05;
+const plateMaterial=new THREE.MeshStandardMaterial({color:0x23282a,roughness:.62,metalness:.42});
+const frameMaterial=new THREE.MeshStandardMaterial({color:0x3b423d,roughness:.5,metalness:.55});
+export function sign(text,w=3,h=.65,{color='#ddd7b5',background='#2d3e35',font='bold 54px Arial',border=true,glow=.34}={}){
+  const key=[text,w,h,color,background,font,border,glow].join('|');
   let material=textCache.get(key);
   if(!material){
     const canvas=document.createElement('canvas');canvas.width=512;canvas.height=Math.max(32,Math.round(512*h/w));const ctx=canvas.getContext('2d');
     ctx.fillStyle=background;ctx.fillRect(0,0,canvas.width,canvas.height);if(border){ctx.strokeStyle='#b7b797';ctx.lineWidth=1.5;ctx.strokeRect(5,5,canvas.width-10,canvas.height-10);}
     ctx.fillStyle=color;ctx.font=font.replace(/(\d+)px/,(_,n)=>`${Number(n)/2}px`);ctx.textAlign='center';ctx.textBaseline='middle';const lines=text.split('\n');lines.forEach((line,i)=>ctx.fillText(line,256,canvas.height*(.5+(i-(lines.length-1)/2)*.16),485));
     const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4;
-    material=new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide});material.userData.signRefs=0;material.userData.signCached=true;textCache.set(key,material);
+    material=new THREE.MeshStandardMaterial({map:texture,emissive:0xffffff,emissiveMap:texture,emissiveIntensity:glow,roughness:.58,metalness:.05});
+    material.userData.signRefs=0;material.userData.signCached=true;textCache.set(key,material);
     if(textCache.size>128){const oldest=textCache.keys().next().value,oldMaterial=textCache.get(oldest);textCache.delete(oldest);oldMaterial.userData.signCached=false;if(!oldMaterial.userData.signRefs){oldMaterial.map.dispose();oldMaterial.dispose();}}
   }
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);material.userData.signRefs++;mesh._signMaterial=material;return mesh;
+  const group=new THREE.Group();
+  const plate=new THREE.Mesh(new THREE.BoxGeometry(w+.055,h+.055,SIGN_DEPTH),plateMaterial);
+  plate.userData.ownedGeometry=true;plate.castShadow=true;plate.receiveShadow=true;
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);face.position.z=SIGN_DEPTH/2+.004;
+  group.add(plate,face);
+  // Two mounting bolts read at close range and settle the sign onto its wall.
+  if(w>1.2){
+    const bolt=new THREE.SphereGeometry(.022,6,4);
+    for(const side of [-1,1]){const b=new THREE.Mesh(bolt,frameMaterial);b.position.set(side*(w/2-.055),0,SIGN_DEPTH/2+.012);b.userData.ownedGeometry=side<0;group.add(b);}
+  }
+  material.userData.signRefs++;face._signMaterial=material;return group;
 }
 export function addSign(root,text,position,w=3,h=.65,ry=0,options={}){const s=sign(text,w,h,options);s.position.set(...position);s.rotation.y=ry;root.add(s);return s;}
 

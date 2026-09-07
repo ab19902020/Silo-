@@ -89,6 +89,8 @@ const inspectionText={
   chute:'The refuse chute carries discarded material down for recovery. It is not a passenger route.',
   mines:'An inferred mining working with ore carts, timber supports and a rock drill. A complete filmed mine plan was not available in the sources.',
   tunnel:'A sealed lower passage beneath the silo. This build does not invent an open route into another silo.',
+  camp:'Somebody lived down here out of sight of the stairs: a bed, a lamp, a table and a curtain hung across a cut in the outer plate. The cavity behind it is empty now. Improvised camps in the deep are established by the show; this room is a reconstruction, not a filmed set.',
+  relics:'Tins, bottles, books and wound cable carried down from the levels above and kept where a sweep would not find them. Possession of relics from before is an offence under the Pact.',
 };
 function use(){
   if(!interaction||paused())return;

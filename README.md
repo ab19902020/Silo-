@@ -35,6 +35,12 @@ A browser-based, first- and third-person reconstruction of the television silo, 
 - Doors, the pressure-door airlock, the lens wipe, the torch and the interface each have their own sound; the mains hum, ventilation, wind and turbine throb change with the location, and a synthesised impulse response gives the shaft its concrete tail.
 - Only the soundtrack is a bundled file. Everything else is generated at runtime. See [the audio notes](AUDIO.md).
 
+## Down in the void
+
+- The excavator void now has a way down. A **caged stair** drops from the inspection platform to a landing at the waterline, where a bolted **lower door** is set into the tower's base. Every tread is walkable; the route is covered by tests.
+- A **camp** in a bay off the platform: a bed, a shelf of salvaged relics, a table and a curtain hung over a cut in the outer plate. Its layout is inferred, not a filmed set.
+- Gallery **signs are mounted plates** rather than floating text, and the **pylons** no longer stand in the doorway approaches. See [the world notes](WORLD.md).
+
 The directory’s travel feature is a visitor shortcut, not an in-world elevator. The central stairs physically connect every numbered floor. Lower maintenance hatches use explicit travel transitions into the mines and cavern. The cleaning route is continuously walkable in both directions. The hidden tunnel’s far door remains sealed. There is no combat.
 
 ## Accuracy

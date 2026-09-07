@@ -2,7 +2,18 @@ import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { ColliderSet } from './physics.js';
 import { SILO, TAU, levelY, levelAt, roomType, TYPE_NAMES, stairStepY } from './data.js';
-import { Kit, createMaterials, addSign, fixture, railing, disposeGroup } from './kit.js';
+import { Kit, createMaterials, addSign, fixture, railing, disposeGroup, SIGN_DEPTH } from './kit.js';
+
+// Gallery pylons, four to a wing sector. Spacing them evenly round the ring put
+// a column 2.5 m from every door centre — half a metre clear of the jamb, right
+// in the walking line out of the wing. Grouping them between the doorways keeps
+// the same count and rhythm and leaves each doorway a clear approach.
+const PYLON_ANGLES=Array.from({length:24},(_,i)=>(Math.floor(i/4)+(i%4+1)/5)*TAU/6);
+// The gallery's outer wall steps back above the door head: it is a ring
+// O-.2 .. O+.2 up to 3.35 m and O-.3 .. O+.3 above that. A sign hung at the
+// wrong one of these either floats off the wall or is swallowed by it.
+const SIGN_WALL=SILO.deckOuter-.2-SIGN_DEPTH/2;
+const SIGN_WALL_HIGH=SILO.deckOuter-.3-SIGN_DEPTH/2;
 import { buildRoom } from './rooms.js';
 import { buildBazaar } from './bazaar.js';
 import { buildPassages, PASSAGE, hasRearPassage } from './passages.js';
@@ -60,8 +71,8 @@ export class SiloWorld {
         k.box('metal',Math.cos(aa)*(rr-.15),6.7,Math.sin(aa)*(rr-.15),.04,1.9,.1,Math.PI/2-aa);
       }
     }
-    for(let j=0;j<24;j++){
-      const a=(j+.5)*TAU/24,r=O-1;
+    for(const [j,a] of PYLON_ANGLES.entries()){
+      const r=O-1;
       k.cylinder('concrete',Math.cos(a)*r,H/2,Math.sin(a)*r,.68,H);
       k.cylinder('darkConcrete',Math.cos(a)*r,1.18,Math.sin(a)*r,.71,.24);
       k.cylinder('lamp',Math.cos(a)*r,1.6,Math.sin(a)*r,.72,.59);
@@ -122,9 +133,12 @@ export class SiloWorld {
     for(let wing=0;wing<6;wing++){
       const a=wing*TAU/6,ry=Math.PI/2-a,type=roomType(level,wing),room=level===1&&wing===0?buildTopFloor(this.m):type==='bazaar'?buildBazaar(this.m):buildRoom(this.m,type,level,wing,this.assets);
       room.position.set(Math.cos(a)*SILO.deckOuter,0,Math.sin(a)*SILO.deckOuter);room.rotation.y=ry;root.add(room);rooms.push(room);
-      const sg=addSign(root,String(level).padStart(3,'0'),[Math.cos(a)*(SILO.deckOuter-.56),2.15,Math.sin(a)*(SILO.deckOuter-.56)],1.8,1.25,ry+Math.PI,{font:'bold 200px Arial',background:'#34453b'});
-      sg.position.x+=Math.sin(a)*3.3;sg.position.z-=Math.cos(a)*3.3;
-      addSign(root,TYPE_NAMES[type],[Math.cos(a)*(SILO.deckOuter-.52),3.6,Math.sin(a)*(SILO.deckOuter-.52)],4.6,.55,ry+Math.PI);
+      // Both plates are bolted to the gallery wall. Offsetting the level plate
+      // along the ring keeps it flat on the curve; offsetting it in x and z, as
+      // this once did, left it hanging in the walkway well clear of the wall.
+      const beside=a+3.3/SILO.deckOuter;
+      addSign(root,String(level).padStart(3,'0'),[Math.cos(beside)*SIGN_WALL,2.15,Math.sin(beside)*SIGN_WALL],1.8,1.25,Math.PI/2-beside+Math.PI,{font:'bold 200px Arial',background:'#34453b'});
+      addSign(root,TYPE_NAMES[type],[Math.cos(a)*SIGN_WALL_HIGH,3.72,Math.sin(a)*SIGN_WALL_HIGH],4.6,.55,ry+Math.PI);
       // A real double leaf door with a switchable oriented collision volume.
       const surround=new Kit(this.m);surround.portal('concrete',0,.01,0,3.9,3.2,.48,0,.34,.18);surround.portal('metal',0,.02,-.27,3.85,3.16,.045,0,.32,.045);const surroundRoot=surround.group();surroundRoot.position.copy(room.position);surroundRoot.rotation.y=ry;root.add(surroundRoot);
       const doorRoot=new THREE.Group();doorRoot.position.copy(room.position);doorRoot.rotation.y=ry;root.add(doorRoot);const leaves=[];
@@ -132,7 +146,7 @@ export class SiloWorld {
       const door={level,wing,position:new THREE.Vector3(room.position.x,y+1.5,room.position.z),ry,open:true,amount:1,leaves,type,collider:null};doors.push(door);
       for(const interact of room.userData.interactions){const p=new THREE.Vector3(...interact.position).applyAxisAngle(new THREE.Vector3(0,1,0),ry).add(room.position);p.y+=y;interactions.push({...interact,position:p});}
     }
-    const bridgeSign=addSign(root,`LEVEL ${String(level).padStart(3,'0')}`,[SILO.wellRadius+1.9,1.6,-2.9],3,.8,-Math.PI/2);void bridgeSign;
+    addSign(root,`LEVEL ${String(level).padStart(3,'0')}`,[13,.44,-(SILO.landingHalf+.09+SIGN_DEPTH/2)],2.4,.42,Math.PI);
     const passages=level===1?null:buildPassages(this.m,level,rooms.map(r=>r.userData.type));if(passages)root.add(passages);
     this.scene.add(root);const entry={level,root,rooms,doors,interactions,passages};this.loaded.set(level,entry);return entry;
   }
@@ -151,7 +165,7 @@ export class SiloWorld {
     if(this.special){
       const below=this.special==='generator'?this.generator:this.underground;
       for(const f of below.walkways){if(f.kind==='ring')c.addRing({innerRadius:f.r0,outerRadius:f.r1,minY:f.y-.5,maxY:f.y,climbable:true});else if(f.kind==='arc')c.addArc({innerRadius:f.r0,outerRadius:f.r1,minY:f.y-.17,maxY:f.y,centre:f.a,halfWidth:f.half,climbable:true});else c.addOrientedBox({cx:f.x,cz:f.z,halfX:f.w/2,halfZ:f.d/2,rotationY:0,minY:f.y-.4,maxY:f.y,climbable:true});}
-      for(const b of below.solids)if(b.ring)c.addRing({innerRadius:b.r0,outerRadius:b.r1,minY:b.y0,maxY:b.y1});else c.addOrientedBox({cx:b.x,cz:b.z,halfX:b.w/2,halfZ:b.d/2,rotationY:0,minY:b.y0,maxY:b.y1});
+      for(const b of below.solids)if(b.arc)c.addArc({innerRadius:b.r0,outerRadius:b.r1,minY:b.y0,maxY:b.y1,centre:b.a,halfWidth:b.half});else if(b.ring)c.addRing({innerRadius:b.r0,outerRadius:b.r1,minY:b.y0,maxY:b.y1});else c.addOrientedBox({cx:b.x,cz:b.z,halfX:b.w/2,halfZ:b.d/2,rotationY:0,minY:b.y0,maxY:b.y1});
       if(this.special==='excavator'){
         c.addRing({innerRadius:74,outerRadius:77,minY:0,maxY:68});c.addRing({innerRadius:0,outerRadius:3.15,minY:0,maxY:60});
         // Guard rails have a gap for the bridge at positive X.
@@ -162,7 +176,7 @@ export class SiloWorld {
     }
     for(let level=Math.max(1,this.activeLevel-2);level<=Math.min(144,this.activeLevel+2);level++){
       const y=levelY(level),gap=Math.asin(SILO.landingHalf/R);
-      for(let j=0;j<24;j++){const a=(j+.5)*TAU/24;c.addColumn({cx:Math.cos(a)*(O-1),cz:Math.sin(a)*(O-1),radius:.68,minY:y,maxY:y+H});}
+      for(const a of PYLON_ANGLES)c.addColumn({cx:Math.cos(a)*(O-1),cz:Math.sin(a)*(O-1),radius:.68,minY:y,maxY:y+H});
       c.addRing({innerRadius:R,outerRadius:O,minY:y-.42,maxY:y,climbable:true});
       c.addRing({innerRadius:R-.07,outerRadius:R+.16,minY:y,maxY:y+1.13,gaps:[[0,gap]]});
       c.addRing({innerRadius:O-.2,outerRadius:O+.2,minY:y,maxY:y+3.35,gaps:Array.from({length:6},(_,j)=>[j*TAU/6,2.05/O])});
