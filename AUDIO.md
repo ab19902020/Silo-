@@ -60,22 +60,44 @@ honest fix is a shorter loop, not a lower bitrate.
 
 No other audio file is bundled. `audio.js` generates, at runtime:
 
-- **Footsteps** on five materials — concrete, metal grating, rock, surface grit
-  and soft floors — chosen by location. Each step is a pitch-dropping body
-  thump plus a filtered noise impact, with a resonant clang added on steel.
-  Pitch, gain and noise offset are randomised per step and the stereo image
-  alternates left/right, so a corridor never sounds like a loop. Cadence is
-  driven by `body.distanceWalked`, not by frame time, so it stays correct at
-  any frame rate and lengthens the stride when running.
-- **Doors** (latch, the leaf taking its weight, hinge scrape, seating thunk),
-  the **airlock** (clunk, pressure equalising, door motor), the **lens wipe**
-  (a stroked band-passed loop that runs for exactly as long as the cleaning
-  does), the **torch** switch, the **travel** swell and the interface click.
+### Impacts are modelled, not drawn with oscillators
+
+The first pass built every impact from oscillators: a sine with a falling
+pitch for the body, one band-passed noise burst on top, a triangle for the ring
+on steel. That is a kick drum, a hi-hat and a cowbell, and it sounded like one.
+
+Impacts are now **modal synthesis**. A short excitation — a noise burst, plus
+scattered grains where the surface is loose — is fed through a bank of damped
+two-pole resonators, `y[n] = b0·x[n] + a1·y[n-1] + a2·y[n-2]`. The frequencies
+and decay times of those modes *are* the material: that is what a struck solid
+actually does. Each entry in `IMPACTS` is one such object. Four takes of each
+are rendered into `AudioBuffer`s once at start-up and played back as samples
+with per-hit pitch, level and pan variation — one sample retriggered is the
+machine-gun footstep everyone recognises.
+
+Measured through Chromium's own engine, the floors now separate the way they
+should: concrete 112 ms of tail, steel grating 157 ms and ringing, rock 190 ms
+and grit 182 ms of crunch, a covered floor 78 ms and dead. Consecutive steps
+vary about 1.8× in level.
+
+- **Footsteps** on five materials, chosen by location. A walk lands heel then
+  toe 50–90 ms later; a run lands once and harder. Loose floors get a scuff as
+  the boot leaves them. Cadence comes from the rig's own planted-foot contacts
+  where a character is loaded, and falls back to `body.distanceWalked` — never
+  frame time — otherwise.
+- **Doors** (latch throwing, the leaf taking its weight, hinge drag, and the
+  seating thunk and latch drop on close), the **airlock** (dogs releasing,
+  pressure equalising, motor, and a second clunk at the end of travel), the
+  **lens wipe**, a real sprung **torch** toggle and a mechanical interface
+  click — all built from the same modelled impacts rather than beeps.
 - **Ambience beds** per location: a detuned mains hum, ventilation room tone,
   wind, and an LFO-throbbed turbine that is only audible in the generator hall,
   Mechanical and the excavator.
-- **Occasional life** every 11–26 s: distant plate-steel clanks, drips,
-  structural creaks, and wind gusts on the surface.
+- **Occasional life** every 11–26 s: plate-steel clanks, drips, structural
+  creaks and wind gusts. Distant events are low-passed as well as quiet —
+  distance takes the top off a sound long before it takes the level. The drip
+  sweeps **up** in pitch, because the cavity a drop makes in water shrinks as
+  it closes; sweeping it down is the usual mistake and was in the first pass.
 - A **2.1 s synthetic impulse response** giving the shaft its concrete tail.
   Footsteps and doors send to it; the soundtrack and the interface do not.
 
@@ -117,6 +139,11 @@ Nothing clips; the limiter catches the rest.
   modulation is *added* to the base value, so a bed at level 0 still leaks. The
   turbine and the lens wipe both have a dedicated stage inside the chain for
   this reason.
+- Adding a material means adding an entry to `IMPACTS` and, for a floor, to
+  `FLOORS` and `FOOTFALL`. Decay times are what carry the identity: a covered
+  floor must damp its low mode *faster* than bare concrete, not slower. The
+  first pass had that backwards and a rug rang like a slab; there is a test for
+  it now.
 - `npm test` covers it. `tests/audio.test.mjs` runs against a recording stub,
   so it does not need a browser.
 

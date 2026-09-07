@@ -15,15 +15,18 @@ function stubContext(){
     linearRampToValueAtTime:v=>log.push([name,'linear',v]),
     exponentialRampToValueAtTime:v=>{assert.notEqual(v,0,`${name}: exponential ramp to zero is invalid`);log.push([name,'exp',v]);},
     setTargetAtTime:v=>log.push([name,'target',v]),cancelScheduledValues:()=>{}});
-  const node=kind=>{const n={kind,connect:t=>t,disconnect(){},start(){this.started=true;},stop(){}};
+  const created={};
+  const node=kind=>{created[kind]=(created[kind]||0)+1;const n={kind,connect:t=>t,disconnect(){},start(){this.started=true;},stop(){}};
     for(const p of ['gain','frequency','Q','pan','detune','playbackRate','threshold','knee','ratio','attack','release'])n[p]=param(`${kind}.${p}`);
     return n;};
-  return {log,state:'running',currentTime:0,sampleRate:44100,destination:node('destination'),
+  return {log,created,state:'running',currentTime:0,sampleRate:44100,destination:node('destination'),
     createGain:()=>node('gain'),createOscillator:()=>node('oscillator'),createBiquadFilter:()=>node('filter'),
     createBufferSource:()=>node('source'),createStereoPanner:()=>node('panner'),createConvolver:()=>node('convolver'),
     createDynamicsCompressor:()=>node('compressor'),
-    createBuffer:(channels,length,rate)=>({numberOfChannels:channels,length,sampleRate:rate,duration:length/rate,
-      getChannelData:()=>new Float32Array(length)}),
+    createBuffer:(channels,length,rate)=>{
+      const data=Array.from({length:channels},()=>new Float32Array(length));
+      return {numberOfChannels:channels,length,sampleRate:rate,duration:length/rate,getChannelData:i=>data[i||0]};
+    },
     decodeAudioData:()=>new Promise(()=>{}),resume:()=>Promise.resolve()};
 }
 function silo(){
@@ -126,4 +129,61 @@ test('the loop trim removes codec padding and refuses to cut real material',()=>
   const faded=audio.audibleBounds(buffer(length,i=>Math.sin(i*.05)*.5*Math.min(1,i/(rate*.05))*Math.min(1,(length-i)/(rate*.05))));
   assert.ok(faded.start<.01,`a 50 ms fade trimmed ${faded.start}s`);
   assert.ok(length/rate-faded.end<.01);
+});
+
+test('every impact is modelled into a usable sample bank',()=>{
+  const {audio}=silo();
+  const names=['concrete','metal','rock','grit','soft','latch','thunk','clunk','clank','click','switch'];
+  for(const name of names){
+    const takes=audio.bank[name];
+    assert.ok(Array.isArray(takes)&&takes.length===4,`${name} needs four takes; one retriggered sample is the machine-gun footstep`);
+    const peaks=[];
+    for(const take of takes){
+      const data=take.getChannelData(0);
+      assert.ok(data.length>32,`${name} rendered ${data.length} samples`);
+      let peak=0,head=0,tail=0;
+      for(let i=0;i<data.length;i++){
+        assert.ok(Number.isFinite(data[i]),`${name} produced a non-finite sample: an unstable resonator`);
+        const magnitude=Math.abs(data[i]);if(magnitude>peak)peak=magnitude;
+        if(i<data.length*.1)head+=data[i]*data[i];
+        if(i>data.length*.9)tail+=data[i]*data[i];
+      }
+      assert.ok(Math.abs(peak-1)<1e-6,`${name} is not normalised (peak ${peak.toFixed(4)})`);
+      assert.ok(tail<head*.05,`${name} does not decay: ${(tail/head).toFixed(3)} of its energy is still there at the end`);
+      peaks.push(data.reduce((a,v)=>a+v*v,0));
+    }
+    assert.equal(new Set(peaks.map(p=>p.toFixed(6))).size,4,`${name}: the four takes are identical, so they will sound identical`);
+  }
+});
+
+test('floors are told apart by how long they ring, not just how loud they are',()=>{
+  const {audio}=silo();
+  // Energy still sounding between 100 and 250 ms, against the energy of the
+  // strike itself. Windows are absolute, and a sample that has already ended
+  // scores zero there — which is the physical answer, not an artefact: a
+  // covered floor really has stopped by then.
+  const sustain=name=>{
+    const data=audio.bank[name][0].getChannelData(0),rate=44100;
+    const band=(from,to)=>{let sum=0;for(let i=Math.round(rate*from);i<Math.round(rate*to)&&i<data.length;i++)sum+=data[i]*data[i];return sum;};
+    return band(.1,.25)/Math.max(1e-12,band(0,.025));
+  };
+  const metal=sustain('metal'),concrete=sustain('concrete'),soft=sustain('soft'),grit=sustain('grit');
+  assert.ok(metal>concrete*2,`grating sustains ${metal.toExponential(2)}, concrete ${concrete.toExponential(2)} — steel must ring longer`);
+  assert.ok(concrete>soft,`concrete ${concrete.toExponential(2)} must outlast a covered floor ${soft.toExponential(2)}`);
+  assert.ok(grit>soft,`loose grit ${grit.toExponential(2)} should still be crunching past a covered floor ${soft.toExponential(2)}`);
+});
+
+test('a walking step lands heel then toe; a run lands once, harder',()=>{
+  const {audio,context}=silo();
+  audio.setLocation('cafeteria');
+  const sources=()=>context.created.source||0;
+  const before=sources();
+  audio.step(4,1.45,null);
+  const walking=sources()-before;
+  audio.lastStep=0;
+  const mid=sources();
+  audio.step(4,3.8,null);
+  const running=sources()-mid;
+  assert.equal(walking,2,'a walk should place a heel and a toe');
+  assert.equal(running,1,'a run should land flat, once');
 });

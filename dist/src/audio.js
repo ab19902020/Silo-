@@ -16,15 +16,83 @@ const MUSIC_URL = new URL('../assets/audio/silo-18-theme.mp3', import.meta.url);
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,rand=(a,b)=>a+Math.random()*(b-a);
 const LEVEL=2.2;   // output trim ahead of the limiter; the sub-bus balance is set below
 
-// Footstep character per walking material. thump is the body of the step, tone
-// and q shape the impact noise, ring adds the resonant clang of plate steel.
-const SURFACES={
-  concrete:{thump:96, body:.105,bodyDecay:.10,tone:1250,q:.9, noise:.075,noiseDecay:.085,ring:0},
-  metal:   {thump:114,body:.080,bodyDecay:.07,tone:2700,q:1.5,noise:.085,noiseDecay:.130,ring:.026},
-  rock:    {thump:84, body:.090,bodyDecay:.11,tone:900, q:.7, noise:.100,noiseDecay:.145,ring:0},
-  grit:    {thump:70, body:.055,bodyDecay:.10,tone:640, q:.5, noise:.115,noiseDecay:.190,ring:0},
-  soft:    {thump:78, body:.070,bodyDecay:.12,tone:520, q:.6, noise:.048,noiseDecay:.110,ring:0},
+// Impacts are modelled, not drawn with oscillators. A short excitation — a
+// noise burst, plus scattered grains where the surface is loose — is fed
+// through a bank of damped two-pole resonators. The frequencies and decay
+// times of those modes are what make concrete sound like concrete and grating
+// sound like steel; an oscillator stack can only ever sound like a drum
+// machine. Every impact in the silo is rendered this way once at start-up and
+// then played back as a sample with per-hit variation.
+//
+//   modes    [frequency Hz, decay seconds, relative gain]
+//   direct   how much raw excitation survives, for attack bite
+//   burst    excitation length in seconds; shape is its decay curve
+//   grains   loose material scattered after the strike
+const IMPACTS={
+  // Floors, in the order a boot meets them.
+  concrete:{duration:.26,burst:.0035,shape:2.4,direct:.46,grains:3, grainLevel:.12,grainSpread:.030,
+    modes:[[95,.048,.85],[168,.030,1],[395,.024,.62],[880,.014,.45],[1650,.009,.34],[3100,.005,.20]]},
+  metal:   {duration:.48,burst:.0024,shape:3.0,direct:.32,grains:7, grainLevel:.20,grainSpread:.120,
+    modes:[[118,.060,.55],[210,.045,.70],[760,.20,.55],[1390,.17,.50],[2340,.12,.40],[3720,.08,.26],[5200,.05,.16]]},
+  rock:    {duration:.34,burst:.0048,shape:2.0,direct:.42,grains:12,grainLevel:.30,grainSpread:.070,
+    modes:[[78,.052,.70],[132,.038,1],[310,.026,.50],[640,.014,.30]]},
+  grit:    {duration:.36,burst:.0065,shape:1.5,direct:.56,grains:22,grainLevel:.42,grainSpread:.110,
+    modes:[[80,.042,.50],[115,.030,.55],[260,.018,.25]]},
+  // A covered floor damps its own low mode faster than bare concrete does; the
+  // first pass gave it a longer decay, which made a rug ring like a slab.
+  soft:    {duration:.18,burst:.0055,shape:2.6,direct:.26,grains:2, grainLevel:.06,grainSpread:.030,
+    modes:[[92,.028,.80],[142,.020,1],[330,.010,.35],[720,.006,.16]]},
+  // Fittings.
+  latch:   {duration:.09,burst:.0012,shape:3.4,direct:.70,grains:0, grainLevel:0,grainSpread:0,
+    modes:[[1800,.012,1],[3400,.008,.60],[5200,.005,.30]]},
+  thunk:   {duration:.55,burst:.0040,shape:2.2,direct:.35,grains:2, grainLevel:.10,grainSpread:.040,
+    modes:[[62,.090,1],[128,.070,.60],[255,.045,.35],[520,.020,.20]]},
+  clunk:   {duration:.95,burst:.0060,shape:2.0,direct:.30,grains:3, grainLevel:.12,grainSpread:.060,
+    modes:[[48,.160,1],[96,.130,.55],[190,.080,.30],[410,.040,.18]]},
+  // Something large and steel giving, a long way off down the shaft.
+  clank:   {duration:1.6,burst:.0030,shape:2.6,direct:.22,grains:4, grainLevel:.14,grainSpread:.090,
+    modes:[[128,.42,.55],[287,.38,.80],[604,.30,.65],[1130,.22,.40],[1980,.14,.22]]},
+  click:   {duration:.05,burst:.0008,shape:3.6,direct:.80,grains:0, grainLevel:0,grainSpread:0,
+    modes:[[2400,.006,1],[4100,.004,.50]]},
+  switch:  {duration:.06,burst:.0010,shape:3.2,direct:.75,grains:0, grainLevel:0,grainSpread:0,
+    modes:[[1400,.007,1],[3000,.005,.55],[5400,.003,.25]]},
 };
+const FLOORS=['concrete','metal','rock','grit','soft'];
+// How hard a foot lands, and whether the surface is hard enough for the toe of
+// the boot to make a second, quieter contact after the heel.
+const FOOTFALL={concrete:{level:.115,toe:.34},metal:{level:.105,toe:.30},rock:{level:.115,toe:.22},
+  grit:{level:.095,toe:0},soft:{level:.075,toe:.18}};
+
+// One footstep, rendered offline. Two-pole resonators are the whole trick: an
+// impulse into y[n] = b0*x[n] + a1*y[n-1] + a2*y[n-2] rings at `frequency` and
+// dies away over `decay`, which is exactly what a struck solid does.
+function renderImpact(spec,rate,rng){
+  const length=Math.max(64,Math.floor(rate*spec.duration)),excitation=new Float32Array(length),out=new Float32Array(length);
+  const burst=Math.max(2,Math.floor(rate*spec.burst));
+  for(let i=0;i<burst;i++)excitation[i]=(rng()*2-1)*Math.pow(1-i/burst,spec.shape);
+  // Loose surfaces keep crunching after the strike: chippings, scree, grit
+  // under the sole, the rattle of a grating panel settling back.
+  const grainLength=Math.max(2,Math.floor(rate*.0016));
+  for(let g=0;g<spec.grains;g++){
+    const at=Math.floor(rng()*rate*spec.grainSpread),amplitude=spec.grainLevel*(.25+rng()*.9);
+    for(let i=0;i<grainLength&&at+i<length;i++)excitation[at+i]+=(rng()*2-1)*amplitude*(1-i/grainLength);
+  }
+  for(const [frequency,decay,gain] of spec.modes){
+    const w=2*Math.PI*Math.min(frequency,rate*.45)/rate,r=Math.exp(-1/Math.max(1e-4,decay)/rate);
+    const a1=2*r*Math.cos(w),a2=-r*r,b0=Math.sin(w)*(1-r);
+    let y1=0,y2=0;
+    for(let i=0;i<length;i++){const y=b0*excitation[i]+a1*y1+a2*y2;y2=y1;y1=y;out[i]+=y*gain;}
+  }
+  let peak=0;
+  for(let i=0;i<length;i++){
+    if(i<burst)out[i]+=excitation[i]*spec.direct;
+    // A short tail fade stops the sample clicking off before the mode has died.
+    const t=i/length;if(t>.82)out[i]*=1-(t-.82)/.18;
+    const magnitude=Math.abs(out[i]);if(magnitude>peak)peak=magnitude;
+  }
+  if(peak>0)for(let i=0;i<length;i++)out[i]/=peak;
+  return out;
+}
 
 // Ambience mix, reverb return, footstep material and occasional-sound family
 // per location. Keys are the special-location ids and the room types from
@@ -87,6 +155,7 @@ export class SiloAudio {
     this.spaceSend.connect(convolver);convolver.connect(this.spaceReturn);this.spaceReturn.connect(this.master);
 
     this.noise=this.makeNoise(2.5);
+    this.bank=this.renderBank();
     // Deep electrical hum. The detuned pair beats slowly against itself so the
     // bed never sounds like a held test tone.
     this.humGain=c.createGain();this.humGain.gain.value=this.place.hum;this.humGain.connect(this.ambience);
@@ -113,6 +182,25 @@ export class SiloAudio {
     source.buffer=buffer;source.loop=true;filter.type='lowpass';filter.frequency.value=cutoff;filter.Q.value=q;gain.gain.value=level;
     source.connect(filter);filter.connect(gain);gain.connect(this.ambience);source.start();
     return gain;
+  }
+  // Four takes of every impact. One sample retriggered is the machine-gun
+  // footstep everybody recognises; four, pitched and levelled per hit, is not.
+  renderBank(){
+    const c=this.context,bank={},rng=(()=>{let seed=0x5f18a3;return()=>((seed=seed*1664525+1013904223>>>0)/4294967296);})();
+    for(const [name,spec] of Object.entries(IMPACTS)){
+      bank[name]=Array.from({length:4},()=>{
+        const data=renderImpact(spec,c.sampleRate,rng),buffer=c.createBuffer(1,data.length,c.sampleRate);
+        buffer.getChannelData(0).set?.(data);return buffer;
+      });
+    }
+    return bank;
+  }
+  // Fire one rendered impact.
+  hit(out,name,t,{gain=1,rate=1}={}){
+    const takes=this.bank?.[name];if(!takes)return;
+    const c=this.context,source=c.createBufferSource(),level=c.createGain();
+    source.buffer=takes[Math.floor(Math.random()*takes.length)];source.playbackRate.value=rate;level.gain.value=gain;
+    source.connect(level);level.connect(out);source.start(t);
   }
   makeNoise(seconds){
     const c=this.context,buffer=c.createBuffer(1,Math.floor(c.sampleRate*seconds),c.sampleRate),data=buffer.getChannelData(0);
@@ -224,10 +312,11 @@ export class SiloAudio {
 
   // --- one-shot helpers ---------------------------------------------------
   // Sends dry to the effects bus and wet to the shaft reverb, optionally panned.
-  voice(pan=0){
+  voice(pan=0,muffle=0){
     const c=this.context,out=c.createGain();out.gain.value=1;
     let tail=out;
-    if(pan&&c.createStereoPanner){const panner=c.createStereoPanner();panner.pan.value=clamp(pan,-1,1);out.connect(panner);tail=panner;}
+    if(muffle){const lowpass=c.createBiquadFilter();lowpass.type='lowpass';lowpass.frequency.value=muffle;lowpass.Q.value=.6;tail.connect(lowpass);tail=lowpass;}
+    if(pan&&c.createStereoPanner){const panner=c.createStereoPanner();panner.pan.value=clamp(pan,-1,1);tail.connect(panner);tail=panner;}
     tail.connect(this.sfx);tail.connect(this.spaceSend);
     return out;
   }
@@ -259,29 +348,33 @@ export class SiloAudio {
       const landed=contactCount>0&&contactCount!==this.lastContact;this.lastContact=contactCount;if(!landed)return;
     }else if(distance-this.lastStep<stride)return;
     this.lastStep=distance;this.foot=-this.foot;
-    const surface=SURFACES[this.stepSurface]||SURFACES.concrete,t=this.context.currentTime+.005;
-    const force=(running?1:.62)*rand(.86,1.14),out=this.voice(this.foot*.16);
-    this.tone(out,t,{frequency:surface.thump*rand(.93,1.08),to:surface.thump*.42,gain:surface.body*force,decay:surface.bodyDecay,attack:.006});
-    this.burst(out,t,{frequency:surface.tone*rand(.86,1.16),q:surface.q,gain:surface.noise*force,decay:surface.noiseDecay,rate:rand(.9,1.15)});
-    if(surface.ring)for(const [multiplier,level] of [[1,1],[1.68,.55]])
-      this.tone(out,t+.004,{frequency:rand(880,1180)*multiplier,gain:surface.ring*level*force,decay:rand(.16,.3),type:'triangle',attack:.002});
+    const material=FLOORS.includes(this.stepSurface)?this.stepSurface:'concrete';
+    const fall=FOOTFALL[material],t=this.context.currentTime+.005;
+    // A run lands harder and flatter; a walk rolls, so the toe follows the heel.
+    const force=(running?1:.66)*rand(.86,1.14),out=this.voice(this.foot*.18);
+    this.hit(out,material,t,{gain:fall.level*force,rate:rand(.92,1.09)});
+    if(!running&&fall.toe)this.hit(out,material,t+rand(.048,.086),{gain:fall.level*force*fall.toe*rand(.8,1.2),rate:rand(1.04,1.2)});
+    // Boots drag a little as they leave a loose floor.
+    if(material==='grit'||material==='rock')
+      this.burst(out,t+.03,{frequency:rand(1400,2600),to:rand(600,1000),q:.7,gain:.018*force,decay:.13,attack:.02,rate:rand(.7,1.1)});
   }
 
   // --- interactions -------------------------------------------------------
   door(open){
     if(!this.live())return;
     const t=this.context.currentTime+.005,out=this.voice(rand(-.25,.25));
-    this.burst(out,t,{frequency:3000,q:.9,type:'highpass',gain:.045,decay:.045,attack:.002});                    // latch
-    this.tone(out,t+.03,{frequency:open?74:64,to:open?44:36,gain:.075,decay:.34,attack:.008});                   // the leaf taking its weight
-    this.burst(out,t+.04,{frequency:open?520:900,to:open?900:420,q:.8,gain:.032,decay:.42,attack:.09,rate:.5});  // hinge scrape
-    if(!open)this.tone(out,t+.4,{frequency:150,to:70,gain:.05,decay:.16,attack:.004});                           // seating thunk
+    this.hit(out,'latch',t,{gain:.085,rate:rand(.94,1.08)});                                                     // the handle throwing
+    this.hit(out,'thunk',t+.035,{gain:.10,rate:open?rand(1.02,1.1):rand(.92,.98)});                              // the leaf taking its weight
+    this.burst(out,t+.05,{frequency:open?430:820,to:open?880:380,q:.9,gain:.030,decay:.44,attack:.10,rate:.45}); // hinge drag
+    if(!open){this.hit(out,'thunk',t+.42,{gain:.13,rate:rand(.86,.94)});this.hit(out,'latch',t+.47,{gain:.055,rate:.8});}
   }
   airlock(){
     if(!this.live())return;
     const t=this.context.currentTime+.005,out=this.voice(0);
-    this.tone(out,t,{frequency:58,to:31,gain:.09,decay:.55,attack:.01});
-    this.burst(out,t+.05,{frequency:2100,to:3400,q:.6,type:'highpass',gain:.05,decay:1.5,attack:.28});           // pressure equalising
-    this.tone(out,t+.1,{frequency:96,gain:.022,decay:1.6,type:'sawtooth',attack:.35});                           // door motor
+    this.hit(out,'clunk',t,{gain:.14,rate:rand(.94,1.04)});                                                      // dogs releasing
+    this.burst(out,t+.05,{frequency:1900,to:3600,q:.5,type:'highpass',gain:.052,decay:1.6,attack:.3});           // pressure equalising
+    this.tone(out,t+.1,{frequency:96,gain:.020,decay:1.6,type:'sawtooth',attack:.35});                           // door motor
+    this.hit(out,'clunk',t+1.75,{gain:.10,rate:rand(.8,.9)});                                                    // and seating at the end of travel
   }
   scrubStart(){
     if(!this.live()||this.scrub)return;
@@ -307,8 +400,8 @@ export class SiloAudio {
   torch(on){
     if(!this.live())return;
     const t=this.context.currentTime+.005,out=this.voice(.1);
-    this.burst(out,t,{frequency:on?4200:3400,q:1.4,type:'highpass',gain:.05,decay:.02,attack:.001});
-    this.tone(out,t+.012,{frequency:on?900:620,to:on?520:360,gain:.03,decay:.05,attack:.002,type:'square'});
+    this.hit(out,'switch',t,{gain:.075,rate:on?1.12:.9});
+    this.hit(out,'switch',t+.016,{gain:.032,rate:on?.86:1.06});      // the sprung return of a real toggle
   }
   travel(){
     if(!this.live())return;
@@ -318,10 +411,7 @@ export class SiloAudio {
   }
   click(){
     if(!this.live())return;
-    const c=this.context,t=c.currentTime+.002,osc=c.createOscillator(),gain=c.createGain();
-    osc.type='triangle';osc.frequency.value=210;
-    gain.gain.setValueAtTime(.0001,t);gain.gain.linearRampToValueAtTime(.045,t+.003);gain.gain.exponentialRampToValueAtTime(.0001,t+.085);
-    osc.connect(gain);gain.connect(this.sfx);osc.start(t);osc.stop(t+.1);   // interface stays dry
+    this.hit(this.sfx,'click',this.context.currentTime+.002,{gain:.055,rate:rand(.96,1.05)});   // interface stays dry
   }
 
   // --- occasional life ----------------------------------------------------
@@ -339,18 +429,18 @@ export class SiloAudio {
       gain.setTargetAtTime(this.place.wind,t+rand(2.5,4.5),1.8);
       return;
     }
-    const out=this.voice(rand(-.75,.75));
-    if(family==='water'&&Math.random()<.62){                       // a drip finding standing water
-      this.tone(out,t,{frequency:rand(1500,2500),to:rand(680,1080),gain:.045,decay:.15,attack:.002});
-      this.burst(out,t,{frequency:3300,q:2.2,gain:.018,decay:.05,attack:.002});
+    const out=this.voice(rand(-.75,.75),rand(1400,2600));
+    if(family==='water'&&Math.random()<.62){
+      // A falling drop rings the cavity it makes in the water, and that cavity
+      // shrinks — so the pitch climbs. Sweeping it down is the usual mistake.
+      this.tone(out,t,{frequency:rand(620,900),to:rand(1700,2600),gain:.05,decay:.13,attack:.0015});
+      this.burst(out,t,{frequency:3300,q:2.2,gain:.014,decay:.04,attack:.0015});
       return;
     }
-    if(family==='metal'||Math.random()<.45){                       // distant plate steel taking up load
-      this.burst(out,t,{frequency:rand(1200,2200),q:1.4,gain:.03,decay:.09,attack:.003});
-      for(const [multiplier,level] of [[1,.026],[1.71,.015],[2.64,.008]])
-        this.tone(out,t,{frequency:rand(320,520)*multiplier,gain:level,decay:rand(.7,1.5),attack:.006});
+    if(family==='metal'||Math.random()<.45){                       // plate steel taking up load
+      this.hit(out,'clank',t,{gain:.075,rate:rand(.72,1.3)});
       return;
     }
-    this.burst(out,t,{frequency:rand(170,260),to:rand(300,430),q:6,gain:.055,decay:rand(1.1,2.2),attack:.45,rate:.35}); // the shaft settling
+    this.burst(out,t,{frequency:rand(170,260),to:rand(300,430),q:6,gain:.06,decay:rand(1.1,2.2),attack:.45,rate:.35}); // the shaft settling
   }
 }
