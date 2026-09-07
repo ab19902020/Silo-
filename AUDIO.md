@@ -16,6 +16,7 @@ in-flight upgrades without a conflict.
 | `dist/assets/audio/manifest.json` | New. Provenance and encoding record. |
 | `tests/audio.test.mjs` | New. 6 tests guarding the above. |
 | `README.md` | A short **Sound** section; the credits line corrected. |
+| `.nojekyll` | New, empty. Stops GitHub Pages running the build through Jekyll. |
 
 **Not touched:** `world.js`, `physics.js`, `rooms.js`, `kit.js`, `data.js`,
 `characters.js`, `surface.js`, `rendering.js`, `top-floor.js`, `bazaar.js`,
