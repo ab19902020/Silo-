@@ -17,10 +17,14 @@ export function buildResidentModel(definition,{suit=false}={}){
   // the difference came straight off the leg, which is what the gait swings.
   // The boot mesh is unmoved — it hangs off this bone either way — so the sole
   // still meets the floor, the leg is simply the length it should be.
+  // Shoulder joints sat 47 cm apart, with a deltoid on top of that, so every
+  // resident was 65 cm across the shoulders on a 1.78 m frame — half a metre
+  // is the real figure. Arms hung clear of the ribs instead of resting on
+  // them, and the feet were planted 21 cm apart. All three read as a toy.
   rig('Hips',null,0,.91,0);rig('Spine','Hips',0,1.08,0);rig('Chest','Spine',0,1.31,0);rig('Neck','Chest',0,1.49,0);rig('Head','Neck',0,1.63,0);
   for(const [s,sign] of [['L',1],['R',-1]]){
-    rig('UpperArm'+s,'Chest',sign*.235*wide,1.39,0);rig('Forearm'+s,'UpperArm'+s,sign*.29*wide,1.115,.01);rig('Hand'+s,'Forearm'+s,sign*.31*wide,.865,.015);
-    rig('Thigh'+s,'Hips',sign*.105*wide,.90,0);rig('Shin'+s,'Thigh'+s,sign*.108*wide,.50,.012);rig('Foot'+s,'Shin'+s,sign*.108*wide,.080,.018);rig('Toe'+s,'Foot'+s,sign*.108*wide,.07,.155);rig('Coat'+s,'Hips',sign*.13,.85,-.04);
+    rig('UpperArm'+s,'Chest',sign*.178*wide,1.405,0);rig('Forearm'+s,'UpperArm'+s,sign*.196*wide,1.118,.011);rig('Hand'+s,'Forearm'+s,sign*.208*wide,.868,.017);
+    rig('Thigh'+s,'Hips',sign*.092*wide,.90,0);rig('Shin'+s,'Thigh'+s,sign*.095*wide,.50,.012);rig('Foot'+s,'Shin'+s,sign*.095*wide,.080,.018);rig('Toe'+s,'Foot'+s,sign*.095*wide,.07,.155);rig('Coat'+s,'Hips',sign*.118,.85,-.04);
   }
   const positions=[],normals=[],colors=[],weights=[],joints=[],indices=[],skin=new THREE.Color(a.skin??0xb79476),coat=new THREE.Color(suit?0xd4d0b6:a.coat??0x66715f),hair=new THREE.Color(a.hair??0x44352b),dark=new THREE.Color(0x242923),shirt=new THREE.Color(a.shirt??0xa29981);let helmetRange=null;
   const binding=(b,b2=null,w=1)=>[bones.indexOf(byName[b]),bones.indexOf(byName[b2||b]),clamp(w,0,1)];
@@ -39,28 +43,44 @@ export function buildResidentModel(definition,{suit=false}={}){
   const box=(x,y,z,w,h,d,color,b,rz=0)=>{const g=new THREE.BoxGeometry(w,h,d,1,1,1);g.rotateZ(rz);g.translate(x,y,z);add(g,color,b,null,true);};
   const tube=(from,to,r0,r1,color,b,segments=12)=>{const delta=to.clone().sub(from),g=new THREE.CylinderGeometry(r1,r0,delta.length(),segments,5);g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0,1,0),delta.clone().normalize()));g.translate(...from.clone().addScaledVector(delta,.5).toArray());add(g,color,b,null,true);};
   const torus=(x,y,z,r,t,color,b,rx=0,sx=1,sz=1)=>{const g=new THREE.TorusGeometry(r,t,5,24);g.rotateX(rx);g.scale(sx,1,sz);g.translate(x,y,z);add(g,color,b);};
-  const profile=[[.83,.16],[.9,.185],[1.0,.17],[1.14,female?.155:.19],[1.29,.22],[1.37,.215],[1.44,.13],[1.47,.07]];
-  const torsoGeo=new THREE.LatheGeometry(profile.map(([y,r])=>new THREE.Vector2(r*wide,y)),24);torsoGeo.scale(1,1,.64);add(torsoGeo,coat,torso,null,true);
-  ell(0,.88,0,.18*wide,.105,.12,coat,'Hips');
+  // 44 cm across the chest and 28 cm through it: a barrel. A clothed chest is
+  // about 37 by 26, so the profile comes in and the section is rounded out,
+  // and the lathe now stops below the jaw so there is a neck to see.
+  const profile=[[.83,.152],[.9,.174],[1.0,.161],[1.14,female?.138:.154],[1.29,.181],[1.36,.179],[1.41,.150],[1.44,.096],[1.462,.062]];
+  const torsoGeo=new THREE.LatheGeometry(profile.map(([y,r])=>new THREE.Vector2(r*wide,y)),24);torsoGeo.scale(1,1,.72);add(torsoGeo,coat,torso,null,true);
+  ell(0,.893,0,.166*wide,.096,.108,coat,'Hips');
   for(const [s,sign] of [['L',1],['R',-1]]){
     const hip=points['Thigh'+s],knee=points['Shin'+s],ankle=points['Foot'+s],upper=points['UpperArm'+s],elbow=points['Forearm'+s],hand=points['Hand'+s];
     const legSkin=y=>y>.53?binding('Thigh'+s,'Shin'+s,clamp((y-.45)/.13,0,1)):binding('Shin'+s,'Foot'+s,clamp((y-.10)/.13,0,1));
     const pants=suit?coat:coat.clone().multiplyScalar(.64);
-    tube(ankle,knee,.059,.079,pants,legSkin);tube(knee,hip,.078,.10*wide,pants,legSkin);
-    ell(knee.x,knee.y,knee.z,.078,.085,.079,pants,legSkin);
-    ell(ankle.x,.07,.065,.074,.069,.147,dark,'Foot'+s);box(ankle.x,.024,.057,.142,.03,.267,dark,'Foot'+s);
-    if(suit){for(const y of [.2,.24])torus(ankle.x,y,0,.063,.014,dark,'Shin'+s,Math.PI/2,1,1);}
+    tube(ankle,knee,.048,.064,pants,legSkin);tube(knee,hip,.064,.089*wide,pants,legSkin);
+    ell(knee.x,knee.y,knee.z,.065,.074,.068,pants,legSkin);
+    ell(ankle.x,.07,.063,.059,.064,.140,dark,'Foot'+s);box(ankle.x,.023,.055,.116,.028,.262,dark,'Foot'+s);
+    if(suit){for(const y of [.2,.24])torus(ankle.x,y,0,.053,.012,dark,'Shin'+s,Math.PI/2,1,1);}
     const armSkin=y=>y>1.1?binding('UpperArm'+s,'Forearm'+s,clamp((y-1.07)/.09,0,1)):binding('Forearm'+s,'Hand'+s,clamp((y-.85)/.09,0,1));
-    tube(hand,elbow,.043,.058,a.shortSleeves&&!suit?skin:coat,armSkin);tube(elbow,upper,.058,.086*wide,coat,armSkin);ell(upper.x,upper.y,upper.z,.09*wide,.086,.08,coat,'UpperArm'+s);
+    tube(hand,elbow,.033,.046,a.shortSleeves&&!suit?skin:coat,armSkin);tube(elbow,upper,.046,.060*wide,coat,armSkin);ell(upper.x,upper.y-.016,upper.z,.063*wide,.055,.062,coat,'UpperArm'+s);
     if(a.tattoo&&!suit)for(let i=0;i<5;i++)box(hand.x,1.04+i*.025,.066,.035,.004,.003,dark,'Forearm'+s,i%2?.6:-.6);
-    const handColor=suit?dark:skin;ell(hand.x,.831,.018,.039,.061,.029,handColor,'Hand'+s);
+    const handColor=suit?dark:skin;ell(hand.x,.831,.018,.041,.064,.030,handColor,'Hand'+s);
     for(let f=0;f<4;f++){const xx=hand.x+(f-1.5)*.018,len=[.067,.076,.07,.055][f];tube(V(xx,.793,.02),V(xx,.793-len,.029),.0085,.0068,handColor,'Hand'+s,7);}
     tube(V(hand.x-sign*.027,.85,.034),V(hand.x-sign*.057,.799,.044),.013,.008,handColor,'Hand'+s,7);
-    torus(hand.x,.898,.015,.046,.009,suit?dark:coat.clone().multiplyScalar(.7),'Forearm'+s,Math.PI/2);
+    torus(hand.x,.898,.015,.039,.008,suit?dark:coat.clone().multiplyScalar(.7),'Forearm'+s,Math.PI/2);
     if(!suit){box(sign*.116*wide,1.273,.142,.095,.115,.015,coat.clone().multiplyScalar(.82),'Chest');box(sign*.116*wide,1.326,.154,.099,.012,.013,shirt,'Chest');}
     if(a.outfit==='work'||suit){box(hip.x,.70,.085,.12,.18,.014,coat.clone().multiplyScalar(.78),'Thigh'+s);}
   }
-  ell(0,1.49,0,.059,.105,.055,skin,'Neck');
+  ell(0,1.49,0,.058,.107,.055,skin,'Neck');
+  // The skull was 20.4 cm across on a 1.77 m frame. A real one is 15.5, and a
+  // head a third too wide is most of what makes a figure read as a toy: every
+  // feature on it is placed off the same half-width, so the whole block —
+  // skull, ears, eyes, hair, glasses — is narrowed together afterwards rather
+  // than by editing two dozen constants that have to stay consistent.
+  const headStart=positions.length/3;
+  const narrowHead=()=>{
+    for(let i=headStart;i<positions.length/3;i++){
+      positions[i*3]*=.79;normals[i*3]/=.79;
+      const n=Math.hypot(normals[i*3],normals[i*3+1],normals[i*3+2])||1;
+      normals[i*3]/=n;normals[i*3+1]/=n;normals[i*3+2]/=n;
+    }
+  };
   const fw=(a.faceWidth||1)*(female?.96:1),age=a.age||0;
   ell(0,1.634,0,.102*fw,.131,.090,skin,'Head',24);
   ell(0,1.58,.023,.087*fw,.071,.075,skin,'Head',20);
@@ -90,14 +110,15 @@ export function buildResidentModel(definition,{suit=false}={}){
     if(a.hairStyle==='longCurls')for(const sign of [-1,1])for(let i=0;i<22;i++)ell(sign*(.100+(i%3)*.017),1.64-Math.floor(i/3)*.034,-.008+(i%3)*.004,.025,.027,.035,hair,i<9?'Head':'Chest',8);
   }
   if(a.glasses){for(const sign of [-1,1])torus(sign*.047,1.647,.1,.028,.0028,dark,'Head',0,1,.8);box(0,1.647,.101,.038,.003,.004,dark,'Head');}
+  narrowHead();
   if(suit){
     const start=indices.length;
-    ell(0,1.62,0,.18,.192,.155,coat,'Head',24);
+    ell(0,1.62,0,.147,.186,.152,coat,'Head',24);
     // Opaque reflective visor avoids sorting artefacts and hides the head.
-    ell(0,1.631,.111,.142,.134,.069,new THREE.Color(0x555543),'Head',24);
-    torus(0,1.473,0,.118,.035,dark,'Neck',Math.PI/2,1,.85);
+    ell(0,1.631,.108,.113,.128,.070,new THREE.Color(0x555543),'Head',24);
+    torus(0,1.473,0,.098,.030,dark,'Neck',Math.PI/2,1,.85);
     helmetRange=[start,indices.length-start];
-    box(0,1.19,-.161,.30,.40,.16,dark,'Chest');box(0,1.20,-.25,.265,.32,.07,coat,'Chest');
+    box(0,1.19,-.156,.26,.40,.15,dark,'Chest');box(0,1.20,-.238,.232,.32,.065,coat,'Chest');
     for(const sign of [-1,1]){box(sign*.115,1.19,.151,.04,.46,.023,dark,torso);box(sign*.092,1.085,.172,.065,.045,.016,new THREE.Color(0xb29b62),torso);}
     torus(.18,1.22,-.03,.096,.019,dark,'Chest',0,.8,1);
   }else{
@@ -111,7 +132,7 @@ export function buildResidentModel(definition,{suit=false}={}){
         const long=a.outfit==='robe',g=new THREE.LatheGeometry([[long?.33:.60,.205],[.78,.20],[.98,.18]].map(([y,r])=>new THREE.Vector2(r*wide,y)),18,sign<0?0:Math.PI,Math.PI-.055);g.scale(1,1,.68);add(g,coat,y=>binding('Coat'+s,'Hips',clamp((.98-y)/.16,0,1)),null,true);
       }
     }
-    torus(0,.953,0,.181*wide,.018,dark,'Hips',Math.PI/2,1,.63);box(0,.953,.126,.050,.042,.018,new THREE.Color(0x9c8a60),'Hips');
+    torus(0,.953,0,.170*wide,.017,dark,'Hips',Math.PI/2,1,.70);box(0,.953,.126,.050,.042,.018,new THREE.Color(0x9c8a60),'Hips');
     if(a.outfit==='uniform'){ell(.112,1.312,.159,.024,.033,.006,new THREE.Color(0xbca16a),'Chest',10);box(-.17,.92,.044,.065,.12,.075,dark,'Hips');}
     if(a.outfit==='work'){box(-.18,.91,.01,.075,.13,.10,new THREE.Color(0x67513c),'Hips');for(let i=0;i<3;i++)box(-.193+i*.013,.96,.066,.009,.15,.015,dark,'Hips');}
     if(a.chain){for(let i=0;i<17;i++){const t=i/16*Math.PI;ell(Math.cos(t)*.098,1.424-Math.sin(t)*.136,.155,.012,.012,.004,new THREE.Color(0xa98c52),'Chest',8);}ell(0,1.267,.16,.025,.035,.006,new THREE.Color(0xb6a167),'Chest');}
@@ -139,8 +160,8 @@ export function poseResident(actor,pose,time,dt=0,speed=0){
     // Sit the pelvis on the seat itself, not a fraction of the sitter's height:
     // a tall person and a short one both put their backside at chair height.
     m.bones.Hips.position.y=.525;
-    for(const s of ['L','R']){m.rotate('Thigh'+s,-Math.PI*.48);m.rotate('Shin'+s,Math.PI*.49);m.rotate('Foot'+s,-.03);m.rotate('UpperArm'+s,-.8);m.rotate('Forearm'+s,-.75);m.rotate('Hand'+s,1.5);}
-    m.rotate('Head',.10);
+    for(const s of ['L','R']){m.rotate('Thigh'+s,-Math.PI*.48);m.rotate('Shin'+s,Math.PI*.49);m.rotate('Foot'+s,-.03);m.rotate('UpperArm'+s,-.19);m.rotate('Forearm'+s,-1.28);m.rotate('Hand'+s,1.12);}
+    m.rotate('Spine',.055);m.rotate('Head',.07);
   }else if(pose==='work'){m.rotate('Spine',.09);m.rotate('UpperArmR',-.42);m.rotate('ForearmR',-.92+Math.sin(time*2.3)*.17);m.rotate('UpperArmL',-.28);m.rotate('ForearmL',-.75);m.rotate('Head',.10);}
   else if(pose==='talk'){m.rotate('ForearmR',-.58+Math.sin(time*1.1)*.16);m.rotate('UpperArmR',-.17);}
   else if(pose==='watch'){m.rotate('Head',-.04);}
