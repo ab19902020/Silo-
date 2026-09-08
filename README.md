@@ -13,10 +13,20 @@ A browser-based, first- and third-person reconstruction of the television silo, 
 
 The cast is modeled from reference costumes and roles, with approximate faces. The public material does not establish a complete surveyed set plan or the exact warning-sign wording, so this is **not a verified one-to-one replica**. See [release details and limits](docs/living-silo.md) and the [22 reusable rigged GLBs](models/README.md).
 
-## Latest visibility, staircase and void repairs
+## Latest stairwell rebuild
+
+- Rebuilt every guard in the stairwell to the supplied reference frames: one cast concrete section — a plumb wall with a half-round coping — swept along the helix, round the landing corner and out along the bridge. No metal posts, caps or handrails remain in the shaft, and the treads are bare concrete wedges.
+- Closed the open corner at every landing. The flight's coping now leaves the helix on a tangent and arrives on the bridge guard's line, on the opposite side of the bridge at each end, the way the stair changes direction as it climbs.
+- Added the lit newel column at each bridge end, continuous through all 144 storeys with one collar per level.
+- Rebuilt the distant level of detail to the same rise, guard and columns, so a level no longer changes shape as it crosses the detail boundary.
+- Walkable widths, floor heights and the rest of the silo are unchanged.
+
+See [the stairwell notes and reference limits](docs/stairwell-guards.md).
+
+## Earlier visibility, staircase and void repairs
 
 - Character garments now render both faces as opaque surfaces, preventing reverse-facing coat panels from disappearing. The close camera hides the whole avatar before it cuts through a coat.
-- Rebuilt the staircase guards as continuous rising concrete and metal surfaces. Posts, caps and rails share the same clear opening at every landing.
+- Rebuilt the staircase guards as continuous rising surfaces sharing one clear opening at every landing. Superseded by the stairwell rebuild above, which replaced the metal rails and posts with cast concrete.
 - Preserved the camp’s bed, shelf, table and relics, moving the room to the sheltered perimeter of the excavation. Its ledge entrance is an actual opening.
 - Replaced the caged descent with a rung ladder and climbing poses for all three characters. Approach and press **Use / E** to descend or return; you can look around during the climb.
 - The ladder leads to supported water, a round tunnel through the cavern wall and the sealed door at its far end. Walk the complete route and return without a teleport.
