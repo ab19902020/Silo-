@@ -10,9 +10,17 @@
 //                                     <- sfx      -> footsteps, doors, interface
 //                                     <- space    -> convolved shaft reverb
 //
-// Everything except the soundtrack is synthesised at runtime, so the only
-// bundled audio file is the theme itself.
+// Everything except the two music files is synthesised at runtime.
+//
+// There are two of them and they have different jobs. The bed is the ten
+// minute loop that plays everywhere in the silo, forever. The opening piece is
+// a one-shot: it starts with the cleaning speech, turns into the score, and
+// runs for ten and a half minutes from the moment the directory book is picked
+// up; when it ends the bed takes over and loops from there on. The two are
+// mastered to the same loudness (-14.7 and -14.8 LUFS) so the hand-over is not
+// a step in level.
 const MUSIC_URL = new URL('../assets/audio/silo-18-theme.mp3', import.meta.url);
+const OPENING_URL = new URL('../assets/audio/silo-18-opening.mp3', import.meta.url);
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,rand=(a,b)=>a+Math.random()*(b-a);
 const LEVEL=2.2;   // output trim ahead of the limiter; the sub-bus balance is set below
 
@@ -123,7 +131,7 @@ const PLACES={
 export class SiloAudio {
   constructor(){
     this.context=null;this.enabled=true;this.musicVolume=.148;this.lastStep=0;this.foot=1;
-    this.musicHeld=false;this.musicOffset=0;this.musicBuffer=null;this.musicCue=null;this.musicFade=5;
+    this.musicHeld=false;this.musicOffset=0;this.musicBuffer=null;this.musicCue=null;this.musicFade=5;this.openingPlaying=false;this.openingElement=null;
     this.place=INTERIOR;this.stepSurface='concrete';this.musicRequested=false;this.musicPlaying=false;this.scrub=null;
   }
 
@@ -249,10 +257,10 @@ export class SiloAudio {
     if(end-start<length*.9)return {start:0,end:buffer.duration};   // not codec padding; leave the buffer alone
     return {start:start/buffer.sampleRate,end:(end+1)/buffer.sampleRate};
   }
-  // The theme is a two minute cycle laid down five times. Holding it back and
-  // then starting it from a named second is what lets the opening be cut to it:
-  // see MUSIC_CUE in opening.js. Nothing else in the silo cares where in the
-  // bed it comes in.
+  // Hold the looping bed back. The cafeteria is silent while you are looking
+  // for the directory book, and once you have it the opening piece owns the
+  // music until it finishes. Nothing else in the silo cares where in the bed it
+  // comes in, so the offset machinery below is only ever used for that.
   holdMusic(){this.musicHeld=true;}
   // Start, or restart, the soundtrack `offset` seconds into the loop. If the
   // ten minute file is still decoding, the cue time is remembered and the wait
@@ -267,7 +275,45 @@ export class SiloAudio {
       this.musicElement.play().catch(error=>{this.musicError=error;});this.musicPlaying=true;this.fadeMusicIn();
     }
   }
-  releaseMusic(){if(this.musicHeld)this.startMusicAt(0,5);}
+  // Start the bed, unless the opening piece is still running — it owns the
+  // music until it ends, and it ends by calling this itself.
+  releaseMusic(){if(this.openingPlaying)return;if(this.musicHeld)this.startMusicAt(0,5);}
+  // The opening piece. It streams through a media element rather than being
+  // decoded into a buffer: a one-shot needs no sample-accurate loop point, it
+  // starts the instant it is asked to instead of after a ten minute decode —
+  // which matters, because it has to begin on the frame the book is picked up
+  // and the scene on the cafeteria screen is cut against it — and it costs
+  // essentially no memory. See the beat sheet in opening.js.
+  playOpeningTheme(){
+    if(!this.context)return;
+    this.musicHeld=true;this.stopMusic();
+    if(!this.openingElement){
+      if(typeof Audio!=='function'){this.musicHeld=false;this.releaseMusic();return;}
+      try{
+        const element=new Audio(OPENING_URL);element.preload='auto';
+        this.context.createMediaElementSource(element).connect(this.musicTone);
+        element.addEventListener('ended',()=>{this.openingPlaying=false;this.releaseMusic();});
+        this.openingElement=element;
+      }catch(error){this.musicError=error;this.musicHeld=false;this.releaseMusic();return;}
+    }
+    this.openingPlaying=true;this.musicFade=2.5;
+    try{this.openingElement.currentTime=0;}catch{}
+    this.openingElement.play().catch(error=>{this.musicError=error;this.openingPlaying=false;this.releaseMusic();});
+    this.fadeMusicIn();
+  }
+  stopOpeningTheme(){
+    this.openingPlaying=false;
+    if(this.openingElement){try{this.openingElement.pause();this.openingElement.currentTime=0;}catch{}}
+  }
+  // The scene stops advancing when the game is paused or the tab is hidden, and
+  // a media element does not stop with a suspended AudioContext the way a
+  // buffer source does. Hold it with the scene or the two drift apart.
+  setStoryPaused(value){
+    const element=this.openingElement;
+    if(!element||!this.openingPlaying)return;
+    if(value){if(!element.paused)element.pause();}
+    else if(element.paused)element.play().catch(()=>{});
+  }
   stopMusic(){try{this.musicSource?.stop();}catch{}this.musicSource=null;this.musicPlaying=false;}
   async loadMusic(){
     if(this.musicRequested||!this.context)return;

@@ -16,10 +16,31 @@
     "encoder": "ffmpeg 6.1.1 libmp3lame -q:a 5 -ar 44100 -ac 2 -map_metadata -1",
     "encodeNote": "Re-encoded from the supplied 24 MB master for web delivery. Measured spectral error against the master is 0.006 with full bandwidth to 22 kHz retained; the 8.1 MiB result is fetched in the background so it never delays entering the silo.",
     "loop": "Genuinely gapless. The master runs at full level from its first sample to its last and the butt-join discontinuity (0.006) is smaller than the largest neighbouring-sample delta in the material (0.023), so it joins onto itself inaudibly. audio.js still trims any codec padding at runtime before setting loopStart/loopEnd.",
-    "playback": "Decoded once into an AudioBuffer and looped on a single source node, so travelling between levels never restarts or ducks it."
+    "playback": "Decoded once into an AudioBuffer and looped on a single source node, so travelling between levels never restarts or ducks it.",
+    "role": "The looping bed. Plays everywhere in the silo, forever, and takes over when the opening piece ends."
   },
   "synthesised": {
-    "note": "Everything else you hear is generated at runtime in dist/src/audio.js — footsteps, doors, the airlock, the lens wipe, interface sounds, the hum, ventilation, wind, turbine throb, the shaft reverb and the occasional creaks, drips and distant clanks. No other audio file is bundled.",
+    "note": "Everything else you hear is generated at runtime in dist/src/audio.js — footsteps, doors, the airlock, the lens wipe, interface sounds, the hum, ventilation, wind, turbine throb, the shaft reverb and the occasional creaks, drips and distant clanks. No audio file other than the two music tracks is bundled.",
     "reverb": "A 2.1 s synthetic impulse response built at load time; no reverb sample is shipped."
+  },
+  "opening": {
+    "id": "silo-18-opening",
+    "file": "silo-18-opening.mp3",
+    "title": "Silo 18 — the cleaning speech into the score",
+    "role": "One shot. Starts on the frame the directory book is picked up; the cafeteria scene is cut against it. When it ends the looping bed takes over.",
+    "origin": "Supplied by the repository owner. Not taken from the television production.",
+    "source": "f547a379-Silo_Speech_Into_Game_Soundtrack_Seamless_Mix.mp3_Remastered.mp3",
+    "sourceSha256": "933d5bf21f06e631ef5f9e00cfb7038e7d3ef92c157e2487c752df8b551d4c0e",
+    "sourceFormat": "MPEG-1 Layer III, ~181 kbps, 48 kHz stereo with embedded cover art, 14,808,666 bytes",
+    "fileSha256": "5563bb504a112243d3c1858a8ac0c7b402761b9600b7dd5b0a46c6e90a2c408d",
+    "format": "MPEG-1 Layer III, VBR ~116 kbps, 44.1 kHz stereo",
+    "bytes": 9443037,
+    "seconds": 653.61,
+    "integratedLoudness": "-14.8 LUFS",
+    "truePeak": "-0.9 dBFS",
+    "encoder": "ffmpeg 6.1.1 libmp3lame -q:a 5 -ar 44100 -ac 2 -vn -map_metadata -1",
+    "encodeNote": "Re-encoded from the supplied 14.1 MiB master for web delivery; the embedded cover art is dropped. Mastered within 0.1 LU of the looping bed, so the hand-over between them is not a step in level.",
+    "structure": "Spoken word runs to about 0:54 and the score is established by 0:57. Its loudest bar is 1:19, with a second swell at 1:27-1:29. The opening scene beats in dist/src/opening.js are cut to those timings.",
+    "playback": "Streamed through a media element rather than decoded into a buffer: a one shot needs no sample-accurate loop point, it starts the instant it is asked to rather than after a ten minute decode, and it costs no memory. It is held with the scene when the game is paused or the tab is hidden, because a media element does not stop with a suspended AudioContext."
   }
 }

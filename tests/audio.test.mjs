@@ -5,6 +5,7 @@ import { SiloAudio } from '../dist/src/audio.js';
 
 const manifest=JSON.parse(fs.readFileSync('dist/assets/audio/manifest.json','utf8'));
 const themePath=`dist/assets/audio/${manifest.soundtrack.file}`;
+const openingPath=`dist/assets/audio/${manifest.opening.file}`;
 
 // A recording Web Audio stand-in. Every node reports what it was asked to do,
 // so the module can be exercised without a browser: the real mix levels are
@@ -37,12 +38,40 @@ function silo(){
   return {audio,context};
 }
 
-test('the soundtrack ships, is web weight and matches its manifest',()=>{
-  const file=fs.readFileSync(themePath);
-  assert.equal(file.length,manifest.soundtrack.bytes);
-  assert.ok(file.length<10*1024*1024,`soundtrack is ${(file.length/1048576).toFixed(1)} MiB; keep it under 10`);
-  assert.equal(file.subarray(0,3).toString('latin1'),'ID3');
-  assert.match(fs.readFileSync('dist/src/audio.js','utf8'),new RegExp(manifest.soundtrack.file));
+test('both music files ship, are web weight and match their manifest',()=>{
+  const source=fs.readFileSync('dist/src/audio.js','utf8');
+  for(const entry of [manifest.soundtrack,manifest.opening]){
+    const file=fs.readFileSync(`dist/assets/audio/${entry.file}`);
+    assert.equal(file.length,entry.bytes,`${entry.file} is ${file.length} bytes, manifest says ${entry.bytes}`);
+    assert.ok(file.length<10*1024*1024,`${entry.file} is ${(file.length/1048576).toFixed(1)} MiB; keep it under 10`);
+    assert.equal(file.subarray(0,3).toString('latin1'),'ID3');
+    assert.match(source,new RegExp(entry.file));
+  }
+  // The bed takes over from the opening piece part way through a session. If
+  // they are not mastered to the same level that hand-over is an audible step.
+  const level=e=>Number(e.integratedLoudness.replace(' LUFS',''));
+  assert.ok(Math.abs(level(manifest.soundtrack)-level(manifest.opening))<1,
+    `the two tracks are ${Math.abs(level(manifest.soundtrack)-level(manifest.opening)).toFixed(1)} LU apart`);
+});
+
+test('the opening piece is held back, owns the music while it runs, and hands over to the bed',()=>{
+  const {audio}=silo();
+  audio.holdMusic();
+  assert.equal(audio.musicHeld,true);
+  // While the cafeteria is silent, nothing may start the bed by accident.
+  audio.playMusic({numberOfChannels:1,length:44100,sampleRate:44100,duration:1,getChannelData:()=>new Float32Array(44100).fill(.5)});
+  assert.equal(audio.musicPlaying,false,'the bed started while the music was held');
+  // With the opening piece running, releasing the gate must not stack the bed
+  // on top of it; only the piece ending may do that.
+  audio.openingPlaying=true;
+  audio.releaseMusic();
+  assert.equal(audio.musicHeld,true,'the bed started underneath the opening piece');
+  audio.openingPlaying=false;
+  audio.releaseMusic();
+  assert.equal(audio.musicHeld,false);
+  audio.stopOpeningTheme();
+  assert.equal(audio.openingPlaying,false);
+  audio.setStoryPaused(true);audio.setStoryPaused(false);
 });
 
 test('an absent Web Audio implementation is survivable, not fatal',()=>{

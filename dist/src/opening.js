@@ -2,15 +2,15 @@ import * as THREE from '../vendor/three.module.js';
 import { clone } from '../vendor/SkeletonUtils.js';
 import { RESIDENT_CAST } from './resident-data.js';
 import { createResident, poseResident } from './resident-model.js';
-import { topPoint, groundY } from './surface.js';
+import { topPoint, groundY, surfaceY } from './surface.js';
 import { Kit, addSign } from './kit.js';
 
-export const OPENING_DURATION=86;
+export const OPENING_DURATION=90;
 export const BOOK_POSITION=Object.freeze([2,.855,22]);
 export const CAFETERIA_START=Object.freeze([2,0,19.8]);
 const clamp=THREE.MathUtils.clamp,lerp=THREE.MathUtils.lerp,ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
-const at=(x,z)=>new THREE.Vector3(x,groundY(x,z),z);
-const followGround=p=>{p.y=groundY(p.x,p.z);return p;};
+const at=(x,z)=>new THREE.Vector3(x,surfaceY(x,z),z);
+const followGround=p=>{p.y=surfaceY(p.x,p.z);return p;};
 const UP=new THREE.Vector3(0,1,0);
 // The slope under the tree runs at about one in four. A body laid out flat on
 // the horizontal is buried to the shoulder at the uphill end, so anything that
@@ -21,28 +21,30 @@ function groundNormal(x,z,e=.6){
 // The one dead tree stands on the crater's near shoulder, and Allison has been
 // lying at the foot of it since her own cleaning. Holston climbs the slope to
 // her, gets the helmet off, goes down, and drags himself the last four metres.
-// The beats are cut against the soundtrack: MUSIC_CUE below names the point in
-// the theme this scene starts from, so its quiet passage falls on the helmet
-// and its loudest bar lands as he collapses.
+// The beats are cut against the opening piece; the note below the cast list
+// gives the timings that decision rests on.
 export const ALLISON_REST=Object.freeze([48,69.6]);
-// Where in the theme the scene starts. Measured off the master: the two minute
-// cycle peaks hardest at 0:85 and falls to its quietest at 0:80, so cueing at
-// 0:17 drops the swell on the moment he first appears on the screen, empties
-// the room out under the helmet coming off at t=63, and puts the loudest bar
-// of the piece on t=68 — three seconds into the fall, as he goes down beside
-// her. Change one and you have to change the other.
-export const MUSIC_CUE=17;
+// The scene is cut against assets/audio/silo-18-opening.mp3, which starts on
+// the frame the book is picked up. Measured off that file: spoken word runs to
+// about 0:54, the score is established by 0:57, its loudest bar is 1:19 and a
+// second swell runs 1:27-1:29. So the climb out, the clean and the long walk up
+// the hill all play under the speech; the score arrives as he reaches the tree
+// and the helmet comes off; the peak lands as he drags himself the last few
+// metres to her; and the swell is on him going still. Retime one and you have
+// to retime the other.
 export function cleaningSample(time){
-  const t=clamp(time,0,OPENING_DURATION),entry=at(26,108),lens=at(26.3,117.61),slope=at(44.6,73.9),beside=at(47.4,70.2);
-  if(t<10)return {phase:'emerge',position:followGround(entry.lerp(lens,t/10)),heading:0,speed:.96};
-  if(t<22)return {phase:'clean',position:lens,heading:0,progress:(t-10)/12,speed:0};
+  const t=clamp(time,0,OPENING_DURATION),entry=at(26,100),lens=at(26.3,117.61),slope=at(44.6,73.9),beside=at(47.4,70.2);
+  // He starts eight metres down the incline, so the sensor watches him climb
+  // out of the hatch rather than appear beside it.
+  if(t<12)return {phase:'emerge',position:followGround(entry.lerp(lens,t/12)),heading:0,speed:1.49};
+  if(t<26)return {phase:'clean',position:lens,heading:0,progress:(t-12)/14,speed:0};
   const heading=Math.atan2(slope.x-lens.x,slope.z-lens.z);
-  if(t<26)return {phase:'turn',position:lens,heading:heading*ease((t-22)/4),speed:0};
-  if(t<58)return {phase:'walk',position:followGround(lens.lerp(slope,(t-26)/32)),heading,speed:1.48};
-  if(t<65)return {phase:'helmet',position:slope,heading,progress:(t-58)/7,speed:0};
+  if(t<30)return {phase:'turn',position:lens,heading:heading*ease((t-26)/4),speed:0};
+  if(t<60)return {phase:'walk',position:followGround(lens.lerp(slope,(t-30)/30)),heading,speed:1.60};
+  if(t<68)return {phase:'helmet',position:slope,heading,progress:(t-60)/8,speed:0};
   const finalHeading=Math.atan2(beside.x-slope.x,beside.z-slope.z);
-  if(t<77)return {phase:'crawl',position:followGround(slope.lerp(beside,(t-65)/12)),heading:finalHeading,progress:(t-65)/12,speed:.39};
-  return {phase:'rest',position:beside,heading:finalHeading*(1-ease((t-77)/5)),progress:ease((t-77)/5),speed:0};
+  if(t<80)return {phase:'crawl',position:followGround(slope.lerp(beside,(t-68)/12)),heading:finalHeading,progress:(t-68)/12,speed:.39};
+  return {phase:'rest',position:beside,heading:finalHeading*(1-ease((t-80)/5)),progress:ease((t-80)/5),speed:0};
 }
 
 export function createDirectoryBook(m){
@@ -106,7 +108,7 @@ function posedCleaner(actor,sample,time,dt){
     m.aim(upper,fore,shoulder.clone().addScaledVector(direction,along).addScaledVector(bend,lift));m.aim(fore,hand,shoulder.clone().addScaledVector(direction,distance));m.setWorldQuaternion(hand,actor.model.getWorldQuaternion(new THREE.Quaternion()));
   }
   actor.model.updateWorldMatrix(true,true);
-  actor.model.traverse(o=>{if(o.isSkinnedMesh&&Array.isArray(o.material))o.material[1].visible=!(time>62);});
+  actor.model.traverse(o=>{if(o.isSkinnedMesh&&Array.isArray(o.material))o.material[1].visible=!(time>64);});
   actor.cloth.visible=sample.phase==='clean';
 }
 
@@ -134,8 +136,8 @@ export class CafeteriaOpening{
     const [holston,allison]=this.cleaners,sample=cleaningSample(this.time);
     posedCleaner(holston,sample,this.time,dt);holston.root.visible=this.hasBook;
     posedCleaner(allison,{phase:'rest',position:at(...ALLISON_REST),heading:.36,progress:1,speed:0},0,0);allison.cloth.visible=false;
-    if(this.watching||this.directoryReady)this.surface.cleanliness=this.time<10?.28:this.time<22?lerp(.28,1,(this.time-10)/12):1;
-    this.helmet.visible=this.time>62&&this.hasBook;this.helmet.position.copy(at(45.2,74.4)).add(new THREE.Vector3(0,.18,0));this.helmet.rotation.set(.4,.8,1.3);this.helmetFeed.visible=this.helmet.visible;this.helmetFeed.position.copy(this.helmet.position);this.helmetFeed.quaternion.copy(this.helmet.quaternion);
+    if(this.watching||this.directoryReady)this.surface.cleanliness=this.time<12?.28:this.time<26?lerp(.28,1,(this.time-12)/14):1;
+    this.helmet.visible=this.time>64&&this.hasBook;this.helmet.position.copy(at(45.2,74.4)).add(new THREE.Vector3(0,.18,0));this.helmet.rotation.set(.4,.8,1.3);this.helmetFeed.visible=this.helmet.visible;this.helmetFeed.position.copy(this.helmet.position);this.helmetFeed.quaternion.copy(this.helmet.quaternion);
     for(const actor of this.cleaners){
       actor.feed.visible=actor.root.visible;actor.feed.position.copy(actor.root.position);actor.feed.quaternion.copy(actor.root.quaternion);
       const feedModel=actor.feed.children[0];feedModel.position.copy(actor.model.position);feedModel.quaternion.copy(actor.model.quaternion);

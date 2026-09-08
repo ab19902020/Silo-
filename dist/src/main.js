@@ -8,7 +8,7 @@ import { topLocal, topPoint } from './surface.js';
 import { CharacterCast, PLAYABLE_CHARACTERS } from './characters.js';
 import { LadderClimb } from './climbing.js';
 import { Population } from './population.js';
-import { CafeteriaOpening, CAFETERIA_START, MUSIC_CUE } from './opening.js';
+import { CafeteriaOpening, CAFETERIA_START } from './opening.js';
 import { RESIDENT_CAST } from './resident-data.js';
 
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic');
@@ -45,12 +45,13 @@ function renderCharacters(){
 }
 // The soundtrack belongs to the story. Nothing plays while you are looking for
 // the book: the cafeteria is quiet, the way the room is quiet in the show. The
-// theme comes in the moment the book is picked up, cued so that its loudest bar
-// lands as Holston goes down on the hill. Anyone who skips or has already seen
-// the opening just gets the bed from the top.
+// opening piece — the cleaning speech, turning into the score — starts on the
+// frame the book is picked up, and the scene is cut against it. When it ends,
+// ten and a half minutes later, the looping bed takes over for good. Anyone who
+// skips, or has already seen the opening, just gets the bed from the top.
 function syncMusicGate(){
   if(!opening)return;
-  if(opening.state==='find-book'){audio.holdMusic();audio.stopMusic?.();}
+  if(opening.state==='find-book'){audio.holdMusic();audio.stopMusic?.();audio.stopOpeningTheme?.();}
   else audio.releaseMusic?.();
 }
 function openingChanged(state){
@@ -134,7 +135,7 @@ const inspectionText={
 function use(){
   if(opening?.state==='read-book'&&!paused()){requestDirectory();return;}
   if(!interaction||paused()||body.climbing)return;
-  if(interaction.action==='opening-book'){audio.click();audio.startMusicAt(MUSIC_CUE,2.5);opening.takeBook();notify('Holston is leaving. Watch the cafeteria screen.');return;}
+  if(interaction.action==='opening-book'){audio.click();audio.playOpeningTheme();opening.takeBook();notify('Holston is leaving. Watch the cafeteria screen.');return;}
   if(interaction.action?.startsWith('resident-')){const def=RESIDENT_CAST.find(d=>d.id===interaction.action.slice(9));if(def)notify(`${def.name} — ${def.role}. Use Character to explore as them.`);return;}
   if(interaction.ladder){
     const ladder=world.underground.ladders.find(l=>l.id===interaction.ladder);
@@ -293,6 +294,7 @@ function frame(){
   }else if(!started){
     const p=topPoint(...CAFETERIA_START);camera.position.copy(topPoint(0,1.85,10));camera.lookAt(topPoint(0,3.2,39));world.update(dt,p);population.update(dt,body,false,cast.selected);
   }else{world.update(dt,body.position);cast?.update(0,body,started);}
+  audio.setStoryPaused?.(document.hidden||(opening?.watching&&paused()));
   if(time-lastHUD>.25){updateHUD();lastHUD=time;}
   world.surface.renderFeed(renderer,time);
   if(cleanWasRunning!==world.surface.cleaning){if(world.surface.cleaning)audio.scrubStart();else{audio.scrubStop();notify('Camera lens clean. The outside view is clear on the cafeteria screens.');}}cleanWasRunning=world.surface.cleaning;

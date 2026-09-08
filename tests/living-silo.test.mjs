@@ -8,7 +8,7 @@ import { RESIDENT_CAST } from '../dist/src/resident-data.js';
 import { Population,populationRecords,CROWD_LIMITS } from '../dist/src/population.js';
 import { PLAYABLE_CHARACTERS } from '../dist/src/characters.js';
 import { CafeteriaOpening,cleaningSample,OPENING_DURATION,CAFETERIA_START,BOOK_POSITION } from '../dist/src/opening.js';
-import { topPoint,groundY } from '../dist/src/surface.js';
+import { topPoint,groundY,surfaceY } from '../dist/src/surface.js';
 import { tunnelPoint } from '../dist/src/void-access.js';
 import { residentGLB } from '../scripts/export-residents.mjs';
 import { readGLB,geometryGLTF } from '../scripts/glb.mjs';
@@ -56,8 +56,8 @@ test('the opening starts at an accessible book, plays once, releases the directo
   const phases=new Set();let previous=cleaningSample(0).position,reach=0,blanks=0,covered=false;
   const camera=world.surface.camera,corner=new THREE.Vector3();
   for(let i=0;i<OPENING_DURATION*30;i++){
-    opening.update(1/30);const s=cleaningSample(opening.time);phases.add(s.phase);assert.ok(s.position.distanceTo(previous)<.08,'Holston teleported');assert.ok(Math.abs(s.position.y-groundY(s.position.x,s.position.z))<1e-6,'Holston left the terrain');previous=s.position;
-    if(opening.time>12&&opening.time<20){
+    opening.update(1/30);const s=cleaningSample(opening.time);phases.add(s.phase);assert.ok(s.position.distanceTo(previous)<.08,'Holston teleported');assert.ok(Math.abs(s.position.y-surfaceY(s.position.x,s.position.z))<1e-6,'Holston left the ground');previous=s.position;
+    if(opening.time>14&&opening.time<24){
       // The wipe has to be a wipe: the hand stays within one stretched arm of
       // the sensor it is cleaning, and the rag it is holding has to cross the
       // lens close enough to fill the whole frame — that momentary blackout on

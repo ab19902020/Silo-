@@ -29,29 +29,42 @@ export function groundY(x,z){
 // so what reached the screen was the aliasing rather than the shading.
 const terrainShade=(x,y,z)=>.80+.055*Math.sin(x*.031+z*.023)+.03*Math.cos(z*.047-x*.038)+(y-14)*.0055;
 
+// Height of the walking surface: inside the open part of the ramp cutout that
+// is the incline itself, everywhere else it is the terrain. The cleaners walk
+// on rails rather than through the collider, so they need this directly.
+export const surfaceY=(x,z)=>inRampCutout(x,z)?rampY(z):groundY(x,z);
+
 export class SurfaceWorld {
   constructor(m){
     this.root=new THREE.Group();this.root.position.set(SILO.deckOuter,levelY(1),0);this.root.rotation.y=Math.PI/2;
     this.solids=[];this.cleanliness=.28;this.cleaning=false;this.cleanTime=0;this.lastFeed=-100;this.m=m;
-    const k=new Kit(m),rng=random(180018),box=(mat,x,y,z,w,h,d,solid=false)=>{k.box(mat,x,y,z,w,h,d);if(solid)this.solids.push({x,z,w,d,y0:y-h/2,y1:y+h/2});};
+    // The open end of the ramp is built into its own group. The sensor looks
+    // straight over it, so it has to appear in the cafeteria panorama as well
+    // as in the exterior: a cleaner climbs out of this hole in full view, and
+    // the picture used to patch it over with flat ground so they simply
+    // materialised. `near` decides which side of that line each piece lands on.
+    const k=new Kit(m),mouth=new Kit(m),rng=random(180018);
+    const near=z=>z>=90,pick=z=>near(z)?mouth:k;
+    const box=(mat,x,y,z,w,h,d,solid=false)=>{pick(z).box(mat,x,y,z,w,h,d);if(solid)this.solids.push({x,z,w,d,y0:y-h/2,y1:y+h/2});};
+    const mouthRoot=new THREE.Group();mouthRoot.name='ramp-mouth';this.root.add(mouthRoot);
     // Real inclined slab, with a matching analytic collision surface.
-    const vertices=[23,0,64,29,0,64,29,14,108,23,14,108],g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,2,0,2,18,0,18],2));g.setIndex([0,2,1,0,3,2]);g.computeVertexNormals();const slab=new THREE.Mesh(g,m.concrete);slab.receiveShadow=true;this.root.add(slab);
+    const vertices=[23,0,64,29,0,64,29,14,108,23,14,108],g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,2,0,2,18,0,18],2));g.setIndex([0,2,1,0,3,2]);g.computeVertexNormals();const slab=new THREE.Mesh(g,m.concrete);slab.receiveShadow=true;mouthRoot.add(slab);
     for(let z=64;z<108;z+=2){
-      const y=rampY(z+1);for(const x of [22.75,29.25]){const bottom=y-.35,top=Math.min(y+5.15,14.5);box('concrete',x,(bottom+top)/2,z+1,.5,top-bottom,2.03,true);k.box('darkMetal',x<26?23.05:28.95,y+.16,z+1,.075,.08,2.03);}
+      const y=rampY(z+1);for(const x of [22.75,29.25]){const bottom=y-.35,top=Math.min(y+5.15,14.5);box('concrete',x,(bottom+top)/2,z+1,.5,top-bottom,2.03,true);pick(z+1).box('darkMetal',x<26?23.05:28.95,y+.16,z+1,.075,.08,2.03);}
       if(z<94){box('darkConcrete',26,y+4.95,z+1,6.8,.45,2.04);if(z%6===4){for(const x of [23.05,28.95]){box('darkMetal',x,y+2.5,z+.8,.12,.95,.45);box('coldLamp',x<26?23.13:28.87,y+2.5,z+.8,.04,.8,.19);}}}
-      for(const x of [23.45,28.55])k.box('yellow',x,rampY(z)+.022,z,.11,.025,.75);
+      for(const x of [23.45,28.55])pick(z).box('yellow',x,rampY(z)+.022,z,.11,.025,.75);
     }
     // Trailer reference: slatted incline, chamfered tunnel shoulders, exposed
     // transverse steel ribs, cyan wall strips and small ceiling indicators.
-    for(let z=64.2;z<108;z+=.24)k.box('metal',26,rampY(z)+.014,z,5.55,.018,.045);
-    for(let z=65;z<95;z+=2){const y=rampY(z);for(const side of [-1,1]){const x=26+side*2.93;k.beam('darkMetal',[x,y+.1,z],[x,y+3.15,z],.065);k.beam('darkMetal',[x,y+3.15,z],[26+side*1.9,y+4.72,z],.065);k.box('metal',26+side*2.43,y+3.94,z,1.9,.08,1.91,0,0,-side*.99);for(let j=0;j<8;j++)k.box('darkMetal',x,y+.5+j*.28,z,.025,.035,1.75);}k.beam('darkMetal',[24.1,y+4.72,z],[27.9,y+4.72,z],.065);if(z%6===5)k.box('redLamp',26,y+4.69,z,.12,.035,.12);}
+    for(let z=64.2;z<108;z+=.24)pick(z).box('metal',26,rampY(z)+.014,z,5.55,.018,.045);
+    for(let z=65;z<95;z+=2){const y=rampY(z),r=pick(z);for(const side of [-1,1]){const x=26+side*2.93;r.beam('darkMetal',[x,y+.1,z],[x,y+3.15,z],.065);r.beam('darkMetal',[x,y+3.15,z],[26+side*1.9,y+4.72,z],.065);r.box('metal',26+side*2.43,y+3.94,z,1.9,.08,1.91,0,0,-side*.99);for(let j=0;j<8;j++)r.box('darkMetal',x,y+.5+j*.28,z,.025,.035,1.75);}r.beam('darkMetal',[24.1,y+4.72,z],[27.9,y+4.72,z],.065);if(z%6===5)r.box('redLamp',26,y+4.69,z,.12,.035,.12);}
     // The exit is sunken, edged by a low rounded curb. Its reinforced hatch
     // leaves stand open to each side; there is no tall above-ground doorway.
-    for(const x of [22.35,29.65])k.bevel('concrete',x,14.27,101.5,.75,.55,15);
-    k.bevel('concrete',26,14.28,108.6,8,.56,.85);
+    for(const x of [22.35,29.65])mouth.bevel('concrete',x,14.27,101.5,.75,.55,15);
     // Split curb leaves the walking route open at the ramp lip.
-    k.parts.pop();for(const x of [22.7,29.3])k.bevel('concrete',x,14.28,108.6,1.4,.56,.85);
-    for(const side of [-1,1]){const hatch=new THREE.Group(),hk=new Kit(m);hk.bevel('metal',side*1.7,0,0,3.35,.17,12.4);for(let j=0;j<9;j++){const z=-5.5+j*1.4;hk.beam('darkMetal',[side*.15,.13,0],[side*3.2,.13,z],.046);}hatch.add(hk.group());hatch.position.set(26+side*3.25,14.45,101.8);hatch.rotation.z=-side*.35;this.root.add(hatch);}
+    for(const x of [22.7,29.3])mouth.bevel('concrete',x,14.28,108.6,1.4,.56,.85);
+    for(const side of [-1,1]){const hatch=new THREE.Group(),hk=new Kit(m);hk.bevel('metal',side*1.7,0,0,3.35,.17,12.4);for(let j=0;j<9;j++){const z=-5.5+j*1.4;hk.beam('darkMetal',[side*.15,.13,0],[side*3.2,.13,z],.046);}hatch.add(hk.group());hatch.position.set(26+side*3.25,14.45,101.8);hatch.rotation.z=-side*.35;mouthRoot.add(hatch);}
+    mouthRoot.add(mouth.group());
     // A squat, buttressed sensor monument beyond the lip of the ramp.
     const sensorZ=119,base=groundY(26,sensorZ);
     k.bevel('concrete',26,base+.1,sensorZ,6.7,.2,3.1);k.bevel('concrete',26,base+1.35,sensorZ+.45,5.6,2.5,.65);k.bevel('concrete',26,base+2.8,sensorZ,6.25,.35,2.4);
@@ -80,11 +93,18 @@ export class SurfaceWorld {
     this.root.add(k.group());
     // Sparse moving dust is visible in both views without adding inhabitants.
     const dustGeo=new THREE.BufferGeometry(),dp=[];for(let i=0;i<180;i++)dp.push(26+(rng()-.5)*180,15+rng()*18,130+(rng()-.5)*160);dustGeo.setAttribute('position',new THREE.Float32BufferAttribute(dp,3));this.dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({color:0xbdb8a0,size:.035,transparent:true,opacity:.23,depthWrite:false}));this.dust.name='wind-dust';this.root.add(this.dust);
-    this.feedScene=new THREE.Scene();this.feedScene.background=new THREE.Color(0x929fa3);this.feedScene.fog=new THREE.FogExp2(0x929fa3,.0029);this.feedRoot=new THREE.Group();this.feedRoot.position.copy(this.root.position);this.feedRoot.rotation.copy(this.root.rotation);for(const child of this.root.children)if((child.name!=='barren-ground'||child===this.ground)&&['barren-ground','surface-scree','dead-tree','wind-dust'].includes(child.name))this.feedRoot.add(child.clone(true));// The production display is a composed panorama. Fill the hatch cutout in
-    // that panorama while the physical ramp remains open in the exterior. The
-    // patch laps over the cutout edge and sits a shade below it, so no hairline
-    // of sky shows along the seam.
-    const cover=new THREE.PlaneGeometry(6.6,14.8,4,8);cover.rotateX(-Math.PI/2);cover.translate(26,0,101);for(let i=0;i<cover.attributes.position.count;i++){const p=cover.attributes.position;p.setY(i,groundY(p.getX(i),p.getZ(i))-.03);}cover.computeVertexNormals();const cap=new THREE.Mesh(cover,this.groundMaterial);cap.name='barren-ground';{const p=cover.attributes.position,colors=[];for(let i=0;i<p.count;i++){const shade=terrainShade(p.getX(i),p.getY(i),p.getZ(i));colors.push(shade,shade*.97,shade*.91);}cap.geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));}this.feedRoot.add(cap);
+    this.feedScene=new THREE.Scene();this.feedScene.background=new THREE.Color(0x929fa3);this.feedScene.fog=new THREE.FogExp2(0x929fa3,.0029);this.feedRoot=new THREE.Group();this.feedRoot.position.copy(this.root.position);this.feedRoot.rotation.copy(this.root.rotation);
+    // The sensor looks straight out over the hatch, so the hatch belongs in the
+    // picture. It used to be patched over with a flat sheet of ground, which
+    // meant a cleaner walked up the ramp and out of solid earth. The real mouth
+    // is in the panorama now: they climb out of a hole, in view, from the
+    // moment their helmet clears the lip.
+    for(const child of this.root.children)if(['barren-ground','surface-scree','dead-tree','wind-dust','ramp-mouth'].includes(child.name)&&(child.name!=='barren-ground'||child===this.ground))this.feedRoot.add(child.clone(true));
+    // Only the mouth of the ramp is in the panorama; the covered tunnel behind
+    // it is closed off with an unlit plate. From out here in daylight that is
+    // what the throat looks like anyway, and it stops the sensor seeing all
+    // the way down an eighty metre tube to nothing.
+    {const throat=new THREE.Mesh(new THREE.PlaneGeometry(6.9,5.6),new THREE.MeshBasicMaterial({color:0x15181a}));throat.position.set(26,rampY(89.5)+2.5,89.5);throat.name='ramp-mouth';throat.userData.ownedGeometry=throat.userData.ownedMaterial=true;this.feedRoot.add(throat);}
     this.feedDust=this.feedRoot.getObjectByName('wind-dust');this.feedScene.add(this.feedRoot,new THREE.HemisphereLight(0xdddcd0,0x79705c,2));const sun=new THREE.DirectionalLight(0xf3e6ce,2.2);sun.position.copy(topPoint(-20,100,200));this.feedScene.add(sun);
     this.camera=new THREE.PerspectiveCamera(24,30/6.8,.02,2500);this.camera.position.copy(this.sensorPoint);this.camera.lookAt(topPoint(26,base+2.2,0));
   }
