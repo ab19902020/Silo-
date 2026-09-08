@@ -22,7 +22,12 @@ jobs:
       - run: npm test
       - run: npm run validate
 
+  # Only main publishes. The same commit is pushed to main and to the working
+  # branch, and two runs claiming the github-pages environment at once means one
+  # of them is rejected outright — which is how a green build ends up not
+  # deploying. Branch pushes still run the checks above.
   publish:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
