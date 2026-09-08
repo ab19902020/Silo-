@@ -134,7 +134,7 @@ const inspectionText={
 function use(){
   if(opening?.state==='read-book'&&!paused()){requestDirectory();return;}
   if(!interaction||paused()||body.climbing)return;
-  if(interaction.action==='opening-book'){audio.click();opening.takeBook();audio.startMusicAt(MUSIC_CUE,2.5);notify('Holston is leaving. Watch the cafeteria screen.');return;}
+  if(interaction.action==='opening-book'){audio.click();audio.startMusicAt(MUSIC_CUE,2.5);opening.takeBook();notify('Holston is leaving. Watch the cafeteria screen.');return;}
   if(interaction.action?.startsWith('resident-')){const def=RESIDENT_CAST.find(d=>d.id===interaction.action.slice(9));if(def)notify(`${def.name} — ${def.role}. Use Character to explore as them.`);return;}
   if(interaction.ladder){
     const ladder=world.underground.ladders.find(l=>l.id===interaction.ladder);
