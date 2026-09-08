@@ -31,7 +31,8 @@ export function buildTopFloor(m) {
   for(const x of [-17.45,17.45])for(const z of [14,22,36]){k.bevel('brass',x,3.3,z,.22,.75,.35);k.sphere('lamp',x,3.4,z,.18,.27,.18);}
   for(const z of [12.8,17,22,27,32])for(const x of [-11,-5,2,9]){
     table(k,x,z,3.3,1.4);solids.push({x,z,w:3.3,d:1.4,y0:0,y1:.9});
-    for(const dx of [-1.05,0,1.05]){chair(k,x+dx,z-1.15);chair(k,x+dx,z+1.15,Math.PI);for(const side of [-1,1])solids.push({x:x+dx,z:z+side*1.15,w:.52,d:.58,y0:0,y1:1.18});}
+    // Both rows face the screen wall at +z, the way a room built around a view is seated.
+    for(const dx of [-1.05,0,1.05]){chair(k,x+dx,z-1.15);chair(k,x+dx,z+1.15);for(const side of [-1,1])solids.push({x:x+dx,z:z+side*1.15,w:.48,d:.5,y0:0,y1:.96});}
     k.cylinder('white',x+.6,.91,z,.11,.13);k.cylinder('white',x-.6,.84,z,.22,.02);
   }
   for(const x of [-15.8,-12.5,-9.2]){box('green',x,.7,7,3.1,1.4,1.5);k.bevel('metal',x,1.45,7,3.2,.1,1.6);}
@@ -51,6 +52,12 @@ export function buildTopFloor(m) {
   floor(26,49,8,10);wall(30,49,.3,10,4.7);wall(22,45,.3,2,4.7);wall(22,53,.3,2,4.7);box('darkConcrete',26,4.85,49,8,.3,10,false);
   floor(18,49,8,6);wall(14,49,.3,6,3.7);wall(18,46,8,.3,3.7);wall(18,52,8,.3,3.7);box('pale',18,3.85,49,8,.3,6,false);
   bed(k,15.3,49);k.box('wood',19.5,.5,51.5,2,.15,.5);label('HOLDING 3',21.8,2.8,47,2,.35,Math.PI/2);
+  // The cell carries the same exterior feed as the cafeteria wall. It is the
+  // one thing the condemned are given to look at, and it faces the bunk.
+  const cellFrame=new THREE.Mesh(new THREE.BoxGeometry(.12,1.5,2.4),m.darkMetal);cellFrame.position.set(14.28,1.85,49);cellFrame.userData.ownedGeometry=true;root.add(cellFrame);
+  const cellScreen=new THREE.Mesh(new THREE.PlaneGeometry(2.16,1.28),new THREE.MeshBasicMaterial({color:0xffffff}));
+  cellScreen.rotation.y=Math.PI/2;cellScreen.position.set(14.35,1.85,49);cellScreen.userData.ownedGeometry=true;cellScreen.userData.ownedMaterial=true;root.add(cellScreen);
+  fixture(k,17,3.6,49,2.2);
   // Bars leave a true 1.5 m opening. Empty benches and folded equipment only.
   for(const z of [46.2,46.45,46.7,47,47.25,50.75,51,51.3,51.6,51.8])k.cylinder('darkMetal',22,1.6,z,.026,3.2);
   box('green',29,.55,49,1,1.1,5);for(const z of [47.5,49,50.5]){k.bevel('linen',29,1.18,z,.72,.13,.65);k.torus('brass',29,1.27,z,.17,.035,Math.PI/2);}
@@ -75,5 +82,5 @@ export function buildTopFloor(m) {
   for(const x of [24,28])pipe(k,x,59,4.4,9,.08,'metal');
   for(let z=55;z<64;z+=.35)k.box('darkMetal',26,.008,z,4.8,.012,.06);
   dressCafeteria(k,root);root.add(k.group());
-  root.userData={...root.userData,solids,floors,interactions,animated,doors,type:'cafeteria',outsideScreen:screen,bespoke:true};return root;
+  root.userData={...root.userData,solids,floors,interactions,animated,doors,type:'cafeteria',outsideScreen:screen,extraScreens:[cellScreen],bespoke:true};return root;
 }

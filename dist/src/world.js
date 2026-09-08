@@ -157,7 +157,7 @@ export class SiloWorld {
     for(const n of [level-1,level,level+1])if(n>=1&&n<=144)this.loadLevel(n);
     for(const [n,e]of this.loaded)if(Math.abs(n-level)>2){disposeGroup(e.root);this.loaded.delete(n);}
     this.doors=[...this.loaded.values()].flatMap(e=>e.doors);this.interactions=[...this.loaded.values()].flatMap(e=>e.interactions);
-    this.animated=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>r.userData.animated));this.screens=[...this.loaded.values()].flatMap(e=>e.rooms.map(r=>r.userData.outsideScreen).filter(Boolean));
+    this.animated=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>r.userData.animated));this.screens=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>[r.userData.outsideScreen,...(r.userData.extraScreens||[])])).filter(Boolean);
     this.underground.root.visible=!!special&&special!=='generator';this.generator.root.visible=special==='generator';this.surface.root.visible=!special;
     if(special==='generator')this.animated=this.generator.animated;
     this.rebuildCollision();

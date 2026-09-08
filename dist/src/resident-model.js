@@ -136,7 +136,9 @@ export function poseResident(actor,pose,time,dt=0,speed=0){
   m.neutral();m.time=time;m.rotate('Spine',Math.sin(time*1.8)*.006);m.rotate('Head',Math.sin(time*.53+actor.heading)*.026,new THREE.Vector3(0,1,0));
   for(const s of ['L','R'])m.rotate('Forearm'+s,-.16);
   if(pose==='sit'||pose==='read'){
-    m.bones.Hips.position.y-=actor.definition.height*.255;
+    // Sit the pelvis on the seat itself, not a fraction of the sitter's height:
+    // a tall person and a short one both put their backside at chair height.
+    m.bones.Hips.position.y=.525;
     for(const s of ['L','R']){m.rotate('Thigh'+s,-Math.PI*.48);m.rotate('Shin'+s,Math.PI*.49);m.rotate('Foot'+s,-.03);m.rotate('UpperArm'+s,-.8);m.rotate('Forearm'+s,-.75);m.rotate('Hand'+s,1.5);}
     m.rotate('Head',.10);
   }else if(pose==='work'){m.rotate('Spine',.09);m.rotate('UpperArmR',-.42);m.rotate('ForearmR',-.92+Math.sin(time*2.3)*.17);m.rotate('UpperArmL',-.28);m.rotate('ForearmL',-.75);m.rotate('Head',.10);}

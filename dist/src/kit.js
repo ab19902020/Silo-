@@ -209,8 +209,11 @@ export function desk(k,x,z,angle=0){
   for(const dx of [-.33,.33]){k.cylinder('brass',x+dx,.94,z-.35,.04,.09);}
   for(let j=0;j<8;j++)k.box('black',x-.30+j*.085,1.465,z-.18,.035,.008,.24,angle);
 }
+// A dining chair, at the size one actually is: seat 0.45 m off the floor and a
+// back reaching 0.95. It was built with the seat at 0.52 and the back at 1.19,
+// which is why everyone sitting in one looked like a child in it.
 export function chair(k,x,z,rot=0){
-  const base=new Kit(k.m);base.bevel('wood',0,.48,0,.5,.07,.51);base.bevel('wood',0,.89,-.23,.5,.6,.055);for(const dx of [-.2,.2]){base.beam('metal',[dx,.05,.24],[dx,.45,.19],.024);base.beam('metal',[dx,.05,-.25],[dx,1.08,-.21],.024);base.beam('metal',[dx,.22,-.23],[dx,.22,.22],.016);for(const y of [.7,1.08])base.cylinder('brass',dx,y,-.273,.019,.02,Math.PI/2);}
+  const base=new Kit(k.m);base.bevel('wood',0,.425,0,.46,.06,.46);base.bevel('wood',0,.72,-.21,.46,.46,.05);for(const dx of [-.185,.185]){base.beam('metal',[dx,.05,.215],[dx,.40,.175],.022);base.beam('metal',[dx,.05,-.225],[dx,.95,-.195],.022);base.beam('metal',[dx,.20,-.21],[dx,.20,.20],.015);for(const y of [.60,.94])base.cylinder('brass',dx,y,-.248,.018,.02,Math.PI/2);}
   temp.position.set(x,0,z);temp.rotation.set(0,rot,0);temp.scale.set(1,1,1);temp.updateMatrix();for(const p of base.parts)k.parts.push({...p,matrix:temp.matrix.clone().multiply(p.matrix)});
 }
 export function table(k,x,z,w=2,d=1){k.bevel('wood',x,.79,z,w,.09,d);for(const dz of [-d*.2,d*.2])k.box('darkMetal',x,.837,z+dz,w-.08,.007,.008);for(const dx of [-w*.4,w*.4]){for(const dz of [-d*.35,d*.35])k.beam('metal',[x+dx*.94,.04,z+dz*1.2],[x+dx,.75,z+dz],.028);k.beam('metal',[x+dx,.69,z-d*.35],[x+dx,.69,z+d*.35],.025);}k.beam('metal',[x-w*.4,.59,z],[x+w*.4,.59,z],.024);}
