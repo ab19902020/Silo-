@@ -1,3 +1,157 @@
+# Opening scene, seating, screens and figure proportions — 8 September 2026
+
+**Note for Astra (and anyone else in this repo at the same time.)** Four jobs,
+kept to numbers and small local additions so they land beside in-flight work.
+Nothing was restructured. `npm test` is 62 passing.
+
+## Files touched
+
+| File | Change |
+| --- | --- |
+| `dist/src/surface.js` | `groundY` is a crater profile; one dead tree; lens shader blurs and darkens; ground shading and texture scale widened; feed camera near plane. |
+| `dist/src/opening.js` | Beats retimed to 86 s and cut against the theme; the wipe; `MUSIC_CUE`; `ALLISON_REST`; bodies lie along the slope normal. |
+| `dist/src/audio.js` | `holdMusic` / `startMusicAt` / `releaseMusic` / `stopMusic`. Nothing else in the mix changed. |
+| `dist/src/main.js` | `syncMusicGate()`, one call in `openingChanged` and `begin`, one on the book pickup. |
+| `dist/src/kit.js` | `chair()` at real dining-chair dimensions. |
+| `dist/src/top-floor.js` | Every chair faces the screen; screens in the holding cell and the sheriff's station. |
+| `dist/src/world.js` | Screen collection reads `extraScreens`; outdoor fog matched to the feed. |
+| `dist/src/resident-model.js` | Proportions. Bone *lengths* untouched. |
+| `dist/src/population.js` | NPC walking pace. |
+
+**Not touched:** `physics.js`, `rooms.js`, `passages.js`, `bazaar.js`,
+`underground.js`, `void-access.js`, `generator-hall.js`, `characters.js`,
+`rendering.js`, `materials.js`, `data.js`, `locomotion.js`, `style.css`,
+`index.html`, or any asset.
+
+## 1. Seats, and where the screens are
+
+Chairs were 0.515 m to the seat and 1.19 m to the top of the back — a good 6 cm
+taller than a real dining chair — while the sitting pose put the hips at 0.449,
+*below* the seat surface. Everyone was sunk into the furniture and looked
+child-sized beside it. The chair is now 0.45 / 0.95 and the pose lands the hips
+at 0.525, so a resident rests on the seat with both feet on the floor.
+`poseResident` sets that as an absolute height, not a fraction of the sitter's
+height, so a tall person and a short one both sit at chair height.
+
+Half the cafeteria was seated with its back to the view. Every chair now faces
+`+z`, toward the wall screen.
+
+Wool only ever describes two wall-screens: the **cafeteria** and the **holding
+cell**, and the second is a plot point — the condemned is given the same view
+they are about to be sent into. The cell had no screen at all; it now has one on
+the wall facing the bunk. A smaller **duty monitor** in the sheriff's station is
+a placement rather than a claim, and the comment there says so.
+
+`world.js` collects `[outsideScreen, ...extraScreens]` from every room, so any
+room you add can join the feed by listing a mesh in `extraScreens`.
+
+## 2. The opening scene
+
+Six things, all the same kind of wrong — the shot did not read from inside.
+
+**The wipe never touched the lens.** The hand was solved to a point 2 cm in
+front of the sensor camera, inside its 8 cm near plane, so at the moment of
+contact the cloth was clipped out of the panorama entirely. The stroke now
+crosses the glass and, at mid-sweep, reaches up over the housing and presses
+the rag flat. That lens is a 24° slot: a rag a hand's width from it fills the
+whole picture, so **the cafeteria screen blanks for about a third of a second
+on every pass**. The reach is at the limit of a 1.78 m man's arm on purpose —
+the lens sits half a metre above his shoulder. The rag grew from 15 cm to
+28 × 40 cm, which is what it takes to cover a lens.
+
+**The dirty lens was not dirty.** It tinted about 15% and left the picture pin
+sharp, so the clean had nothing to open up. The pass now scatters (six taps on
+a widening ring), absorbs (darker, greyer) and soils in two grains.
+
+**You could see past the hill, because there was no hill.** A 6.4 m rim on a
+flat plain that fell away again behind it. `groundY` is now a crater: flat for
+30 m, then climbing on every bearing and never coming back down. Checked
+numerically — no radius past the crest has a higher elevation from the sensor
+than the crest itself, so **nothing beyond the hill is visible from anywhere in
+the bowl**. The near shoulder is the rise Holston walks up and he breaks the
+skyline at the top of it.
+
+**There were four dead trees.** There is one.
+
+**Allison lay 5.5 m from it on open ground.** She is at the foot of the tree
+(`ALLISON_REST`); Holston climbs to her, takes the helmet off, goes down, and
+drags himself the last four metres to lie beside her. Bodies also lay flat on
+the horizontal while the hill runs at one in four, which buried the uphill end
+to the shoulder — anything that lies down now settles along the ground's own
+normal (`groundNormal` in `opening.js`).
+
+**The soundtrack played from the moment you pressed Begin,** over a room that
+is supposed to be quiet. See below.
+
+Beats are now 0–10 emerge, 10–22 clean, 22–26 turn, 26–58 walk, 58–65 helmet,
+65–77 crawl, 77–86 rest. `OPENING_DURATION` is 86.
+
+## 3. The music is cued to the scene
+
+`audio.holdMusic()` keeps the theme silent while the state is `find-book`;
+`audio.startMusicAt(MUSIC_CUE, 2.5)` starts it on the book pickup. The ten
+minute master is five passes of a two minute cycle whose loudest bar is at
+0:85 and whose quietest is at 0:80 — measured off the file, not guessed.
+`MUSIC_CUE = 17` therefore drops the swell on the moment Holston appears on the
+screen, empties the room out under the helmet coming off at t=63, and puts the
+peak on t=68, three seconds into the fall. **Change one of those and you have
+to change the other.**
+
+If the ten minute decode is still running when the book is picked up, the cue
+time is remembered and the wait is added on, so a slow decode delays the music
+without sliding it out of step. Skipping the opening, or replaying with the
+opening already seen, just starts the bed from the top as before.
+
+## 4. Figure proportions
+
+Measured against a clothed adult on a 1.75–1.85 m frame, almost every section
+of the resident mesh was too big, all in the same direction:
+
+| | was | real |
+| --- | --- | --- |
+| shoulder joints + deltoid | 65 cm across | 48 |
+| chest | 44 wide × 28 deep | 37 × 26 |
+| skull | 20.4 cm across | 15.5 |
+| upper arm | 17 cm | 12 |
+| forearm at elbow / wrist | 11.6 / 8.6 | 9.2 / 6.6 |
+| calf | 15.8 cm | 12 |
+| stance | 21 cm apart | 19 |
+| boot | 14.8 cm across | 11 |
+
+A head a third too wide is most of what makes a figure read as a toy. Every
+feature is placed off the same half-width, so the whole head block is narrowed
+together after it is built (`narrowHead()`) rather than by editing two dozen
+constants that then have to be kept consistent by hand — **if you add anything
+to the head, add it inside that block or it will not scale with the skull.**
+
+The lathe also carried the coat to y=1.47, over the jaw, so there was no neck;
+it now closes below it. The deltoid was a sphere sitting proud of the shoulder
+line and is flattened under it. Sitting, everyone held both arms straight out
+in front of them; they now rest on the thighs.
+
+**Bone lengths are untouched** — leg length, hip and knee heights and the ankle
+are exactly where the gait work left them, so `locomotion.js` is unaffected.
+
+## Things that will bite you
+
+- `groundY` is used for collision *and* for the visible mesh, and the outer
+  terrain tiles sample every 16 m. Anything you add to it on a wavelength
+  shorter than about 100 m aliases out there. The `ridges` term is deliberately
+  200–350 m and fades out past the fog.
+- The bowl is centred on (26, 139) in surface-local coordinates, and `entrance`
+  flattens everything within 24 m of the hatch at (26, 108). That apron is what
+  keeps the ramp exit at y=14; do not remove it.
+- The cleaners are on rails — `cleaningSample` sets position directly and the
+  test asserts they never leave the terrain and never move more than 8 cm in a
+  frame. If you retime a beat, check both.
+- `tests/living-silo.test.mjs` now projects the rag through the surface camera
+  and asserts the feed is fully covered on some frames and not most of them. If
+  you move the sensor, the wipe or the cloth, that is the test that will fail.
+
+## Verify
+
+`npm test` — 62 passing. `npm run validate` for the module graph.
+
 # Current void and staircase correction — 8 September 2026
 
 The caged stair and tower-base door described in the historical notes below have been replaced. The camp is now on the excavation perimeter; a working rung ladder reaches the water, and the round hidden tunnel connects continuously through the cavern wall to its sealed far door. `climbing.js` and `CharacterBody` now support actual ladder traversal. Below-silo floor and wall colliders also honour their supplied rotation. See [current repair notes](docs/visibility-stairs-void.md).

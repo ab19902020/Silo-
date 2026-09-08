@@ -47,6 +47,12 @@ export function buildTopFloor(m) {
   for(const x of [22,28])for(const z of [29,35]){desk(k,x,z);chair(k,x,z+1);solids.push({x,z,w:2,d:1,y0:0,y1:1.5});}
   for(const x of [20,22,24]){box('green',x,1.25,42,1.6,2.5,.7);for(const y of [.4,.9,1.4,1.9]){k.box('brass',x,y,41.61,.28,.04,.03);}}
   label('SHERIFF’S STATION',26,3.8,24.2,6,.7,0);for(const z of [28,37])fixture(k,26,4.55,z,5);
+  // A duty monitor on the station wall, on the same feed. Wool only ever
+  // describes two wall-screens — the cafeteria and the cell — so this one is a
+  // placement, not a claim: the office that runs the cleanings watches them.
+  const dutyFrame=new THREE.Mesh(new THREE.BoxGeometry(.10,1.18,1.86),m.darkMetal);dutyFrame.position.set(33.79,2.28,32);dutyFrame.userData.ownedGeometry=true;root.add(dutyFrame);
+  const dutyScreen=new THREE.Mesh(new THREE.PlaneGeometry(1.66,.96),new THREE.MeshBasicMaterial({color:0xffffff}));
+  dutyScreen.rotation.y=-Math.PI/2;dutyScreen.position.set(33.72,2.28,32);dutyScreen.userData.ownedGeometry=true;dutyScreen.userData.ownedMaterial=true;root.add(dutyScreen);
   // Solid wall above an open internal doorway into preparation.
   wall(21,44,6,.3,4.7);wall(31,44,6,.3,4.7);box('pale',26,4.25,44,4,.9,.3);
   floor(26,49,8,10);wall(30,49,.3,10,4.7);wall(22,45,.3,2,4.7);wall(22,53,.3,2,4.7);box('darkConcrete',26,4.85,49,8,.3,10,false);
@@ -82,5 +88,5 @@ export function buildTopFloor(m) {
   for(const x of [24,28])pipe(k,x,59,4.4,9,.08,'metal');
   for(let z=55;z<64;z+=.35)k.box('darkMetal',26,.008,z,4.8,.012,.06);
   dressCafeteria(k,root);root.add(k.group());
-  root.userData={...root.userData,solids,floors,interactions,animated,doors,type:'cafeteria',outsideScreen:screen,extraScreens:[cellScreen],bespoke:true};return root;
+  root.userData={...root.userData,solids,floors,interactions,animated,doors,type:'cafeteria',outsideScreen:screen,extraScreens:[cellScreen,dutyScreen],bespoke:true};return root;
 }

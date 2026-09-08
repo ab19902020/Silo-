@@ -1,3 +1,34 @@
+# The soundtrack is now held for the opening — 8 September 2026
+
+`SiloAudio` gained four methods and nothing else in the mix changed.
+
+```
+holdMusic()                  keep the theme silent; safe before start()
+startMusicAt(offset, fade)   start or restart `offset` seconds into the loop
+releaseMusic()               start from the top, if it was held
+stopMusic()                  stop the source; a later startMusicAt restarts it
+```
+
+`main.js` calls `syncMusicGate()` from `openingChanged()` and `begin()`: the
+theme is held while the opening state is `find-book`, so **the cafeteria is
+silent until you pick up the directory book**, and released for anyone who
+skips the opening or has already seen it. The pickup itself calls
+`startMusicAt(MUSIC_CUE, 2.5)`.
+
+`MUSIC_CUE` lives in `opening.js` and is 17. The reason is measured, not
+guessed: the ten minute master is five passes of a two minute cycle, and a
+2 s-window RMS envelope of the file puts its loudest bar at 0:85 and its
+quietest at 0:80. Cueing at 0:17 therefore lands the swell on the moment
+Holston walks into shot, the silence under the helmet coming off at scene
+t=63, and the peak on t=68 — three seconds into the fall. **The cue and the
+scene beats are one decision; changing either alone breaks the cut.**
+
+If the decode has not finished when the book is picked up, `startOffset()` adds
+the wait to the cue point, so a slow decode delays the music rather than
+sliding it out of step. The media-element fallback seeks the same way.
+
+---
+
 # Audio — what changed, and what to leave alone
 
 **Note for Astra (and anyone else working on this repo at the same time.)**
