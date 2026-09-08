@@ -2,6 +2,16 @@
 
 A browser-based, first- and third-person reconstruction of the television silo, built in Adam’s **Silo-** repository using the circular collision system and selected interior assets from **Lost Signal**.
 
+## Latest visibility, staircase and void repairs
+
+- Character garments now render both faces as opaque surfaces, preventing reverse-facing coat panels from disappearing. The close camera hides the whole avatar before it cuts through a coat.
+- Rebuilt the staircase guards as continuous rising concrete and metal surfaces. Posts, caps and rails share the same clear opening at every landing.
+- Preserved the camp’s bed, shelf, table and relics, moving the room to the sheltered perimeter of the excavation. Its ledge entrance is an actual opening.
+- Replaced the caged descent with a rung ladder and climbing poses for all three characters. Approach and press **Use / E** to descend or return; you can look around during the climb.
+- The ladder leads to supported water, a round tunnel through the cavern wall and the sealed door at its far end. Walk the complete route and return without a teleport.
+
+See [the repair notes and reference limits](docs/visibility-stairs-void.md).
+
 ## Latest animation and visual update
 
 - Repaired trouser skin weights below Sims’s and Bernard’s coat hems. All three supplied models now include eight looping motions, with a continuous runtime gait, terrain-aware planted feet, measured leg joints, smoother turns, stair transitions and landing recovery.
@@ -46,9 +56,7 @@ See [the animation and visual upgrade notes](docs/visual-upgrade.md) for referen
 
 ## Down in the void
 
-- The excavator void now has a way down. A **caged stair** drops from the inspection platform to a landing at the waterline, where a bolted **lower door** is set into the tower's base. Every tread is walkable; the route is covered by tests.
-- A **camp** in a bay off the platform: a bed, a shelf of salvaged relics, a table and a curtain hung over a cut in the outer plate. Its layout is inferred, not a filmed set.
-- Gallery **signs are mounted plates** rather than floating text, and the **pylons** no longer stand in the doorway approaches. See [the world notes](WORLD.md).
+The camp sits beside the outer ledge. Its ladder descends to the water; the hidden tunnel passes through the cavern perimeter and ends at a sealed door. The room’s exact position and dimensions remain reconstructed. Gallery signs stay mounted to their walls and the gallery pylons stay clear of doorway approaches. [The world notes](WORLD.md) retain the history of the earlier implementation.
 
 The directory’s travel feature is a visitor shortcut, not an in-world elevator. The central stairs physically connect every numbered floor. Lower maintenance hatches use explicit travel transitions into the mines and cavern. The cleaning route is continuously walkable in both directions. The hidden tunnel’s far door remains sealed. There is no combat.
 

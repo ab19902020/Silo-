@@ -3,75 +3,45 @@ import assert from 'node:assert/strict';
 import * as THREE from '../dist/vendor/three.module.js';
 import { SiloWorld } from '../dist/src/world.js';
 import { CharacterBody } from '../dist/src/physics.js';
+import { LadderClimb } from '../dist/src/climbing.js';
+import { VOID,tunnelPoint } from '../dist/src/void-access.js';
 globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>({fillRect(){},strokeRect(){},fillText(){}})})};
-
-const world=new SiloWorld(new THREE.Scene());
-world.setLevel(144,'excavator');
-const at=(r,a,y)=>new THREE.Vector3(Math.cos(a)*r,y,Math.sin(a)*r);
-// Below-silo interactions hang off the built space, not the numbered levels.
-const voidInteractions=()=>world.underground.interactions.map(v=>({...v,position:new THREE.Vector3(...v.position)}));
-// Walk toward a target the way the controller does: horizontal intent only,
-// gravity and stepping resolved by the same integration the game runs.
-function walk(body,target,seconds=26){
-  const dt=1/120;
-  for(let i=0;i<seconds/dt;i++){
-    const to=target.clone().sub(body.position);to.y=0;
-    if(to.length()<.16)return;
+const world=new SiloWorld(new THREE.Scene());world.setLevel(144,'excavator');
+const ladder=world.underground.ladders[0],vector=p=>new THREE.Vector3(...p);
+function walk(body,target,seconds=30){
+  const dt=1/120;for(let i=0;i<seconds/dt;i++){
+    const to=target.clone().sub(body.position);to.y=0;if(to.length()<.08){assert.ok(Math.abs(body.position.y-target.y)<.16,`Unsupported route: ${body.position.toArray()} -> ${target.toArray()}`);return;}
     body.step(dt,to.normalize().multiplyScalar(2.4),world.colliders);
   }
-  assert.fail(`stuck at ${body.position.toArray().map(n=>n.toFixed(2))} heading for ${target.toArray().map(n=>n.toFixed(2))}`);
+  assert.fail(`Blocked route: ${body.position.toArray()} -> ${target.toArray()}`);
 }
-
-const DECK=12,STAIR_A=4.1,STAIR_SWEEP=1.745,TREADS=24,BASE=DECK-TREADS*.273;
-const END_A=STAIR_A+STAIR_SWEEP,DOOR_A=END_A-.06+.42;
-
-test('the caged stair carries a walking body from the platform down to the waterline',()=>{
-  const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3});
-  body.teleport(...at(5.6,STAIR_A,DECK).toArray());
-  // Out onto the head of the stair, then down every tread on the centre line.
-  walk(body,at(9.5,STAIR_A+.03,DECK));
-  for(let i=1;i<=TREADS;i++)walk(body,at(9.5,STAIR_A+STAIR_SWEEP*i/TREADS,DECK-i*.273),8);
-  assert.ok(Math.abs(body.position.y-BASE)<.4,`ended at y=${body.position.y.toFixed(2)}, expected about ${BASE}`);
-  // Across the landing to the tower base, where the lower door is set.
-  walk(body,at(9,DOOR_A,BASE));
-  walk(body,at(4.6,DOOR_A,BASE));
-  assert.ok(Math.abs(body.position.y-BASE)<.35,`landing height ${body.position.y.toFixed(2)}`);
-  assert.ok(Math.hypot(body.position.x,body.position.z)<5.4,'did not reach the tower base');
-  // The lower door is reachable from where the descent ends.
-  const eye=body.position.clone();eye.y+=1.65;
-  const door=voidInteractions().find(i=>i.label==='Open the lower door');
-  assert.ok(door,'the lower door interaction is missing');
-  assert.ok(eye.distanceTo(door.position)<4,`door is ${eye.distanceTo(door.position).toFixed(2)} m from the foot of the stair`);
+function climb(body,up){
+  assert.ok(LadderClimb.begin(body,ladder,up));let frames=0;
+  while(body.climbing&&frames++<2000){const before=body.position.clone();body.step(1/120,new THREE.Vector3(9,0,9),world.colliders);assert.ok(before.distanceTo(body.position)<.04,'climb jumped between positions');}
+  assert.ok(!body.climbing,'climb failed to finish');assert.ok(body.grounded);assert.ok(body.position.distanceTo(vector(up?ladder.topExit:ladder.bottomExit))<.001);
+}
+test('the preserved camp is on the perimeter with a supported entrance and the ladder beside it',()=>{
+  const camp=world.underground.camp;assert.ok(Math.hypot(camp.position.x,camp.position.z)>60,'camp still attached to the central tower');
+  const body=new CharacterBody();body.teleport(71,12,0);
+  // Pass through the doorway and around the real table, then to the ladder.
+  for(const p of [[69.4,12,3.3],[69.4,12,5],[69.9,12,5.2],[69.9,12,8],ladder.topExit])walk(body,vector(p));
+  assert.ok(body.position.distanceTo(vector(ladder.topExit))<.1);
+  for(const wanted of ['camp','relics'])assert.ok(world.underground.interactions.some(i=>i.action===wanted));
 });
-
-test('the descent is a stair, not a drop: no single step exceeds the step height',()=>{
-  const rises=[];
-  for(let i=1;i<=TREADS;i++)rises.push((DECK-(i-1)*.273)-(DECK-i*.273));
-  assert.equal(rises.length,TREADS);
-  for(const rise of rises)assert.ok(rise<=.3+1e-9,`a ${rise.toFixed(3)} m rise is taller than the controller can step`);
-  assert.ok(BASE>5,`the landing at ${BASE} must stay clear of the water surface at y=5`);
+test('all three body sizes descend the ladder, wade to the hidden door and return to the camp',()=>{
+  for(const height of [1.73,1.83,1.87]){
+    const body=new CharacterBody({standHeight:height,radius:.3,stepHeight:.3});body.teleport(...ladder.topExit);climb(body,false);
+    assert.ok(body.position.y<VOID.waterY&&body.position.y+height>VOID.waterY,'expected a supported wading depth');
+    walk(body,tunnelPoint(0,0,0));for(const z of [3,6,9,12,20,28,34])walk(body,tunnelPoint(0,Math.min(.7,(Math.floor(z/.5)+1)*.035),z));
+    const door=world.underground.interactions.find(i=>i.action==='tunnel');const eye=body.position.clone().add(new THREE.Vector3(0,body.eyeHeight,0));assert.ok(eye.distanceTo(vector(door.position))<3);
+    const out=new THREE.Vector3(Math.cos(VOID.tunnelAngle),0,Math.sin(VOID.tunnelAngle));for(let i=0;i<240;i++)body.step(1/120,out.clone().multiplyScalar(3),world.colliders);
+    const doorPoint=tunnelPoint(0,.7,35.65);assert.ok(body.position.distanceTo(doorPoint)>.3,'walked through the sealed door');
+    for(const z of [28,20,12,9,6,3,0])walk(body,tunnelPoint(0,Math.min(.7,(Math.floor(z/.5)+1)*.035),z));
+    walk(body,vector(ladder.bottomExit));climb(body,true);walk(body,vector([69.4,12,8]));
+  }
 });
-
-test("Juliette's camp is a walkable bay with solid walls and a way back out",()=>{
-  const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3});
-  body.teleport(...at(5.5,Math.PI,DECK).toArray());
-  walk(body,new THREE.Vector3(-8,DECK,0));              // in through the open side
-  assert.ok(Math.abs(body.position.y-DECK)<.35,'the camp floor did not carry the body');
-  const inside=body.position.clone();
-  // The salvaged plate walls stop you: pushing hard at one for two seconds
-  // must not put you outside the camp.
-  const dt=1/120;
-  for(let i=0;i<240;i++)body.step(dt,new THREE.Vector3(0,0,4),world.colliders);
-  assert.ok(body.position.z<3.5,`walked through the camp wall to z=${body.position.z.toFixed(2)}`);
-  body.teleport(...inside.toArray());
-  walk(body,at(5.5,Math.PI,DECK));                      // and back out onto the platform
-});
-
-test('the camp and the lower door are both reachable interactions',()=>{
-  const labels=voidInteractions().map(i=>i.label);
-  for(const wanted of ['Look behind the curtain','Inspect the salvaged relics','Open the lower door'])
-    assert.ok(labels.includes(wanted),`missing interaction: ${wanted}`);
-  const door=voidInteractions().find(i=>i.label==='Open the lower door');
-  assert.equal(door.destination,'tunnel');
-  assert.ok(door.position.y<7,'the lower door must sit down at the waterline, not up on the ledge');
+test('directory access uses the same physical tunnel and ladder entry cannot start remotely',()=>{
+  const d=world.destination('tunnel');world.setLevel(d.level,d.special);const floor=world.colliders.floorAt(d.position.x,d.position.z,.3,d.position.y+.3);assert.ok(Math.abs(floor-d.position.y)<.02);
+  const body=new CharacterBody();body.teleport(71,12,0);assert.equal(LadderClimb.begin(body,ladder,false),false);body.teleport(...ladder.topExit);assert.ok(LadderClimb.begin(body,ladder,false));
+  body.step(.1,new THREE.Vector3(),world.colliders);body.teleport(71,12,0);assert.equal(body.climbing,null,'travel must detach from the ladder');
 });

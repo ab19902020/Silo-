@@ -1,6 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
-import { Kit, random, addSign, railing, fixture, pipe, desk, bed, shelf, table, chair } from './kit.js';
+import { Kit, random, addSign, railing, fixture } from './kit.js';
 import { wallGauge } from './environment-details.js';
+import { VOID, voidLedgeGaps, buildVoidAccess } from './void-access.js';
 
 export function buildUnderground(m) {
   const root=new THREE.Group(),k=new Kit(m),solids=[],interactions=[],walkways=[];
@@ -8,12 +9,17 @@ export function buildUnderground(m) {
   // The entire void exists below the numbered silo. Its width is a separate
   // scale from the central atrium; dimensions remain reconstruction estimates.
   const R=80,base=5;
-  const shell=new THREE.CylinderGeometry(R,R*1.04,68,96,16,true);
-  const p=shell.getAttribute('position');for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i),r=Math.hypot(x,z),n=1+(rng()-.5)*.045;p.setXYZ(i,x*n,p.getY(i),z*n);if(r===0)continue;}shell.computeVertexNormals();
+  const shell=new THREE.CylinderGeometry(R,R*1.04,68,192,68,true);
+  const p=shell.getAttribute('position');for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i),r=Math.hypot(x,z),n=1+(rng()-.5)*.045;p.setXYZ(i,x*n,p.getY(i),z*n);if(r===0)continue;}const indices=[];for(let i=0;i<shell.index.count;i+=3){const ids=[0,1,2].map(j=>shell.index.getX(i+j)),x=ids.reduce((v,j)=>v+p.getX(j),0)/3,z=ids.reduce((v,j)=>v+p.getZ(j),0)/3,y=ids.reduce((v,j)=>v+p.getY(j),0)/3+38;const d=Math.atan2(Math.sin(Math.atan2(z,x)-VOID.tunnelAngle),Math.cos(Math.atan2(z,x)-VOID.tunnelAngle));if(!(Math.abs(d)<.053&&y<9.5))indices.push(...ids);}shell.setIndex(indices);shell.computeVertexNormals();
   const rockMat=m.rock.clone();rockMat.side=THREE.BackSide;const rock=new THREE.Mesh(shell,rockMat);rock.position.y=38;root.add(rock);
   k.cylinder('darkConcrete',0,70,0,R,1.2);
   const water=new THREE.Mesh(new THREE.CircleGeometry(R-1,96),m.water);water.rotation.x=-Math.PI/2;water.position.y=5;root.add(water);
-  for(let i=0;i<140;i++){const a=rng()*Math.PI*2,r=52+rng()*27,y=5+rng()*8;k.sphere('rock',Math.cos(a)*r,y,Math.sin(a)*r,1+rng()*4,.8+rng()*2,1+rng()*4);}
+  for(let i=0;i<140;i++){
+    const a=rng()*Math.PI*2,r=52+rng()*27,y=5+rng()*8,x=Math.cos(a)*r,z=Math.sin(a)*r,rx=1+rng()*4,ry=.8+rng()*2,rz=1+rng()*4;
+    // Keep the visible wading route clear of the decorative scree too.
+    if(x>58&&x<79&&z>1&&z<25)continue;
+    k.sphere('rock',x,y,z,rx,ry,rz);
+  }
   // Central abandoned tower with multiple steel platforms, radial excavation
   // arms, cutting drums, trusses, access ladders and attached cable runs.
   k.cylinder('darkMetal',0,25,0,3.1,43);
@@ -38,94 +44,13 @@ export function buildUnderground(m) {
   // A dry circumferential service ledge and bridge allow on-foot inspection.
   k.arc('darkConcrete',68,74,.5,11.5,0,Math.PI*2,128);
   walkways.push({kind:'ring',r0:68,r1:74,y:12});
-  for(let j=0;j<80;j++){const a=j*Math.PI/40,b=(j+1)*Math.PI/40;railing(k,[Math.cos(a)*68.2,Math.sin(a)*68.2],[Math.cos(b)*68.2,Math.sin(b)*68.2],12);if(j%5===0)fixture(k,Math.cos(a)*73.4,14.7,Math.sin(a)*73.4,1.5,true);}
+  for(let j=0;j<80;j++){const a=j*Math.PI/40,b=(j+1)*Math.PI/40;const mid=(a+b)/2,open=voidLedgeGaps.some(([c,h])=>Math.abs(Math.atan2(Math.sin(mid-c),Math.cos(mid-c)))<h+(b-a)/2);if(!open)railing(k,[Math.cos(a)*68.2,Math.sin(a)*68.2],[Math.cos(b)*68.2,Math.sin(b)*68.2],12);if(j%5===0)fixture(k,Math.cos(a)*73.4,14.7,Math.sin(a)*73.4,1.5,true);}
   k.box('metal',39,11.85,0,64,.3,3.6);railing(k,[7,-1.8],[71,-1.8],12);railing(k,[7,1.8],[71,1.8],12);walkways.push({kind:'box',x:39,z:0,w:64,d:3.6,y:12});
   // Inspection platform at the end of the radial bridge.
   k.arc('rust',3.1,8,.3,11.7);walkways.push({kind:'ring',r0:3.1,r1:8,y:12});
   addSign(root,'LOWER ACCESS · MECHANICAL ↑',[72,14.2,-2],4,.6,-Math.PI/2);
   interactions.push({position:[72,13,0],label:'Climb to Mechanical',destination:144});
-  addSign(root,'MAINTENANCE PASSAGE →',[69,13.7,15],4,.6,-Math.PI/2);
-  interactions.push({position:[70,13,15],label:'Enter the hidden passage',destination:'tunnel'});
-
-  // ---- The camp, the caged descent and the lower door ---------------------
-  // The inspection platform widens into a bay somebody has been living in, and
-  // a caged stair runs from the platform down the side of the void to a
-  // landing at the waterline, where a bulkhead is set into the tower's base.
-  // The show establishes the flooded depth, an improvised camp lived in out of
-  // sight, and a sealed lower door; no filmed plan of this space was
-  // available, so the layout here is a reconstruction, not a copy.
-  const CAMP_A=Math.PI,CAMP_HALF=.9,DECK=12;
-  k.arc('rust',3.1,12,.3,DECK-.3,CAMP_A-CAMP_HALF,CAMP_HALF*2,32);
-  walkways.push({kind:'arc',r0:3.1,r1:12,y:DECK,a:CAMP_A,half:CAMP_HALF});
-  k.arc('darkMetal',11.8,12.04,1.1,DECK,CAMP_A-CAMP_HALF,CAMP_HALF*2,32);
-  solids.push({arc:true,r0:11.8,r1:12.04,y0:DECK,y1:DECK+1.1,a:CAMP_A,half:CAMP_HALF});
-  for(const edge of [-1,1]){
-    const ea=CAMP_A+edge*CAMP_HALF;
-    railing(k,[Math.cos(ea)*3.3,Math.sin(ea)*3.3],[Math.cos(ea)*11.9,Math.sin(ea)*11.9],DECK);
-  }
-  // The camp itself is axis aligned on the -X side so its walls and its hidden
-  // cavity can carry ordinary box collision.
-  const camp=new THREE.Group();camp.position.set(-8,DECK,0);root.add(camp);const ck=new Kit(m);
-  const wall=(x,z,w,d,h=2.6)=>{ck.box('rust',x,h/2,z,w,h,d);solids.push({x:-8+x,z,w,d,y0:DECK,y1:DECK+h});};
-  wall(-3.3,0,.16,7.2);wall(0,-3.5,6.6,.16);wall(0,3.5,6.6,.16);           // three salvaged plate walls
-  ck.box('darkMetal',0,2.72,0,6.8,.12,7.2);                                 // a scavenged roof keeps the lamps in
-  for(const z of [-2.2,2.2])fixture(ck,-1.4,2.5,z,1.2,false);
-  bed(ck,-2.2,-2.1);
-  shelf(ck,-2.6,1.9,2.6,2.1);
-  table(ck,.9,1.4,1.5,.9);chair(ck,.9,.3,Math.PI);
-  // Salvaged relics on the shelf: tins, a bottle, books and a wound-up cable.
-  const relicMats=['brass','glass','wood','white','metal'];
-  for(let i=0;i<16;i++){
-    const shelfY=[.15,.8,1.45,2.1][i%4],off=-3.6+((i*.47)%2.2);
-    ck.box(relicMats[i%relicMats.length],off,shelfY+.14,1.9+((i%3)-1)*.18,.16+((i%4)*.05),.26,.14);
-  }
-  ck.cylinder('brass',-1.6,.3,1.9,.13,.34);ck.torus('metal',-1.1,.34,1.9,.16,.03,Math.PI/2);
-  // A hung curtain screens a cut-out in the outer plate: the hiding place.
-  ck.box('green',-3.15,1.25,-.9,.06,2.4,1.9);
-  ck.cylinder('metal',-3.15,2.5,-.9,.02,2,Math.PI/2,0,Math.PI/2);
-  camp.add(ck.group());
-  addSign(camp,'NO ENTRY · MAINTENANCE',[0,2.35,-3.58],2.6,.36,0,{background:'#4a2f22',color:'#d8c9a6'});
-  interactions.push({position:[-11,DECK+1,-.9],label:'Look behind the curtain',action:'camp'});
-  interactions.push({position:[-10.6,DECK+1,1.9],label:'Inspect the salvaged relics',action:'relics'});
-
-  // A caged stair descends clear of the tower rings and stanchions.
-  const STAIR_A=4.1,STAIR_SWEEP=1.745,TREADS=24,BASE=DECK-TREADS*.273;
-  for(let i=0;i<TREADS;i++){
-    const a0=STAIR_A+STAIR_SWEEP*i/TREADS,a1=STAIR_A+STAIR_SWEEP*(i+1)/TREADS,y=DECK-(i+1)*.273,half=(a1-a0)/2;
-    k.arc('rust',8,11,.16,y-.16,a0,a1-a0,3);
-    walkways.push({kind:'arc',r0:8,r1:11,y,a:a0+half,half:half*1.02});
-    k.arc('darkMetal',10.85,11.06,1.06,y,a0,a1-a0,3);
-    solids.push({arc:true,r0:10.85,r1:11.06,y0:y,y1:y+1.06,a:a0+half,half:half*1.02});
-    // The inner guard starts below the head of the run: carried all the way up
-    // it would wall the stair off from the platform it is reached from.
-    if(i>=2){k.arc('darkMetal',7.94,8.15,1.06,y,a0,a1-a0,3);
-      solids.push({arc:true,r0:7.94,r1:8.15,y0:y,y1:y+1.06,a:a0+half,half:half*1.02});}
-    // Ladder-style hoops over the run, and a lamp every sixth tread.
-    if(i%3===0){let prev=null;for(let h=0;h<=8;h++){const t=h/8,rr=8.06+t*2.88,yy=y+1.02+Math.sin(t*Math.PI)*1.3,pt=[Math.cos(a0)*rr,yy,Math.sin(a0)*rr];if(prev)k.beam('darkMetal',prev,pt,.035);prev=pt;}}
-    if(i%6===0)fixture(k,Math.cos(a0)*8.4,y+2.3,Math.sin(a0)*8.4,.9,false);
-  }
-  // Landing at the waterline, reaching in to the tower's base.
-  const END_A=STAIR_A+STAIR_SWEEP,LAND_HALF=.42;
-  k.arc('rust',3.3,11,.3,BASE-.3,END_A-.06,LAND_HALF*2,20);
-  walkways.push({kind:'arc',r0:3.3,r1:11,y:BASE,a:END_A-.06+LAND_HALF,half:LAND_HALF});
-  k.arc('darkMetal',10.8,11.04,1.1,BASE,END_A-.06,LAND_HALF*2,20);
-  solids.push({arc:true,r0:10.8,r1:11.04,y0:BASE,y1:BASE+1.1,a:END_A-.06+LAND_HALF,half:LAND_HALF});
-  const doorA=END_A-.06+LAND_HALF,dx=Math.cos(doorA),dz=Math.sin(doorA);
-  const lower=new THREE.Group();lower.position.set(dx*3.3,BASE,dz*3.3);lower.rotation.y=-doorA+Math.PI/2;root.add(lower);
-  const lk=new Kit(m);
-  // Local +z is radially outward here, so the door has to be built on that face
-  // or it presents its blank back to everyone coming down the stair.
-  lk.box('darkMetal',0,1.6,0,3.4,3.2,.34);lk.box('rust',0,1.55,.2,2.5,2.6,.14);
-  lk.torus('metal',0,1.5,.31,.52,.07);for(const x of [-1.05,1.05])for(const y of [.5,1.5,2.5])lk.cylinder('brass',x,y,.29,.06,.1,Math.PI/2);
-  fixture(lk,0,3.05,.26,1.4,false);
-  lower.add(lk.group());
-  addSign(lower,'LOWER ACCESS · SEALED',[0,3.42,.28],2.6,.4,0);
-  interactions.push({position:[dx*4.4,BASE+1,dz*4.4],label:'Open the lower door',destination:'tunnel'});
-  addSign(root,'DESCENT TO WATERLINE ↓',[Math.cos(STAIR_A)*9.4,DECK+1.5,Math.sin(STAIR_A)*9.4],3.4,.5,-STAIR_A+Math.PI/2);
-  // The water reads as a floor from the landing: standing here you are level
-  // with it, which is the point of the descent.
-  const landingLight=new THREE.PointLight(0x9fc2b6,120,34,1.8);landingLight.position.set(dx*7,BASE+2.6,dz*7);root.add(landingLight);
-  const campLight=new THREE.PointLight(0xe0b478,130,26,1.7);campLight.position.set(-7.4,DECK+2.2,0);root.add(campLight);
+  const access=buildVoidAccess(m);root.add(access.root);solids.push(...access.solids);walkways.push(...access.walkways);interactions.push(...access.interactions);
   // Mine workings are above the void, outside its upper rim. They are a
   // separate, inferred network reached by the Mechanical maintenance hatch.
   const mines=new THREE.Group();mines.position.set(105,48,0);root.add(mines);const mk=new Kit(m);
@@ -155,18 +80,7 @@ export function buildUnderground(m) {
   addSign(mines,'MINING · ORE WORKING 18',[0,3.2,-28],5,.7);addSign(mines,'MECHANICAL ↑',[0,2.5,-31.4],4,.65);
   interactions.push({position:[105,49,-29],label:'Return to Mechanical',destination:144},{position:[107,49,28],label:'Inspect the rock drill',action:'mines'});
   mines.add(mk.group());
-  // Lower passage: enclosed tunnel, pipe, bolted door and a fixed inspection
-  // lamp. No invented connection to another silo is claimed.
-  const tunnel=new THREE.Group();tunnel.position.set(105,8,88);root.add(tunnel);const tk=new Kit(m);
-  tk.box('darkConcrete',0,-.2,0,5,.4,36);tk.box('darkConcrete',-2.6,1.7,0,.3,3.4,36);tk.box('darkConcrete',2.6,1.7,0,.3,3.4,36);tk.box('darkConcrete',0,3.5,0,5.5,.25,36);
-  for(const x of [-2.1,2.1])pipe(tk,x,0,2.9,36,.18);for(let z=-16;z<17;z+=5)fixture(tk,0,3.28,z,.8);
-  for(let z=-16;z<17;z+=3){tk.portal('metal',0,0,z,4.7,3.28,.14,0,.48,.09);for(const x of [-2.1,2.1]){tk.torus('metal',x,2.9,z,.215,.026);for(const dx of [-.14,.14])tk.cylinder('brass',x+dx,3.04,z,.019,.09,Math.PI/2);}}
-  tk.box('darkMetal',0,1.65,17.8,4.8,3.3,.3);tk.torus('metal',0,1.7,17.58,.65,.075);for(const x of [-1.9,1.9])for(const y of [.4,1.2,2,2.8])tk.cylinder('brass',x,y,17.58,.07,.1,Math.PI/2);
-  addSign(tunnel,'SEALED ACCESS',[0,2.8,17.6],3,.45,Math.PI);addSign(tunnel,'VOID ACCESS ↑',[0,2.6,-17.7],3,.5);
-  walkways.push({kind:'box',x:105,z:88,w:5,d:36,y:8});
-  solids.push({x:102.4,z:88,w:.3,d:36,y0:8,y1:12},{x:107.6,z:88,w:.3,d:36,y0:8,y1:12},{x:105,z:105.8,w:4.8,d:.3,y0:8,y1:12},{x:105,z:70,w:5,d:.3,y0:8,y1:12});
-  interactions.push({position:[105,9,103.6],label:'Inspect sealed tunnel door',action:'tunnel'},{position:[105,9,72.5],label:'Return to the excavator',destination:'excavator'});
-  tunnel.add(tk.group());root.add(k.group());
+  const tunnel=access.tunnel;root.add(k.group());
   const lights=[new THREE.PointLight(0xb8d2c7,550,100,1.7),new THREE.PointLight(0xd8a65f,450,100,1.6)];lights[0].position.set(28,42,16);lights[1].position.set(-28,24,-10);root.add(...lights);
-  return {root,solids,interactions,walkways,water,mines,tunnel,lights};
+  return {root,solids,interactions,walkways,water,mines,tunnel,lights,camp:access.camp,ladders:access.ladders,access};
 }

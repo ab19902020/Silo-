@@ -12,9 +12,15 @@ export const CHARACTERS=Object.freeze([
 export function roomPoint(level,wing,x,z){const a=wing*Math.PI/3;return new THREE.Vector3(Math.cos(a)*(SILO.deckOuter+z)+Math.sin(a)*x,levelY(level),Math.sin(a)*(SILO.deckOuter+z)-Math.cos(a)*x);}
 export const forwardYaw=(x,z)=>Math.atan2(x,z); // Supplied bodies face +Z.
 
-function actorFrom(gltf,definition){
+export function actorFrom(gltf,definition){
   const root=new THREE.Group();root.name=definition.id;const model=gltf.scene;root.add(model);const meshes=[],bones=[];
-  model.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true;o.frustumCulled=false;meshes.push(o);}if(o.isBone)bones.push(o);});
+  model.traverse(o=>{if(o.isMesh){
+    o.castShadow=o.receiveShadow=true;o.frustumCulled=false;
+    // The scanned coat hems are thin shells. Culling their reverse faces
+    // punches holes through Sims and Bernard as the cloth turns in motion.
+    const solid=material=>{const m=material.clone();m.side=THREE.DoubleSide;m.shadowSide=THREE.DoubleSide;m.transparent=false;m.opacity=1;m.alphaTest=0;m.depthTest=true;m.depthWrite=true;m.needsUpdate=true;return m;};
+    o.material=Array.isArray(o.material)?o.material.map(solid):solid(o.material);meshes.push(o);
+  }if(o.isBone)bones.push(o);});
   if(!meshes.some(o=>o.isSkinnedMesh))throw Error(`${definition.name} is missing its skeleton`);
   for(const name of ['Idle','Walk','Run'])if(!gltf.animations.some(c=>c.name===name))throw Error(`${definition.name}: missing ${name}`);
   const motion=new SkeletalMotion(model,definition.height),feed=clone(root);feed.name=`cleaner-${definition.id}`;const feedBones=[];feed.traverse(o=>{if(o.isBone)feedBones.push(o);});feed.visible=false;
@@ -36,10 +42,13 @@ export class CharacterCast{
       if(selected){
         if(a.visualY===null||a.root.position.distanceTo(body.position)>2.5){a.visualY=body.position.y;a.motion.reset();}
         a.visualY=THREE.MathUtils.damp(a.visualY,body.position.y,22,dt);a.root.position.copy(body.position);a.root.position.y=a.visualY;
-        if(speed>.035){const goal=forwardYaw(body.velocity.x,body.velocity.z),delta=Math.atan2(Math.sin(goal-a.heading),Math.cos(goal-a.heading)),limit=(speed>2.6?7:5)*dt;a.heading+=THREE.MathUtils.clamp(delta*(1-Math.exp(-11*dt)),-limit,limit);}
+        if(body.climbing)a.heading=body.climbing.heading;
+        else if(speed>.035){const goal=forwardYaw(body.velocity.x,body.velocity.z),delta=Math.atan2(Math.sin(goal-a.heading),Math.cos(goal-a.heading)),limit=(speed>2.6?7:5)*dt;a.heading+=THREE.MathUtils.clamp(delta*(1-Math.exp(-11*dt)),-limit,limit);}
         a.root.rotation.y=a.heading;a.root.updateMatrixWorld(true);
         const ground=(x,z)=>{const f=this.world.colliders.floorAt(x,z,.035,body.position.y+.35);return Number.isFinite(f)&&Math.abs(f-body.position.y)<.48?f:body.position.y;};
-        a.motion.update(dt,{speed:started?speed:0,position:body.position,grounded:body.grounded,heading:a.heading,ground,active:started});a.state=a.motion.state;a.root.visible=started&&this.thirdPerson;
+        if(body.climbing){a.motion.climb(body.climbing);a.state='Climb';}
+        else {if(a.state==='Climb')a.motion.reset();a.motion.update(dt,{speed:started?speed:0,position:body.position,grounded:body.grounded,heading:a.heading,ground,active:started});a.state=a.motion.state;}
+        a.root.visible=started&&this.thirdPerson;
       }else{
         a.root.position.copy(a.post);a.root.rotation.y=-a.definition.wing*Math.PI/3-Math.PI/2;a.root.updateMatrixWorld(true);if(near)a.motion.update(dt,{position:a.post,active:false});a.state='Idle';a.root.visible=near;
         if(near){const p=a.root.position.clone();p.y+=1.3;this.world.actorInteractions.push({position:p,label:`${a.definition.name} · ${a.definition.role}`,action:`person-${a.definition.id}`});}
@@ -56,7 +65,8 @@ export class CharacterCast{
     const end=target.clone().addScaledVector(direction,-3.4).addScaledVector(right,.42),delta=end.clone().sub(target),length=delta.length();let allowed=length;
     for(let d=.12;d<=length;d+=.08){const p=target.clone().addScaledVector(delta,d/length);if(this.world.colliders.contains(p.x,p.z,.17,p.y-.17,p.y+.17)||p.y<body.position.y+.18){allowed=Math.max(0,d-.16);break;}}
     camera.position.copy(target).addScaledVector(delta,allowed/length);
-    // When a narrow corridor brings the camera inside the body, fade the body.
-    if(this.active)this.active.root.visible=allowed>.7;
+    // Hide the complete avatar only when the camera reaches its volume. Never
+    // leave the near plane slicing the broader coats into a partial body.
+    if(this.active)this.active.root.visible=allowed>1.0;
   }
 }

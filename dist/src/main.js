@@ -6,6 +6,7 @@ import { SiloAudio } from './audio.js';
 import { Rendering, makeEnvironment } from './rendering.js';
 import { topLocal } from './surface.js';
 import { CharacterCast, CHARACTERS } from './characters.js';
+import { LadderClimb } from './climbing.js';
 
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic');
 const dialogs=[welcome,directory,settings,about,characters,relic],coarse=matchMedia('(pointer:coarse)').matches;
@@ -75,9 +76,14 @@ function updateHUD(){
   if(n===1&&!world.special){const p=topLocal(body.position);if(p.z>=108)name='Surface · exterior camera';else if(p.z>=64)name='Cleaning ramp';else if(p.z>=54)name='Cleaning airlock';else if(p.z>=44&&p.x>14)name='Holding 3 & preparation';else if(p.x>18&&p.z>24)name='Sheriff’s station';else if(wing===0&&r>SILO.deckOuter)name='Cafeteria · outside screen';}
   if(n!==1&&!world.special&&r>=52)name='Service gallery · connecting wings';
   if(world.special)name=SPECIALS.find(x=>x.id===world.special)?.name||name;
+  if(world.special==='excavator'||world.special==='tunnel'){
+    const p=world.underground.tunnel.worldToLocal(body.position.clone());
+    name=p.z>0&&p.z<36&&Math.abs(p.x)<2.6?'The hidden tunnel':'The excavator & void';
+    if(body.climbing)name='Ladder to the water';
+  }
   $('zone').textContent=world.outside?'THE SURFACE':world.special?'LOWER ACCESS':data.zone;$('levelLabel').textContent=world.outside?'OUTSIDE':world.special?'BELOW MECHANICAL':`LEVEL ${String(n).padStart(3,'0')}`;$('locationName').textContent=name;
   $('depthLabel').textContent=`${Math.max(0,Math.round(levelY(1)-body.position.y)).toLocaleString()} m below the upper landing`;$('depthMarker').style.top=`${(n-1)/143*94}%`;
-  $('modeLabel').textContent=`${cast?.active?.definition.short||'ON FOOT'}${running?' · RUNNING':''}`;audio.setLocation(world.outside?'surface':world.special||roomType(n,wing));
+  $('modeLabel').textContent=`${cast?.active?.definition.short||'ON FOOT'}${body.climbing?' · CLIMBING':running?' · RUNNING':''}`;audio.setLocation(world.outside?'surface':world.special||roomType(n,wing));
 }
 const inspectionText={
   generator:'Six removable panels protect the turbine. The rear panel is held open for inspection; the rotor, gantry and crane can be seen around the housing.',
@@ -89,11 +95,17 @@ const inspectionText={
   chute:'The refuse chute carries discarded material down for recovery. It is not a passenger route.',
   mines:'An inferred mining working with ore carts, timber supports and a rock drill. A complete filmed mine plan was not available in the sources.',
   tunnel:'A sealed lower passage beneath the silo. This build does not invent an open route into another silo.',
-  camp:'Somebody lived down here out of sight of the stairs: a bed, a lamp, a table and a curtain hung across a cut in the outer plate. The cavity behind it is empty now. Improvised camps in the deep are established by the show; this room is a reconstruction, not a filmed set.',
+  camp:'George and Juliette’s secluded hideout beside the excavation: a bed, a table and salvaged relics. The ladder outside the open side descends to the water. The room’s exact dimensions and position remain reconstructed from the available references.',
   relics:'Tins, bottles, books and wound cable carried down from the levels above and kept where a sweep would not find them. Possession of relics from before is an offence under the Pact.',
 };
 function use(){
-  if(!interaction||paused())return;
+  if(!interaction||paused()||body.climbing)return;
+  if(interaction.ladder){
+    const ladder=world.underground.ladders.find(l=>l.id===interaction.ladder);
+    if(ladder&&LadderClimb.begin(body,ladder,interaction.up)){yaw=ladder.heading+Math.PI;pitch=0;notify(interaction.up?'Climbing back to the camp.':'Climbing down to the water.');}
+    else notify('Move closer to the ladder.');
+    return;
+  }
   if(interaction.action==='hard-drive'){audio.click();openDialog(relic);return;}
   if(interaction.action==='clean-camera'){audio.click();world.surface.beginCleaning();notify('Cleaning the camera lens. The cafeteria feed clears as you wipe.');return;}
   if(interaction.action?.startsWith('airlock-')){audio.airlock();world.cycleAirlock(interaction.action.slice(8));return;}
@@ -163,7 +175,7 @@ function frame(){
     const count=Math.max(1,Math.ceil(dt/(1/120)));for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders);
     if(body.position.y<2&&!world.special){const p=world.spawn(world.activeLevel);body.teleport(p.x,p.y,p.z);notify('Returned to the nearest safe landing.');}
     const bob=$('reduceMotion').checked?0:Math.sin(body.distanceWalked*8)*.018*Math.min(1,body.horizontalSpeed);
-    world.update(dt,body.position);cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;interaction=world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;if(interaction)$('interaction').lastElementChild.textContent=interaction.label;
+    world.update(dt,body.position);cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;interaction=body.climbing?null:world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;if(interaction)$('interaction').lastElementChild.textContent=interaction.label;
     $('touchUse').style.opacity=interaction?'1':'.4';audio.step(body.distanceWalked,body.horizontalSpeed,cast.active?.motion.stepCount);
   }else if(!started){
     const top=levelY(1);camera.position.set(21,top+3.4,5);camera.lookAt(-1,top-5,-1);world.update(dt,new THREE.Vector3(21,top,5));

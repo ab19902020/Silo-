@@ -461,6 +461,7 @@ export class CharacterBody {
     this.groundY = 0;
     this.landingImpact = 0;
     this.distanceWalked = 0;
+    this.climbing = null;
   }
 
   get eyeHeight() {
@@ -469,6 +470,7 @@ export class CharacterBody {
 
   // desired is the horizontal velocity the input layer wants this frame.
   step(dt, desired, colliders, options = {}) {
+    if(this.climbing){this.climbing.step(dt,this);return this;}
     const { crouch = false, jump = false, jumpSpeed = 4.4 } = options;
 
     const targetHeight = crouch ? this.crouchHeight : this.standHeight;
@@ -536,6 +538,7 @@ export class CharacterBody {
   }
 
   teleport(x, y, z) {
+    this.climbing = null;
     this.position.set(x, y, z);
     this.velocity.set(0, 0, 0);
     this.grounded = true;

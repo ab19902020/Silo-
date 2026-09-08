@@ -93,6 +93,24 @@ export class SkeletalMotion{
     const phase=time/MOTION_CLIPS[name];this.time=phase*3.2;const run=name==='Run'?1:0,walking=['Walk','Run','StairUp','StairDown','TurnLeft','TurnRight'].includes(name);
     this.pose({phase,weight:walking?(name.startsWith('Turn')?.35:1):0,run,slope:name==='StairUp'?.5:name==='StairDown'?-.5:0,turn:name==='TurnLeft'?-1:name==='TurnRight'?1:0,air:name==='Fall'?1:0});
   }
+  climb({cycle=0,grip=1}){
+    this.neutral();this.state='Climb';this.weight=0;this.run=0;this.air=0;
+    const h=this.height,p=cycle*Math.PI*2;this.rotate('Spine',-.06*grip);this.rotate('Head',-.12*grip);
+    this.bones.Hips.position.y-=h*.035*grip;this.model.updateWorldMatrix(true,true);
+    for(const [i,leg] of this.legs.entries()){
+      const wave=Math.sin(p+i*Math.PI),ankle=leg.ankle.clone();ankle.z+=h*.17*grip;ankle.y+=h*(.075+.07*wave)*grip;
+      const target=ankle.applyMatrix4(this.model.matrixWorld),q=this.model.getWorldQuaternion(new THREE.Quaternion()).multiply(this.rest['Foot'+leg.side].worldQ);this.solve(leg,target,q);
+      const upper=this.bones['UpperArm'+leg.side],forearm=this.bones['Forearm'+leg.side],hand=this.bones['Hand'+leg.side];
+      const shoulder=upper.getWorldPosition(new THREE.Vector3()),elbow=forearm.getWorldPosition(new THREE.Vector3()),wrist=hand.getWorldPosition(new THREE.Vector3());
+      const a=shoulder.distanceTo(elbow),b=elbow.distanceTo(wrist),goalLocal=this.rest['Hand'+leg.side].point.clone();
+      goalLocal.lerp(new THREE.Vector3(i===0?.32:-.32,h*(.79-.085*wave),.42),grip);const goal=goalLocal.applyMatrix4(this.model.matrixWorld),d=goal.clone().sub(shoulder),length=clamp(d.length(),.08,a+b-.001);d.normalize();
+      const pole=new THREE.Vector3(i===0?1:-1,-.4,-.4).applyQuaternion(this.model.getWorldQuaternion(new THREE.Quaternion()));pole.addScaledVector(d,-pole.dot(d)).normalize();
+      const along=(a*a-b*b+length*length)/(2*length),lift=Math.sqrt(Math.max(0,a*a-along*along));
+      this.aim(upper,forearm,shoulder.clone().addScaledVector(d,along).addScaledVector(pole,lift));this.aim(forearm,hand,shoulder.clone().addScaledVector(d,length));
+      this.rotate('Coat'+leg.side,-.025*grip);
+    }
+    this.model.updateWorldMatrix(true,true);this.footContacts=[];
+  }
   update(dt,{speed=0,position,grounded=true,heading=0,ground=null,active=true}={}){
     this.time+=dt;
     const teleported=!this.lastPosition||this.lastPosition.distanceTo(position)>2.5;

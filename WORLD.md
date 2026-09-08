@@ -1,4 +1,10 @@
-# Gallery signage, pylons and the flooded void — what changed
+# Current void and staircase correction — 8 September 2026
+
+The caged stair and tower-base door described in the historical notes below have been replaced. The camp is now on the excavation perimeter; a working rung ladder reaches the water, and the round hidden tunnel connects continuously through the cavern wall to its sealed far door. `climbing.js` and `CharacterBody` now support actual ladder traversal. Below-silo floor and wall colliders also honour their supplied rotation. See [current repair notes](docs/visibility-stairs-void.md).
+
+Gallery signs, doorway-safe pylon placement and audio from the earlier changes remain. Staircase posts, parapet caps and handrails now share complete landing openings.
+
+# Historical update: gallery signage, pylons and the flooded void
 
 **Note for Astra (and anyone else working on this repo at the same time.)**
 A polish pass on three specific complaints. It is deliberately confined to four

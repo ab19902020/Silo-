@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import * as THREE from '../dist/vendor/three.module.js';
 import { GLTFLoader } from '../dist/vendor/GLTFLoader.js';
-import { CHARACTERS, CharacterCast, roomPoint, forwardYaw } from '../dist/src/characters.js';
+import { CHARACTERS, CharacterCast, actorFrom, roomPoint, forwardYaw } from '../dist/src/characters.js';
 import { SiloWorld } from '../dist/src/world.js';
 import { CharacterBody } from '../dist/src/physics.js';
 import { levelY } from '../dist/src/data.js';
@@ -40,3 +40,29 @@ test('cast posts, relic approach, view toggle and forward heading respect the wo
 });
 
 test('hard-drive relic is the supplied textured mesh at handheld scale',async()=>{const {gltf,source}=await geometryOnly('hard-drive-relic');gltf.scene.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(gltf.scene),size=bounds.getSize(new THREE.Vector3());assert.ok(Math.abs(Math.max(size.x,size.y,size.z)-.147)<.003);assert.ok(source.images.length>0);});
+
+test('moving coat surfaces remain visible from both faces and avatars remain opaque',async()=>{
+  for(const def of CHARACTERS){
+    const {gltf}=await geometryOnly(def.id),actor=actorFrom(gltf,def),mesh=actor.meshes[0];actor.motion.sample('Walk',.31);actor.root.position.y=1400;actor.root.updateMatrixWorld(true);mesh.skeleton.update();mesh.computeBoundingSphere();
+    assert.equal(mesh.material.opacity,1);assert.equal(mesh.material.transparent,false);assert.ok(mesh.material.depthWrite);
+    const index=mesh.geometry.index,ray=new THREE.Raycaster(),a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3();let hits=0;
+    for(let i=0;i<index.count&&hits<6;i+=699){
+      mesh.getVertexPosition(index.getX(i),a).applyMatrix4(mesh.matrixWorld);mesh.getVertexPosition(index.getX(i+1),b).applyMatrix4(mesh.matrixWorld);mesh.getVertexPosition(index.getX(i+2),c).applyMatrix4(mesh.matrixWorld);
+      const center=a.clone().add(b).add(c).multiplyScalar(1/3);if(center.y-1400<def.height*.4||center.y-1400>def.height*.64)continue;
+      const normal=b.clone().sub(a).cross(c.clone().sub(a));if(normal.length()<1e-7)continue;normal.normalize();
+      for(const sign of [-1,1]){ray.set(center.clone().addScaledVector(normal,.004*sign),normal.clone().multiplyScalar(-sign));ray.near=0;ray.far=.008;assert.ok(ray.intersectObject(mesh,false).length,`${def.id}: a coat face disappears from one side`);}
+      hits++;
+    }
+    assert.equal(hits,6);
+  }
+});
+
+test('every supplied skeleton has finite, human-scale climbing poses',async()=>{
+  for(const def of CHARACTERS){const {gltf}=await geometryOnly(def.id),actor=actorFrom(gltf,def),mesh=actor.meshes[0],v=new THREE.Vector3();
+    for(let i=0;i<12;i++){
+      actor.motion.climb({cycle:i/12,grip:1});actor.root.updateMatrixWorld(true);mesh.skeleton.update();
+      for(const b of actor.bones)assert.ok(Number.isFinite(b.quaternion.length())&&Math.abs(b.quaternion.length()-1)<1e-4);
+      for(let j=0;j<mesh.geometry.attributes.position.count;j+=91){mesh.getVertexPosition(j,v);assert.ok(v.toArray().every(Number.isFinite));assert.ok(Math.abs(v.x)<.8&&Math.abs(v.z)<.9&&v.y>-.1&&v.y<def.height*1.2,`${def.id}: distorted ladder pose ${v.toArray()}`);}
+    }
+  }
+});

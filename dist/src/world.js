@@ -22,6 +22,8 @@ import { buildTopFloor } from './top-floor.js';
 import { SurfaceWorld, topPoint, topLocal, groundY, inRampCutout } from './surface.js';
 import { buildGeneratorHall } from './generator-hall.js';
 import { buildUnderground } from './underground.js';
+import { buildStairFlight, hasStairGuard } from './staircase.js';
+import { VOID, voidLedgeGaps, tunnelPoint } from './void-access.js';
 
 export class SiloWorld {
   constructor(scene) {
@@ -100,25 +102,7 @@ export class SiloWorld {
     for(let j=0;j<8;j++){const a=j*TAU/8,ry=Math.PI/2-a;for(const da of [-.06,0,.06]){const aa=a+da;sk.box('darkMetal',Math.cos(aa)*(C+.018),H/2,Math.sin(aa)*(C+.018),.12,H-.5,.04,Math.PI/2-aa);}
       if(j%2===0)for(const y of [2.7,7.1]){sk.cylinder('metal',Math.cos(a)*(C+.17),y,Math.sin(a)*(C+.17),.19,1.95);sk.cylinder('lamp',Math.cos(a)*(C+.19),y,Math.sin(a)*(C+.19),.17,1.72);sk.sphere('lamp',Math.cos(a)*(C+.19),y+.87,Math.sin(a)*(C+.19),.17);sk.sphere('lamp',Math.cos(a)*(C+.19),y-.87,Math.sin(a)*(C+.19),.17);for(const dy of [-.47,.47])sk.torus('darkMetal',Math.cos(a)*(C+.19),y+dy,Math.sin(a)*(C+.19),.185,.025,Math.PI/2);}
     }
-    for(let j=0;j<SILO.stairSteps;j++){
-      const a=j*stepAngle,y=stairStepY(j);
-      sk.arc('concrete',C,S,.18,y-.18,a,stepAngle*1.005,2);
-      sk.arc('darkConcrete',S-.1,S+.14,.7,y,a,stepAngle*1.01,2);
-      for(const railY of [.92,1.1])sk.arc('metal',S-.01,S+.035,.045,y+railY,a,stepAngle*1.01,2);
-      sk.arc('concrete',S-.13,S+.17,.07,y+.7,a,stepAngle*1.01,2);
-      sk.cylinder('metal',Math.cos(a)*S,y+.82,Math.sin(a)*S,.027,.46);
-      // Tread nosing, a useful visual scale reference at close range.
-      sk.beam('darkMetal',[Math.cos(a)*C,y+.015,Math.sin(a)*C],[Math.cos(a)*(S-.15),y+.015,Math.sin(a)*(S-.15)],.018);
-    }
-    // Stair guard is trimmed where each bridge meets it. The bridge extends
-    // back to the column; short local openings avoid any top-landing wall.
-    const openAngle=Math.asin(SILO.landingHalf/S);
-    sk.parts=sk.parts.filter(p=>{
-      if(p.geometry.type==='CylinderGeometry')return true;
-      if(p.material!==this.m.darkConcrete&&p.material!==this.m.metal)return true;
-      const b=p.geometry.boundingBox||(p.geometry.computeBoundingBox(),p.geometry.boundingBox),center=b.getCenter(new THREE.Vector3()).applyMatrix4(p.matrix),a=Math.atan2(center.z,center.x),y=center.y;
-      return !(Math.abs(a)<openAngle&&(y<1.4||y>H-.4));
-    });
+    buildStairFlight(sk);
     for(const y of [2.4,6.5]){sk.box('darkMetal',C+.06,y,0,.14,1.6,.35);sk.box('lamp',C+.14,y,0,.05,1.35,.16);}
     this.stairs=sk.group(transforms.slice(1,16),true);this.scene.add(this.stairs);
     // Far levels retain the full silhouette while nearby floors carry the
@@ -170,12 +154,12 @@ export class SiloWorld {
     const c=new ColliderSet(),R=SILO.wellRadius,O=SILO.deckOuter,S=SILO.stairRadius,C=SILO.stairColumn,H=SILO.levelHeight;
     if(this.special){
       const below=this.special==='generator'?this.generator:this.underground;
-      for(const f of below.walkways){if(f.kind==='ring')c.addRing({innerRadius:f.r0,outerRadius:f.r1,minY:f.y-.5,maxY:f.y,climbable:true});else if(f.kind==='arc')c.addArc({innerRadius:f.r0,outerRadius:f.r1,minY:f.y-.17,maxY:f.y,centre:f.a,halfWidth:f.half,climbable:true});else c.addOrientedBox({cx:f.x,cz:f.z,halfX:f.w/2,halfZ:f.d/2,rotationY:0,minY:f.y-.4,maxY:f.y,climbable:true});}
-      for(const b of below.solids)if(b.arc)c.addArc({innerRadius:b.r0,outerRadius:b.r1,minY:b.y0,maxY:b.y1,centre:b.a,halfWidth:b.half});else if(b.ring)c.addRing({innerRadius:b.r0,outerRadius:b.r1,minY:b.y0,maxY:b.y1});else c.addOrientedBox({cx:b.x,cz:b.z,halfX:b.w/2,halfZ:b.d/2,rotationY:0,minY:b.y0,maxY:b.y1});
-      if(this.special==='excavator'){
-        c.addRing({innerRadius:74,outerRadius:77,minY:0,maxY:68});c.addRing({innerRadius:0,outerRadius:3.15,minY:0,maxY:60});
-        // Guard rails have a gap for the bridge at positive X.
-        c.addRing({innerRadius:67.9,outerRadius:68.2,minY:12,maxY:13.2,gaps:[[0,.034]]});
+      for(const f of below.walkways){if(f.kind==='ring')c.addRing({innerRadius:f.r0,outerRadius:f.r1,minY:f.y-.5,maxY:f.y,climbable:true});else if(f.kind==='arc')c.addArc({innerRadius:f.r0,outerRadius:f.r1,minY:f.y-.17,maxY:f.y,centre:f.a,halfWidth:f.half,climbable:true});else c.addOrientedBox({cx:f.x,cz:f.z,halfX:f.w/2,halfZ:f.d/2,rotationY:f.ry||0,minY:f.y-.4,maxY:f.y,climbable:true});}
+      for(const b of below.solids)if(b.arc)c.addArc({innerRadius:b.r0,outerRadius:b.r1,minY:b.y0,maxY:b.y1,centre:b.a,halfWidth:b.half});else if(b.ring)c.addRing({innerRadius:b.r0,outerRadius:b.r1,minY:b.y0,maxY:b.y1});else c.addOrientedBox({cx:b.x,cz:b.z,halfX:b.w/2,halfZ:b.d/2,rotationY:b.ry||0,minY:b.y0,maxY:b.y1});
+      if(this.special==='excavator'||this.special==='tunnel'){
+        c.addRing({innerRadius:74,outerRadius:80,minY:0,maxY:9.5,gaps:[[VOID.tunnelAngle,.053]]});
+        c.addRing({innerRadius:74,outerRadius:80,minY:9.5,maxY:68});c.addRing({innerRadius:0,outerRadius:3.15,minY:0,maxY:60});
+        c.addRing({innerRadius:67.9,outerRadius:68.2,minY:12,maxY:13.2,gaps:voidLedgeGaps});
         for(const z of [-1.8,1.8])c.addOrientedBox({cx:39,cz:z,halfX:31,halfZ:.08,rotationY:0,minY:12,maxY:13.1});
       }
       this.colliders=c;return;
@@ -194,8 +178,7 @@ export class SiloWorld {
         for(let j=0;j<SILO.stairSteps;j++){
           const center=(j+.5)*stepAngle,top=lower+stairStepY(j);
           c.addArc({innerRadius:C,outerRadius:S,minY:top-.18,maxY:top,centre:center,halfWidth:stepAngle*.505,climbable:true});
-          const opening=Math.asin(SILO.landingHalf/S),nearEnd=center<opening||center>TAU-opening;
-          if(!nearEnd)c.addArc({innerRadius:S-.1,outerRadius:S+.14,minY:top,maxY:top+1.02,centre:center,halfWidth:stepAngle*.51});
+          if(hasStairGuard(center))c.addArc({innerRadius:S-.1,outerRadius:S+.14,minY:top,maxY:top+1.14,centre:center,halfWidth:stepAngle*.51});
         }
       }
       const e=this.loaded.get(level);if(!e)continue;
@@ -234,7 +217,7 @@ export class SiloWorld {
     if(id==='generator')return {level:144,special:id,position:new THREE.Vector3(0,52,-20),yaw:Math.PI};
     if(id==='mines')return {level:144,special:id,position:new THREE.Vector3(105,48,-26),yaw:Math.PI};
     if(id==='excavator')return {level:144,special:id,position:new THREE.Vector3(71,12,0),yaw:Math.PI/2};
-    if(id==='tunnel')return {level:144,special:id,position:new THREE.Vector3(105,8,74),yaw:Math.PI};
+    if(id==='tunnel')return {level:144,special:id,position:tunnelPoint(0,.7,12),yaw:-Math.PI/2-VOID.tunnelAngle};
     if(id==='airlock')return {level:1,position:topPoint(26,0,50),yaw:-Math.PI/2};
     return {level:Number(id),position:this.spawn(Number(id)),yaw:-Math.PI/2};
   }
