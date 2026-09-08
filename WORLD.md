@@ -1,3 +1,18 @@
+# Current stairwell rebuild — 8 September 2026
+
+Every guard in the central shaft is now one swept concrete section — a plumb
+wall with a half-round coping — carried unbroken from the flight, round the
+landing corner and out along the bridge, with a lit newel column at each bridge
+end running the full depth of the silo. The metal handrails, posts, parapet caps
+and tread nosings are gone; the distant level of detail was rebuilt to the same
+rise, guard and columns. Walkable widths and floor heights are unchanged. See
+[the stairwell notes](docs/stairwell-guards.md).
+
+## Verify
+
+`npm test` — 65 passing, three staircase cases rewritten or added.
+`npm run validate` for the module graph.
+
 # The hatch is in the panorama now — 8 September 2026
 
 **Note for Astra.** Two files, both small changes, both worth knowing about.
@@ -195,11 +210,11 @@ are exactly where the gait work left them, so `locomotion.js` is unaffected.
 
 `npm test` — 62 passing. `npm run validate` for the module graph.
 
-# Current void and staircase correction — 8 September 2026
+# Historical void and staircase correction — 8 September 2026
 
 The caged stair and tower-base door described in the historical notes below have been replaced. The camp is now on the excavation perimeter; a working rung ladder reaches the water, and the round hidden tunnel connects continuously through the cavern wall to its sealed far door. `climbing.js` and `CharacterBody` now support actual ladder traversal. Below-silo floor and wall colliders also honour their supplied rotation. See [current repair notes](docs/visibility-stairs-void.md).
 
-Gallery signs, doorway-safe pylon placement and audio from the earlier changes remain. Staircase posts, parapet caps and handrails now share complete landing openings.
+Gallery signs, doorway-safe pylon placement and audio from the earlier changes remain. The staircase guards described here were replaced by the stairwell rebuild above.
 
 # Historical update: gallery signage, pylons and the flooded void
 

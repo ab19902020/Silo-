@@ -2,7 +2,7 @@ import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { ColliderSet } from './physics.js';
 import { SILO, TAU, levelY, levelAt, roomType, TYPE_NAMES, stairStepY } from './data.js';
-import { Kit, createMaterials, addSign, fixture, railing, disposeGroup, SIGN_DEPTH } from './kit.js';
+import { Kit, createMaterials, addSign, fixture, disposeGroup, SIGN_DEPTH } from './kit.js';
 
 // Gallery pylons, four to a wing sector. Spacing them evenly round the ring put
 // a column 2.5 m from every door centre — half a metre clear of the jamb, right
@@ -22,7 +22,8 @@ import { buildTopFloor } from './top-floor.js';
 import { SurfaceWorld, topPoint, topLocal, groundY, inRampCutout } from './surface.js';
 import { buildGeneratorHall } from './generator-hall.js';
 import { buildUnderground } from './underground.js';
-import { buildStairFlight, hasStairGuard, buildTerminalLanding, terminalStart } from './staircase.js';
+import { buildStairFlight, hasStairGuard, buildTerminalLanding, terminalStart, buildNewel, sweepParapet,
+  straightPath, helixPath, stairOpening, railRadius, guardZ, PARAPET, PARAPET_TOP, NEWEL } from './staircase.js';
 import { VOID, voidLedgeGaps, tunnelPoint } from './void-access.js';
 
 export class SiloWorld {
@@ -90,8 +91,12 @@ export class SiloWorld {
       const la=a+.045;fixture(k,Math.cos(la)*(O-.9),3.15,Math.sin(la)*(O-.9),1.1,false,j%4===0);
     }
     // Full-depth bridge, including the last landing at the top of the stairs.
-    k.box('concrete',(C+R+.3)/2,-.2,0,R+.3-C,.4,SILO.landingHalf*2);
-    for(const z of [-SILO.landingHalf,SILO.landingHalf]){k.box('concrete',(S+R)/2,.35,z,R-S,.7,.18);railing(k,[S,z],[R,z],.05);}
+    // The deck runs .16 m past the walkable half-width so the guard, which sits
+    // on the same line as the flight's, stands on slab rather than on air.
+    k.box('concrete',(C+R+.3)/2,-.2,0,R+.3-C,.4,(SILO.landingHalf+.16)*2);
+    // One guard section for the whole stairwell: the bridge run is the same
+    // swept profile the flight uses, and it dies into a column at the well lip.
+    for(const side of [-1,1]){sweepParapet(k,straightPath(S,NEWEL.x,side*guardZ));buildNewel(k,NEWEL.x,side*NEWEL.z,H);}
     k.box('darkConcrete',(S+R)/2,-.85,0,R-S,.85,1.1);
     // Bridges have a narrow center stripe and real join plates at their ends.
     for(let x=S+.5;x<R;x+=1.4)k.box('yellow',x,.012,-1.56,.65,.025,.08);
@@ -107,8 +112,13 @@ export class SiloWorld {
     this.stairs=sk.group(transforms.slice(1,16),true);this.scene.add(this.stairs);
     // Far levels retain the full silhouette while nearby floors carry the
     // individual treads, railings, windows and fittings. No floors are omitted.
-    const fk=new Kit(this.m);fk.arc('concrete',R,O,.42,-.42,0,TAU,36);fk.arc('darkConcrete',O-.12,O+.12,H,0,0,TAU,36);fk.arc('darkConcrete',R-.06,R+.16,.7,0,0,TAU,36);fk.box('concrete',(C+R)/2,-.21,0,R-C,.42,SILO.landingHalf*2);fk.cylinder('concrete',0,H/2,0,C-.01,H);
-    for(let j=0;j<24;j++)fk.arc('concrete',C,S,.16,(j+1)*H/24-.16,j*TAU/24,TAU/24,2);
+    const fk=new Kit(this.m);fk.arc('concrete',R,O,.42,-.42,0,TAU,36);fk.arc('darkConcrete',O-.12,O+.12,H,0,0,TAU,36);fk.arc('darkConcrete',R-.06,R+.16,.7,0,0,TAU,36);fk.box('concrete',(C+R)/2,-.21,0,R-C,.42,(SILO.landingHalf+.16)*2);fk.cylinder('concrete',0,H/2,0,C-.01,H);
+    // Distant flights are coarser, never different: the same rise, the same
+    // guard and the same lit columns, so a level does not change shape as it
+    // crosses the detail boundary and the shaft reads as one staircase.
+    for(let j=0;j<24;j++)fk.arc('concrete',C,S,.16,stairStepY((j+.5)*SILO.stairSteps/24)-.16,j*TAU/24,TAU/24*1.02,2);
+    sweepParapet(fk,helixPath(stairOpening,TAU-stairOpening,railRadius,0,7),3);
+    for(const side of [-1,1]){sweepParapet(fk,straightPath(S,NEWEL.x,side*guardZ),3);buildNewel(fk,NEWEL.x,side*NEWEL.z,H,{slats:10,rings:false});}
     this.distant=fk.group(transforms,true);this.scene.add(this.distant);this.updateStructure(1);
     // Crown closes the structure above the top landing; no exterior town.
     const crown=new Kit(this.m);crown.cylinder('darkConcrete',0,levelY(1)+H,0,O+1,.65);for(let i=0;i<12;i++){const a=i*TAU/12;crown.beam('concrete',[Math.cos(a)*C,levelY(1)+H-.6,Math.sin(a)*C],[Math.cos(a)*O,levelY(1)+H-.6,Math.sin(a)*O],.35);}
@@ -186,13 +196,21 @@ export class SiloWorld {
       c.addRing({innerRadius:O-.2,outerRadius:O+.2,minY:y,maxY:y+3.35,gaps:Array.from({length:6},(_,j)=>[j*TAU/6,2.05/O])});
       c.addRing({innerRadius:O-.3,outerRadius:O+.3,minY:y+3.35,maxY:y+H});
       c.addOrientedBox({cx:(C+R+.3)/2,cz:0,halfX:(R+.3-C)/2,halfZ:SILO.landingHalf,rotationY:0,minY:y-.4,maxY:y,climbable:true});
-      for(const z of [-SILO.landingHalf,SILO.landingHalf])c.addOrientedBox({cx:(S+R)/2,cz:z,halfX:(R-S)/2,halfZ:.1,rotationY:0,minY:y,maxY:y+1.13});
+      // The guard is solid from the corner the flight sweeps out of, right
+      // along the bridge and into the column, so there is no unguarded pocket
+      // beside the landing. The columns are boxed rather than added as columns:
+      // they are stairwell newels, not gallery pylons standing in a doorway.
+      const guardStart=Math.cos(stairOpening)*railRadius;
+      for(const side of [-1,1]){
+        c.addOrientedBox({cx:(guardStart+R)/2,cz:side*guardZ,halfX:(R-guardStart)/2,halfZ:PARAPET.half,rotationY:0,minY:y,maxY:y+PARAPET_TOP});
+        c.addOrientedBox({cx:NEWEL.x,cz:side*NEWEL.z,halfX:NEWEL.radius,halfZ:NEWEL.radius,rotationY:0,minY:y,maxY:y+H});
+      }
       if(level>1){
         const lower=y,stepAngle=TAU/SILO.stairSteps,rise=H/SILO.stairSteps;
         for(let j=0;j<SILO.stairSteps;j++){
           const center=(j+.5)*stepAngle,top=lower+stairStepY(j);
           c.addArc({innerRadius:C,outerRadius:S,minY:top-.18,maxY:top,centre:center,halfWidth:stepAngle*.505,climbable:true});
-          if(hasStairGuard(center))c.addArc({innerRadius:S-.1,outerRadius:S+.14,minY:top,maxY:top+1.14,centre:center,halfWidth:stepAngle*.51});
+          if(hasStairGuard(center))c.addArc({innerRadius:railRadius-PARAPET.half,outerRadius:railRadius+PARAPET.half,minY:top,maxY:top+PARAPET_TOP,centre:center,halfWidth:stepAngle*.51});
         }
       }
       const e=this.loaded.get(level);if(!e)continue;
@@ -225,7 +243,7 @@ export class SiloWorld {
       if(level===1||level===144){
         const side=level===1?1:-1;
         c.addOrientedBox({cx:(terminalStart+C)/2,cz:0,halfX:(C-terminalStart)/2,halfZ:SILO.landingHalf,rotationY:0,minY:y-.4,maxY:y,climbable:true});
-        c.addOrientedBox({cx:(terminalStart+S)/2,cz:side*SILO.landingHalf,halfX:(S-terminalStart)/2,halfZ:.13,rotationY:0,minY:y,maxY:y+1.15});
+        c.addOrientedBox({cx:(terminalStart+S)/2,cz:side*guardZ,halfX:(S-terminalStart)/2,halfZ:PARAPET.half,rotationY:0,minY:y,maxY:y+PARAPET_TOP});
       }
       for(const room of e.rooms){
         const ry=room.rotation.y,cos=Math.cos(ry),sin=Math.sin(ry),ox=room.position.x,oz=room.position.z;
