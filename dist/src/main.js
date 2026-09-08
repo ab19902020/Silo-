@@ -8,7 +8,7 @@ import { topLocal, topPoint } from './surface.js';
 import { CharacterCast, PLAYABLE_CHARACTERS } from './characters.js';
 import { LadderClimb } from './climbing.js';
 import { Population } from './population.js';
-import { CafeteriaOpening, CAFETERIA_START } from './opening.js';
+import { CafeteriaOpening, CAFETERIA_START, MUSIC_CUE } from './opening.js';
 import { RESIDENT_CAST } from './resident-data.js';
 
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic');
@@ -43,7 +43,18 @@ function toggleView(){if(!cast)return;cast.thirdPerson=!cast.thirdPerson;syncCha
 function renderCharacters(){
   $('characterList').replaceChildren();for(const c of PLAYABLE_CHARACTERS){const b=document.createElement('button');b.className='character-card'+(c.generated?' resident-card':'');b.dataset.character=c.id;b.setAttribute('aria-pressed','false');if(!c.generated){const im=document.createElement('img');im.src=`./assets/characters/${c.id}.jpg`;im.alt=c.name;b.append(im);}const copy=document.createElement('span');copy.className='character-copy';const name=document.createElement('strong');name.textContent=c.name;const role=document.createElement('small');role.textContent=c.role;const place=document.createElement('small');place.textContent=`Level ${String(c.level).padStart(3,'0')} · ${c.place}`;const label=document.createElement('span');label.className='selection-label';copy.append(name,role,place,label);b.append(copy);b.addEventListener('click',()=>chooseCharacter(c.id));$('characterList').append(b);}syncCharacterUI();
 }
+// The soundtrack belongs to the story. Nothing plays while you are looking for
+// the book: the cafeteria is quiet, the way the room is quiet in the show. The
+// theme comes in the moment the book is picked up, cued so that its loudest bar
+// lands as Holston goes down on the hill. Anyone who skips or has already seen
+// the opening just gets the bed from the top.
+function syncMusicGate(){
+  if(!opening)return;
+  if(opening.state==='find-book'){audio.holdMusic();audio.stopMusic?.();}
+  else audio.releaseMusic?.();
+}
 function openingChanged(state){
+  syncMusicGate();
   const watching=state==='watch',reading=state==='read-book';
   $('chapterHud').hidden=state==='explore';$('chapterTitle').textContent=state==='find-book'?'A book on the table':watching?'Holston’s cleaning':'The room falls quiet';
   $('chapterObjective').textContent=state==='find-book'?'Find the directory book on the table ahead.':watching?'Watch the cafeteria screen. You can still look around.':'Open the book to read the silo directory.';
@@ -89,7 +100,7 @@ async function travel(id){
   $('fade').classList.remove('show');traveling=false;syncPause();updateHUD();
   const name=SPECIALS.find(s=>s.id===id)?.name||(typeof id==='string'&&id.startsWith('room:')?`${LEVELS[dest.level-1].name} · Wing ${String.fromCharCode(65+Number(id.split(':')[2]))}`:LEVELS[dest.level-1].name);notify(name);canvas.focus();
 }
-function begin(){if(!ready)return;started=true;welcome.close();syncPause();audio.start();canvas.focus();openingChanged(opening.state);notify(opening.state==='find-book'?'There’s a book on the table ahead. Approach it and press Use / E.':coarse?'Left stick to walk. Drag on the right to look.':'WASD to move. Drag to look, or click to capture the mouse.');}
+function begin(){if(!ready)return;started=true;welcome.close();syncPause();audio.start();syncMusicGate();canvas.focus();openingChanged(opening.state);notify(opening.state==='find-book'?'There’s a book on the table ahead. Approach it and press Use / E.':coarse?'Left stick to walk. Drag on the right to look.':'WASD to move. Drag to look, or click to capture the mouse.');}
 function updateHUD(){
   if(!world)return;
   const n=world.activeLevel,data=LEVELS[n-1],r=Math.hypot(body.position.x,body.position.z),wing=Math.round(Math.atan2(body.position.z,body.position.x)/TAU*6+6)%6;
@@ -123,7 +134,7 @@ const inspectionText={
 function use(){
   if(opening?.state==='read-book'&&!paused()){requestDirectory();return;}
   if(!interaction||paused()||body.climbing)return;
-  if(interaction.action==='opening-book'){audio.click();opening.takeBook();notify('Holston is leaving. Watch the cafeteria screen.');return;}
+  if(interaction.action==='opening-book'){audio.click();opening.takeBook();audio.startMusicAt(MUSIC_CUE,2.5);notify('Holston is leaving. Watch the cafeteria screen.');return;}
   if(interaction.action?.startsWith('resident-')){const def=RESIDENT_CAST.find(d=>d.id===interaction.action.slice(9));if(def)notify(`${def.name} — ${def.role}. Use Character to explore as them.`);return;}
   if(interaction.ladder){
     const ladder=world.underground.ladders.find(l=>l.id===interaction.ladder);

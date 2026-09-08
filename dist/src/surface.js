@@ -7,12 +7,28 @@ export const topLocal=p=>({x:-p.z,y:p.y-levelY(1),z:p.x-SILO.deckOuter});
 export const rampY=z=>THREE.MathUtils.clamp((z-64)/44,0,1)*14;
 export const inRampPassage=(x,z)=>x>23&&x<29&&z>=64&&z<108;
 export const inRampCutout=(x,z)=>inRampPassage(x,z)&&z>=94;
+// Silo 18 stands at the centre of a crater. The floor is flat for the first
+// thirty metres, then the ground climbs away on every bearing and never comes
+// back down: from anywhere on that floor the crest ring is the horizon, so
+// there is nothing beyond the hill to see. The near shoulder is the rise
+// Holston walks up; the far crest, at a quarter of a kilometre, closes the sky.
+const rise=(a,b,r)=>{const t=THREE.MathUtils.clamp((r-a)/(b-a),0,1);return t*t*(3-2*t);};
 export function groundY(x,z){
-  const r=Math.hypot(x-26,z-139),rim=6.4*Math.exp(-Math.pow((r-108)/27,2));
+  const r=Math.hypot(x-26,z-139);
+  const bowl=11*rise(30,96,r)+24*rise(130,320,r)+10*(1-Math.exp(-Math.max(0,r-320)/1500));
+  // Long, shallow folds across the slope, on wavelengths the 16 m outer terrain
+  // tiles can still carry. They fade out past the fog, where nothing reads them.
+  const ridges=(Math.sin(x*.0175+z*.0132)*1.5+Math.cos(z*.0231-x*.0163)*1.15)*rise(34,150,r)*(1-rise(360,760,r));
   const detail=(Math.sin(x*.069+z*.022)*.75+Math.cos(z*.087-x*.031)*.52+Math.sin(x*.43+z*.24)*.15)*Math.min(1,Math.max(0,(z-111)/18));
   const entrance=Math.min(1,Math.hypot(x-26,z-108)/24);
-  return 14+(rim+detail)*entrance;
+  return 14+(bowl+ridges+detail)*entrance;
 }
+// Broad tonal drift across the ground, brightening with height so the far
+// crest hazes into the sky. The wavelengths are long on purpose: the terrain
+// samples every four metres, and the first pass shaded on a ten metre sine,
+// so what reached the screen was the aliasing rather than the shading.
+const terrainShade=(x,y,z)=>.80+.055*Math.sin(x*.031+z*.023)+.03*Math.cos(z*.047-x*.038)+(y-14)*.0055;
+
 export class SurfaceWorld {
   constructor(m){
     this.root=new THREE.Group();this.root.position.set(SILO.deckOuter,levelY(1),0);this.root.rotation.y=Math.PI/2;
@@ -47,7 +63,7 @@ export class SurfaceWorld {
     this.sensorPoint=topPoint(26,base+1.85,sensorZ-.95);
     addSign(this.root,'18',[26,base+.6,sensorZ-1.2],.9,.65,Math.PI,{background:'#77796e',color:'#252c27',font:'bold 180px Arial',border:false});
     // Hatch boundaries are actual grid edges; no triangle bridges the opening.
-    this.groundMaterial=m.rock.clone();this.groundMaterial.color.setHex(0xa09d8b);this.groundMaterial.vertexColors=true;this.groundMaterial.normalScale.set(.7,.7);projectMaterial(this.groundMaterial,1.8);
+    this.groundMaterial=m.rock.clone();this.groundMaterial.color.setHex(0xa09d8b);this.groundMaterial.vertexColors=true;this.groundMaterial.normalScale.set(.42,.42);projectMaterial(this.groundMaterial,5.2);
     this.terrainTiles=new Map();this.tileKey='';this.streamTerrain({x:26,z:140});this.ground=this.terrainTiles.get('0,0');
     // Angular scree with uneven silhouette, never a field of smooth spheres.
     const rockGeo=new THREE.IcosahedronGeometry(1,1),rp=rockGeo.attributes.position;for(let i=0;i<rp.count;i++){const v=new THREE.Vector3().fromBufferAttribute(rp,i).multiplyScalar(.78+rng()*.36);rp.setXYZ(i,v.x,v.y,v.z);}rockGeo.computeVertexNormals();
@@ -55,26 +71,28 @@ export class SurfaceWorld {
     const scree=rocks.group();scree.name='surface-scree';this.root.add(scree);
     // The recognizable bare tree on the crater slope. Tapered branching mesh.
     const branch=(a,b,r1,r2)=>{const v=new THREE.Vector3(...b).sub(new THREE.Vector3(...a)),o=new THREE.Mesh(new THREE.CylinderGeometry(r2,r1,v.length(),9),m.darkConcrete);o.position.copy(new THREE.Vector3(...a).addScaledVector(v,.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());o.name='dead-tree';o.castShadow=true;this.root.add(o);};
-    const tx=49,tz=68,ty=groundY(tx,tz);branch([tx,ty,tz],[tx-1,ty+10,tz+1],.64,.26);
+    const tx=49,tz=68,ty=groundY(tx,tz);branch([tx,ty,tz],[tx-1,ty+10,tz+1],.42,.17);
     const branchTree=(x,y,z,angle,length,r,depth)=>{const end=[x+Math.cos(angle)*length*.72,y+length*.68,z+Math.sin(angle)*length*.52];branch([x,y,z],end,r,r*.48);if(depth>0){branchTree(...end,angle+.65,length*.61,r*.48,depth-1);branchTree(...end,angle-.8,length*.55,r*.45,depth-1);}};
-    branchTree(tx-.6,ty+5,tz,2.3,6,.3,3);branchTree(tx-.9,ty+8,tz+1,-.5,5.9,.23,3);branchTree(tx-1,ty+9.8,tz+1,1.5,4.6,.18,2);
+    branchTree(tx-.6,ty+5,tz,2.3,6,.20,3);branchTree(tx-.9,ty+8,tz+1,-.5,5.9,.155,3);branchTree(tx-1,ty+9.8,tz+1,1.5,4.6,.12,2);
     this.solids.push({x:tx,z:tz,w:1.2,d:1.2,y0:ty,y1:ty+8});
-    for(const [x,z,h] of [[-31,37,3.2],[4,31,3.8],[78,47,2.8]]){const y=groundY(x,z);branch([x,y,z],[x+.25,y+h,z],.13,.035);branch([x+.1,y+h*.55,z],[x-1,y+h*.9,z+.2],.07,.018);branch([x+.2,y+h*.7,z],[x+1,y+h*1.06,z-.2],.06,.016);}
+    // One tree, and only one. Nothing else grew back.
     // No city geometry: the exterior is a barren bowl.
     this.root.add(k.group());
     // Sparse moving dust is visible in both views without adding inhabitants.
     const dustGeo=new THREE.BufferGeometry(),dp=[];for(let i=0;i<180;i++)dp.push(26+(rng()-.5)*180,15+rng()*18,130+(rng()-.5)*160);dustGeo.setAttribute('position',new THREE.Float32BufferAttribute(dp,3));this.dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({color:0xbdb8a0,size:.035,transparent:true,opacity:.23,depthWrite:false}));this.dust.name='wind-dust';this.root.add(this.dust);
-    this.feedScene=new THREE.Scene();this.feedScene.background=new THREE.Color(0x929fa3);this.feedScene.fog=new THREE.FogExp2(0x929fa3,.0038);this.feedRoot=new THREE.Group();this.feedRoot.position.copy(this.root.position);this.feedRoot.rotation.copy(this.root.rotation);for(const child of this.root.children)if((child.name!=='barren-ground'||child===this.ground)&&['barren-ground','surface-scree','dead-tree','wind-dust'].includes(child.name))this.feedRoot.add(child.clone(true));// The production display is a composed panorama. Fill the hatch cutout
-    // in that panorama while the physical ramp remains open in the exterior.
-    const cover=new THREE.PlaneGeometry(6,14,3,7);cover.rotateX(-Math.PI/2);cover.translate(26,0,101);for(let i=0;i<cover.attributes.position.count;i++){const p=cover.attributes.position;p.setY(i,groundY(p.getX(i),p.getZ(i)));}cover.computeVertexNormals();const cap=new THREE.Mesh(cover,this.groundMaterial);cap.name='barren-ground';cap.geometry.setAttribute('color',new THREE.Float32BufferAttribute(Array.from({length:cover.attributes.position.count},()=>[.84,.8148,.7644]).flat(),3));this.feedRoot.add(cap);
+    this.feedScene=new THREE.Scene();this.feedScene.background=new THREE.Color(0x929fa3);this.feedScene.fog=new THREE.FogExp2(0x929fa3,.0029);this.feedRoot=new THREE.Group();this.feedRoot.position.copy(this.root.position);this.feedRoot.rotation.copy(this.root.rotation);for(const child of this.root.children)if((child.name!=='barren-ground'||child===this.ground)&&['barren-ground','surface-scree','dead-tree','wind-dust'].includes(child.name))this.feedRoot.add(child.clone(true));// The production display is a composed panorama. Fill the hatch cutout in
+    // that panorama while the physical ramp remains open in the exterior. The
+    // patch laps over the cutout edge and sits a shade below it, so no hairline
+    // of sky shows along the seam.
+    const cover=new THREE.PlaneGeometry(6.6,14.8,4,8);cover.rotateX(-Math.PI/2);cover.translate(26,0,101);for(let i=0;i<cover.attributes.position.count;i++){const p=cover.attributes.position;p.setY(i,groundY(p.getX(i),p.getZ(i))-.03);}cover.computeVertexNormals();const cap=new THREE.Mesh(cover,this.groundMaterial);cap.name='barren-ground';{const p=cover.attributes.position,colors=[];for(let i=0;i<p.count;i++){const shade=terrainShade(p.getX(i),p.getY(i),p.getZ(i));colors.push(shade,shade*.97,shade*.91);}cap.geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));}this.feedRoot.add(cap);
     this.feedDust=this.feedRoot.getObjectByName('wind-dust');this.feedScene.add(this.feedRoot,new THREE.HemisphereLight(0xdddcd0,0x79705c,2));const sun=new THREE.DirectionalLight(0xf3e6ce,2.2);sun.position.copy(topPoint(-20,100,200));this.feedScene.add(sun);
-    this.camera=new THREE.PerspectiveCamera(24,30/6.8,.08,2500);this.camera.position.copy(this.sensorPoint);this.camera.lookAt(topPoint(26,base+2.2,0));
+    this.camera=new THREE.PerspectiveCamera(24,30/6.8,.02,2500);this.camera.position.copy(this.sensorPoint);this.camera.lookAt(topPoint(26,base+2.2,0));
   }
   terrainGeometry(ix,iz){
     const size=800,step=ix===0&&iz===0?4:16,cx=26+ix*size,cz=140+iz*size;
     const axis=(center,extra)=>[...new Set([...Array.from({length:size/step+1},(_,i)=>center-size/2+i*step),...extra.filter(v=>v>center-size/2&&v<center+size/2)])].sort((a,b)=>a-b);
     const xs=axis(cx,[23,29]),zs=axis(cz,[94,108]),pos=[],colors=[],uv=[],indices=[];
-    for(const z of zs)for(const x of xs){const y=groundY(x,z),shade=.82+.045*Math.sin(x*.63+z*.51)+(y-14)*.007;pos.push(x,y,z);colors.push(shade,shade*.97,shade*.91);uv.push(x/1.8,z/1.8);}
+    for(const z of zs)for(const x of xs){const y=groundY(x,z),shade=terrainShade(x,y,z);pos.push(x,y,z);colors.push(shade,shade*.97,shade*.91);uv.push(x/1.8,z/1.8);}
     for(let j=0;j<zs.length-1;j++)for(let i=0;i<xs.length-1;i++){
       if(inRampCutout((xs[i]+xs[i+1])/2,(zs[j]+zs[j+1])/2))continue;
       const a=j*xs.length+i,b=a+1,c=a+xs.length,d=c+1;indices.push(a,c,b,b,c,d);
@@ -87,7 +105,7 @@ export class SurfaceWorld {
     for(const key of keep)if(!this.terrainTiles.has(key)){const [x,z]=key.split(',').map(Number),mesh=new THREE.Mesh(this.terrainGeometry(x,z),this.groundMaterial);mesh.name='barren-ground';mesh.receiveShadow=true;this.root.add(mesh);this.terrainTiles.set(key,mesh);}
     for(const [key,mesh] of this.terrainTiles)if(!keep.has(key)){mesh.removeFromParent();mesh.geometry.dispose();this.terrainTiles.delete(key);}
   }
-  refreshMaterials(){const mat=this.groundMaterial;mat.map=this.m.rock.map;mat.normalMap=this.m.rock.normalMap;mat.roughnessMap=this.m.rock.roughnessMap;mat.roughness=.96;projectMaterial(mat,1.8);}
+  refreshMaterials(){const mat=this.groundMaterial;mat.map=this.m.rock.map;mat.normalMap=this.m.rock.normalMap;mat.roughnessMap=this.m.rock.roughnessMap;mat.roughness=.96;mat.normalScale.set(.42,.42);projectMaterial(mat,5.2);}
   floorAt(x,z,radius,maxHeight){
     const p=topLocal({x,y:maxHeight,z}),terrain=levelY(1)+groundY(p.x,p.z);
     if(inRampPassage(p.x,p.z)&&(inRampCutout(p.x,p.z)||maxHeight<terrain-.001)){const y=levelY(1)+rampY(p.z);return y<=maxHeight+.001?y:0;}
@@ -99,7 +117,33 @@ export class SurfaceWorld {
   initFeed(renderer){
     this.raw=new THREE.WebGLRenderTarget(1280,290,{type:renderer.extensions.has('EXT_color_buffer_float')?THREE.HalfFloatType:THREE.UnsignedByteType});this.target=new THREE.WebGLRenderTarget(1280,290);
     this.postScene=new THREE.Scene();this.postCamera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
-    this.lensMaterial=new THREE.ShaderMaterial({uniforms:{source:{value:this.raw.texture},clean:{value:this.cleanliness},time:{value:0}},vertexShader:'varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:`uniform sampler2D source;uniform float clean,time;varying vec2 vUv;float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}void main(){vec3 c=texture2D(source,vUv).rgb;float soil=smoothstep(.12,.88,hash(floor(vUv*vec2(70.,22.))));float edge=smoothstep(.16,.65,length((vUv-.5)*vec2(.65,1.)));float wipe=smoothstep(clean-.12,clean+.06,vUv.x);float dirt=(1.-clean)*(.10+soil*.28+edge*.25)*(.7+wipe*.3);c=mix(c,vec3(.32,.27,.18),dirt);c*=.975+.025*sin(vUv.y*1450.);gl_FragColor=vec4(c,1.);}`,depthTest:false,depthWrite:false});this.postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),this.lensMaterial));this.renderFeed(renderer,0,true);return this.target;
+    // Years of dust on the outside of the glass do three things, and the old
+    // pass only did one of them. It tints — but it also scatters, so the
+    // picture goes soft, and it absorbs, so the picture goes dark and grey.
+    // Before Holston wipes it you can just make out that there is a world out
+    // there; the whole point of the clean is that it opens up.
+    this.lensMaterial=new THREE.ShaderMaterial({uniforms:{source:{value:this.raw.texture},clean:{value:this.cleanliness},time:{value:0}},vertexShader:'varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:`
+      uniform sampler2D source;uniform float clean,time;varying vec2 vUv;
+      float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      void main(){
+        float grime=1.-clean;
+        // Six taps on a widening ring: a cheap, stable blur whose radius is
+        // the difference between "outside" and "outside, through the dirt".
+        vec2 spread=vec2(.0085,.036)*grime;
+        vec3 c=texture2D(source,vUv).rgb*.34;
+        for(int i=0;i<6;i++){float a=float(i)*1.0471976;c+=texture2D(source,vUv+vec2(cos(a),sin(a))*spread).rgb*.11;}
+        float soil=smoothstep(.10,.92,hash(floor(vUv*vec2(70.,22.))));
+        float fine=smoothstep(.34,1.,hash(floor(vUv*vec2(230.,66.))+31.));
+        float edge=smoothstep(.10,.62,length((vUv-.5)*vec2(.65,1.)));
+        // The clean sweeps left to right across the glass as the count rises.
+        float wipe=smoothstep(clean-.10,clean+.05,vUv.x);
+        float dirt=grime*(.16+soil*.30+fine*.14+edge*.40)*(.55+wipe*.45);
+        c=mix(c,vec3(.27,.23,.16),clamp(dirt,0.,.90));
+        c*=1.-grime*.42*(.55+edge*.45);
+        c=mix(vec3(dot(c,vec3(.2126,.7152,.0722))),c,1.-grime*.55);
+        c*=.975+.025*sin(vUv.y*1450.);
+        gl_FragColor=vec4(c,1.);
+      }`,depthTest:false,depthWrite:false});this.postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),this.lensMaterial));this.renderFeed(renderer,0,true);return this.target;
   }
   renderFeed(renderer,time,force=false){if(!this.target||(!force&&time-this.lastFeed<(this.storyActive?1/30:.1)))return;this.lastFeed=time;const prev=renderer.getRenderTarget(),tone=renderer.toneMapping;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.setRenderTarget(this.raw);renderer.render(this.feedScene,this.camera);this.lensMaterial.uniforms.clean.value=this.cleanliness;this.lensMaterial.uniforms.time.value=time;renderer.setRenderTarget(this.target);renderer.render(this.postScene,this.postCamera);renderer.setRenderTarget(prev);renderer.toneMapping=tone;}
 }

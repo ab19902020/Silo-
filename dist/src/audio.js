@@ -123,6 +123,7 @@ const PLACES={
 export class SiloAudio {
   constructor(){
     this.context=null;this.enabled=true;this.musicVolume=.148;this.lastStep=0;this.foot=1;
+    this.musicHeld=false;this.musicOffset=0;this.musicBuffer=null;this.musicCue=null;this.musicFade=5;
     this.place=INTERIOR;this.stepSurface='concrete';this.musicRequested=false;this.musicPlaying=false;this.scrub=null;
   }
 
@@ -248,13 +249,34 @@ export class SiloAudio {
     if(end-start<length*.9)return {start:0,end:buffer.duration};   // not codec padding; leave the buffer alone
     return {start:start/buffer.sampleRate,end:(end+1)/buffer.sampleRate};
   }
+  // The theme is a two minute cycle laid down five times. Holding it back and
+  // then starting it from a named second is what lets the opening be cut to it:
+  // see MUSIC_CUE in opening.js. Nothing else in the silo cares where in the
+  // bed it comes in.
+  holdMusic(){this.musicHeld=true;}
+  // Start, or restart, the soundtrack `offset` seconds into the loop. If the
+  // ten minute file is still decoding, the cue time is remembered and the wait
+  // is added on when it lands, so a slow decode delays the music without
+  // sliding it out of step with the scene it was cut against.
+  startMusicAt(offset=0,fade=5){
+    if(!this.context)return;
+    this.musicHeld=false;this.musicOffset=offset;this.musicFade=fade;this.musicCue=this.context.currentTime;
+    if(this.musicBuffer){this.stopMusic();this.playMusic(this.musicBuffer);}
+    else if(this.musicElement){
+      try{this.musicElement.currentTime=this.startOffset(this.musicElement.duration||0);}catch{}
+      this.musicElement.play().catch(error=>{this.musicError=error;});this.musicPlaying=true;this.fadeMusicIn();
+    }
+  }
+  releaseMusic(){if(this.musicHeld)this.startMusicAt(0,5);}
+  stopMusic(){try{this.musicSource?.stop();}catch{}this.musicSource=null;this.musicPlaying=false;}
   async loadMusic(){
     if(this.musicRequested||!this.context)return;
     this.musicRequested=true;
     try{
       const response=await fetch(MUSIC_URL);
       if(!response.ok)throw Error(`soundtrack ${response.status}`);
-      this.playMusic(await this.decode(await response.arrayBuffer()));
+      this.musicBuffer=await this.decode(await response.arrayBuffer());
+      if(!this.musicHeld)this.playMusic(this.musicBuffer);
     }catch(error){this.musicError=error;this.streamMusic();}
   }
   // Ten minutes decodes to roughly 200 MB of float samples, which buys a
@@ -267,15 +289,25 @@ export class SiloAudio {
     try{
       const element=new Audio(MUSIC_URL);element.loop=true;element.preload='auto';
       this.context.createMediaElementSource(element).connect(this.musicTone);
+      this.musicElement=element;
+      if(this.musicHeld)return;
+      element.currentTime=this.startOffset(0);
       element.play().catch(error=>{this.musicError=error;});
-      this.musicElement=element;this.musicPlaying=true;this.fadeMusicIn();
+      this.musicPlaying=true;this.fadeMusicIn();
     }catch(error){this.musicError=error;}
   }
+  // Where in the loop to drop the needle: the requested cue point, plus however
+  // long the decode kept the scene waiting, wrapped back into the loop.
+  startOffset(length){
+    const waited=this.musicCue==null?0:Math.max(0,this.context.currentTime-this.musicCue);
+    const at=this.musicOffset+waited;
+    return length>0?at%length:at;
+  }
   playMusic(buffer){
-    if(!this.context||this.musicPlaying)return;
+    if(!this.context||this.musicPlaying||this.musicHeld)return;
     const c=this.context,bounds=this.audibleBounds(buffer),source=c.createBufferSource();
     source.buffer=buffer;source.loop=true;source.loopStart=bounds.start;source.loopEnd=bounds.end;
-    source.connect(this.musicTone);source.start(c.currentTime,bounds.start);
+    source.connect(this.musicTone);source.start(c.currentTime,bounds.start+this.startOffset(bounds.end-bounds.start));
     this.musicSource=source;this.musicPlaying=true;this.fadeMusicIn();
   }
   // An exponential ramp out of true silence spends most of its length inaudible,
@@ -284,7 +316,7 @@ export class SiloAudio {
     const c=this.context,volume=Math.max(.0002,this.musicVolume);
     this.musicBus.gain.cancelScheduledValues(c.currentTime);
     this.musicBus.gain.setValueAtTime(volume/50,c.currentTime);
-    this.musicBus.gain.exponentialRampToValueAtTime(volume,c.currentTime+5);
+    this.musicBus.gain.exponentialRampToValueAtTime(volume,c.currentTime+Math.max(.5,this.musicFade));
   }
   // fraction is 0..1 from the settings slider; the curve keeps the low end usable.
   setMusicVolume(fraction){

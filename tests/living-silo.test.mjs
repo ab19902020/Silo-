@@ -53,11 +53,31 @@ test('the opening starts at an accessible book, plays once, releases the directo
   const world=new SiloWorld(new THREE.Scene());world.setLevel(1);const opening=new CafeteriaOpening(world),start=topPoint(...CAFETERIA_START),book=topPoint(...BOOK_POSITION),eye=start.clone().add(new THREE.Vector3(0,1.6,0));world.update(0,start);
   assert.ok(!world.colliders.contains(start.x,start.z,.3,start.y+.02,start.y+1.8));assert.ok(eye.distanceTo(book)<3);assert.equal(world.nearestInteraction(eye,book.clone().sub(eye).normalize()).action,'opening-book');
   assert.equal(opening.openBook(),false);assert.equal(opening.takeBook(),true);assert.equal(opening.takeBook(),false);
-  const phases=new Set();let previous=cleaningSample(0).position;
+  const phases=new Set();let previous=cleaningSample(0).position,reach=0,blanks=0,covered=false;
+  const camera=world.surface.camera,corner=new THREE.Vector3();
   for(let i=0;i<OPENING_DURATION*30;i++){
     opening.update(1/30);const s=cleaningSample(opening.time);phases.add(s.phase);assert.ok(s.position.distanceTo(previous)<.08,'Holston teleported');assert.ok(Math.abs(s.position.y-groundY(s.position.x,s.position.z))<1e-6,'Holston left the terrain');previous=s.position;
-    if(opening.time>12&&opening.time<20)assert.ok(opening.cleaners[0].motion.bones.HandR.getWorldPosition(new THREE.Vector3()).distanceTo(world.surface.cleaningPoint)<.2,'cloth misses the physical sensor');
+    if(opening.time>12&&opening.time<20){
+      // The wipe has to be a wipe: the hand stays within one stretched arm of
+      // the sensor it is cleaning, and the rag it is holding has to cross the
+      // lens close enough to fill the whole frame — that momentary blackout on
+      // the cafeteria screen is the only thing that reads as contact from
+      // inside the silo.
+      reach=Math.max(reach,opening.cleaners[0].motion.bones.HandR.getWorldPosition(new THREE.Vector3()).distanceTo(world.surface.cleaningPoint));
+      const cloth=opening.cleaners[0].cloth;cloth.updateWorldMatrix(true,false);camera.updateMatrixWorld(true);
+      let left=1,right=-1,down=1,up=-1,behind=false;
+      for(const x of [-.5,.5])for(const y of [-.5,.5])for(const z of [-.5,.5]){
+        corner.set(x*.28,y*.40,z*.014).applyMatrix4(cloth.matrixWorld);
+        if(corner.clone().applyMatrix4(camera.matrixWorldInverse).z>-camera.near)behind=true;
+        const p=corner.project(camera);left=Math.min(left,p.x);right=Math.max(right,p.x);down=Math.min(down,p.y);up=Math.max(up,p.y);
+      }
+      if(!behind&&left<-1&&right>1&&down<-1&&up>1)blanks++;
+      if(blanks)covered=true;
+    }
   }
+  assert.ok(reach<.62,`the wiping hand strayed ${reach.toFixed(2)} m from the sensor`);
+  assert.ok(covered,'the rag never covers the lens, so the cafeteria screen never blanks during the clean');
+  assert.ok(blanks>12&&blanks<150,`the screen is blanked on ${blanks} of 240 frames; it should flick out on each pass, not stay dark`);
   assert.deepEqual([...phases],['emerge','clean','turn','walk','helmet','crawl','rest']);assert.equal(opening.state,'read-book');assert.equal(opening.surface.cleanliness,1);assert.equal(opening.surface.storyActive,false);assert.ok(opening.helmet.visible);assert.equal(opening.openBook(),true);assert.equal(opening.state,'explore');
   for(const a of opening.cleaners){assert.ok(a.root.visible&&a.feed.visible);assert.ok(a.root.position.distanceTo(a.feed.position)<1e-6);assert.ok(a.model.quaternion.angleTo(a.feed.children[0].quaternion)<1e-6);}
   assert.ok(opening.cleaners[0].root.position.distanceTo(opening.cleaners[1].root.position)<1);opening.reset();opening.update(0);assert.equal(opening.state,'find-book');assert.equal(opening.hasBook,false);assert.equal(opening.cleaners[0].root.visible,false);assert.equal(opening.book.visible,true);assert.equal(opening.helmet.visible,false);

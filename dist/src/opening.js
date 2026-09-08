@@ -5,23 +5,44 @@ import { createResident, poseResident } from './resident-model.js';
 import { topPoint, groundY } from './surface.js';
 import { Kit, addSign } from './kit.js';
 
-export const OPENING_DURATION=84;
+export const OPENING_DURATION=86;
 export const BOOK_POSITION=Object.freeze([2,.855,22]);
 export const CAFETERIA_START=Object.freeze([2,0,19.8]);
 const clamp=THREE.MathUtils.clamp,lerp=THREE.MathUtils.lerp,ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
 const at=(x,z)=>new THREE.Vector3(x,groundY(x,z),z);
 const followGround=p=>{p.y=groundY(p.x,p.z);return p;};
+const UP=new THREE.Vector3(0,1,0);
+// The slope under the tree runs at about one in four. A body laid out flat on
+// the horizontal is buried to the shoulder at the uphill end, so anything that
+// lies down here is laid along the ground's own normal instead.
+function groundNormal(x,z,e=.6){
+  return new THREE.Vector3(-(groundY(x+e,z)-groundY(x-e,z))/(2*e),1,-(groundY(x,z+e)-groundY(x,z-e))/(2*e)).normalize();
+}
+// The one dead tree stands on the crater's near shoulder, and Allison has been
+// lying at the foot of it since her own cleaning. Holston climbs the slope to
+// her, gets the helmet off, goes down, and drags himself the last four metres.
+// The beats are cut against the soundtrack: MUSIC_CUE below names the point in
+// the theme this scene starts from, so its quiet passage falls on the helmet
+// and its loudest bar lands as he collapses.
+export const ALLISON_REST=Object.freeze([48,69.6]);
+// Where in the theme the scene starts. Measured off the master: the two minute
+// cycle peaks hardest at 0:85 and falls to its quietest at 0:80, so cueing at
+// 0:17 drops the swell on the moment he first appears on the screen, empties
+// the room out under the helmet coming off at t=63, and puts the loudest bar
+// of the piece on t=68 — three seconds into the fall, as he goes down beside
+// her. Change one and you have to change the other.
+export const MUSIC_CUE=17;
 export function cleaningSample(time){
-  const t=clamp(time,0,OPENING_DURATION),entry=at(26,108),lens=at(26.3,117.6),hill=at(43,77),wife=at(46.2,72.7);
-  if(t<10)return {phase:'emerge',position:followGround(entry.lerp(lens,t/10)),heading:0,speed:.95};
+  const t=clamp(time,0,OPENING_DURATION),entry=at(26,108),lens=at(26.3,117.61),slope=at(44.6,73.9),beside=at(47.4,70.2);
+  if(t<10)return {phase:'emerge',position:followGround(entry.lerp(lens,t/10)),heading:0,speed:.96};
   if(t<22)return {phase:'clean',position:lens,heading:0,progress:(t-10)/12,speed:0};
-  const heading=Math.atan2(hill.x-lens.x,hill.z-lens.z);
+  const heading=Math.atan2(slope.x-lens.x,slope.z-lens.z);
   if(t<26)return {phase:'turn',position:lens,heading:heading*ease((t-22)/4),speed:0};
-  if(t<57)return {phase:'walk',position:followGround(lens.lerp(hill,(t-26)/31)),heading,speed:1.42};
-  if(t<64)return {phase:'helmet',position:hill,heading,progress:(t-57)/7,speed:0};
-  const finalHeading=Math.atan2(wife.x-hill.x,wife.z-hill.z);
-  if(t<76)return {phase:'crawl',position:followGround(hill.lerp(wife,(t-64)/12)),heading:finalHeading,progress:(t-64)/12,speed:.43};
-  return {phase:'rest',position:wife,heading:finalHeading*(1-ease((t-76)/5)),progress:ease((t-76)/5),speed:0};
+  if(t<58)return {phase:'walk',position:followGround(lens.lerp(slope,(t-26)/32)),heading,speed:1.48};
+  if(t<65)return {phase:'helmet',position:slope,heading,progress:(t-58)/7,speed:0};
+  const finalHeading=Math.atan2(beside.x-slope.x,beside.z-slope.z);
+  if(t<77)return {phase:'crawl',position:followGround(slope.lerp(beside,(t-65)/12)),heading:finalHeading,progress:(t-65)/12,speed:.39};
+  return {phase:'rest',position:beside,heading:finalHeading*(1-ease((t-77)/5)),progress:ease((t-77)/5),speed:0};
 }
 
 export function createDirectoryBook(m){
@@ -42,7 +63,7 @@ function posedCleaner(actor,sample,time,dt){
   if(sample.phase==='clean'){
     const envelope=Math.min(ease(sample.progress/.1),ease((1-sample.progress)/.1));
     m.rotate('Spine',.18*envelope);
-    m.rotate('UpperArmR',-1.70*envelope+Math.sin(time*2.6)*.08*envelope);m.rotate('ForearmR',-.55*envelope);m.rotate('HandR',Math.sin(time*2.6)*.21*envelope);m.rotate('Head',-.04);
+    m.rotate('UpperArmR',-1.70*envelope+Math.sin(time*1.35)*.10*envelope);m.rotate('ForearmR',-.55*envelope);m.rotate('HandR',Math.sin(time*1.35)*.21*envelope);m.rotate('Head',-.04);
   }
   if(sample.phase==='helmet'){
     const u=ease(sample.progress),reach=Math.sin(u*Math.PI);
@@ -54,8 +75,11 @@ function posedCleaner(actor,sample,time,dt){
     for(const [i,s] of ['L','R'].entries()){const step=Math.sin(time*3+i*Math.PI);m.rotate('Thigh'+s,-1.1+step*.15);m.rotate('Shin'+s,1.50);m.rotate('UpperArm'+s,-.48-step*.13);m.rotate('Forearm'+s,-.28);}
   }
   if(sample.phase==='rest'){
-    // Lower onto the slope rather than snapping a standing rig into a corpse.
-    const u=sample.progress??1;actor.model.rotation.x=-Math.PI/2*u;actor.model.position.y=.17*u;
+    // Lower onto the slope rather than snapping a standing rig into a corpse,
+    // and settle onto the hillside's own plane rather than the horizontal.
+    const u=sample.progress??1,normal=groundNormal(sample.position.x,sample.position.z).applyAxisAngle(UP,-sample.heading);
+    const tilt=new THREE.Quaternion().slerp(new THREE.Quaternion().setFromUnitVectors(UP,normal),u);
+    actor.model.quaternion.copy(tilt).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2*u));actor.model.position.y=.19*u;
     m.bones.Hips.position.y-=.39*(1-u);m.rotate('Spine',.88*(1-u));m.rotate('Chest',.22*(1-u));
     for(const s of ['L','R']){m.rotate('Thigh'+s,-1.1*(1-u));m.rotate('Shin'+s,1.5*(1-u));}
     m.rotate('UpperArmL',-.10);m.rotate('UpperArmR',-.20);m.rotate('ShinR',.13);m.rotate('Head',.07);
@@ -67,13 +91,22 @@ function posedCleaner(actor,sample,time,dt){
     const envelope=Math.min(ease(sample.progress/.12),ease((1-sample.progress)/.12)),upper=m.bones.UpperArmR,fore=m.bones.ForearmR,hand=m.bones.HandR;
     actor.model.updateWorldMatrix(true,true);
     const shoulder=upper.getWorldPosition(new THREE.Vector3()),elbow=fore.getWorldPosition(new THREE.Vector3()),wrist=hand.getWorldPosition(new THREE.Vector3()),a=shoulder.distanceTo(elbow),b=elbow.distanceTo(wrist);
-    const target=topPoint(26+Math.sin(time*2.6)*.08,groundY(26,119)+1.84+Math.cos(time*2.6)*.045,118.03),goal=wrist.clone().lerp(target,envelope),delta=goal.clone().sub(shoulder),distance=clamp(delta.length(),.04,a+b-.001),direction=delta.normalize();
+    // One stroke of the wipe. The hand crosses the glass and, at the middle of
+    // the sweep, reaches up over the top of the housing and presses the rag
+    // flat; at each end it drops and pulls away. The sensor's own lens is a
+    // 24-degree slot, so a rag pressed a hand's width from it fills the entire
+    // picture: the cafeteria screen blanks out for a moment on every pass,
+    // which is the only way anyone inside can see how the cleaning is going.
+    // The reach is deliberately at the limit of a 1.78 m man's arm — the lens
+    // sits half a metre above his shoulder and he has to stretch for it.
+    const stroke=time*1.35,across=Math.sin(stroke),press=Math.max(0,1-Math.abs(across)*2.4);
+    const target=topPoint(26+across*.19,groundY(26,119)+1.79+press*.05,117.855-(1-press)*.16),goal=wrist.clone().lerp(target,envelope),delta=goal.clone().sub(shoulder),distance=clamp(delta.length(),.04,a+b-.001),direction=delta.normalize();
     const bend=new THREE.Vector3(-1,-.5,0).applyQuaternion(actor.model.getWorldQuaternion(new THREE.Quaternion()));bend.addScaledVector(direction,-bend.dot(direction)).normalize();
     const along=(a*a-b*b+distance*distance)/(2*distance),lift=Math.sqrt(Math.max(0,a*a-along*along));
     m.aim(upper,fore,shoulder.clone().addScaledVector(direction,along).addScaledVector(bend,lift));m.aim(fore,hand,shoulder.clone().addScaledVector(direction,distance));m.setWorldQuaternion(hand,actor.model.getWorldQuaternion(new THREE.Quaternion()));
   }
   actor.model.updateWorldMatrix(true,true);
-  actor.model.traverse(o=>{if(o.isSkinnedMesh&&Array.isArray(o.material))o.material[1].visible=!(time>61);});
+  actor.model.traverse(o=>{if(o.isSkinnedMesh&&Array.isArray(o.material))o.material[1].visible=!(time>62);});
   actor.cloth.visible=sample.phase==='clean';
 }
 
@@ -83,7 +116,7 @@ export class CafeteriaOpening{
     this.book=createDirectoryBook(world.m);world.scene.add(this.book);
     this.cleaners=['holston','allison'].map(id=>{
       const def=RESIDENT_CAST.find(d=>d.id===id),actor=createResident(def,{suit:true});
-      const cloth=new THREE.Mesh(new THREE.BoxGeometry(.15,.19,.012),world.m.linen);cloth.name='cleaning-cloth';cloth.position.set(0,-.075,.032);actor.motion.bones.HandR.add(cloth);actor.cloth=cloth;
+      const cloth=new THREE.Mesh(new THREE.BoxGeometry(.28,.40,.014),world.m.linen);cloth.name='cleaning-cloth';cloth.position.set(0,-.06,.10);actor.motion.bones.HandR.add(cloth);actor.cloth=cloth;
       actor.feed=clone(actor.root);actor.feedBones=[];actor.bones=[];actor.root.traverse(o=>{if(o.isBone)actor.bones.push(o);});actor.feed.traverse(o=>{if(o.isBone)actor.feedBones.push(o);});
       this.surface.root.add(actor.root);this.surface.feedRoot.add(actor.feed);return actor;
     });
@@ -100,9 +133,9 @@ export class CafeteriaOpening{
   sample(dt){
     const [holston,allison]=this.cleaners,sample=cleaningSample(this.time);
     posedCleaner(holston,sample,this.time,dt);holston.root.visible=this.hasBook;
-    posedCleaner(allison,{phase:'rest',position:at(45.35,72.8),heading:0,progress:1,speed:0},0,0);allison.cloth.visible=false;
+    posedCleaner(allison,{phase:'rest',position:at(...ALLISON_REST),heading:.36,progress:1,speed:0},0,0);allison.cloth.visible=false;
     if(this.watching||this.directoryReady)this.surface.cleanliness=this.time<10?.28:this.time<22?lerp(.28,1,(this.time-10)/12):1;
-    this.helmet.visible=this.time>61&&this.hasBook;this.helmet.position.copy(at(43.55,77.1)).add(new THREE.Vector3(0,.18,0));this.helmet.rotation.set(.4,.8,1.3);this.helmetFeed.visible=this.helmet.visible;this.helmetFeed.position.copy(this.helmet.position);this.helmetFeed.quaternion.copy(this.helmet.quaternion);
+    this.helmet.visible=this.time>62&&this.hasBook;this.helmet.position.copy(at(45.2,74.4)).add(new THREE.Vector3(0,.18,0));this.helmet.rotation.set(.4,.8,1.3);this.helmetFeed.visible=this.helmet.visible;this.helmetFeed.position.copy(this.helmet.position);this.helmetFeed.quaternion.copy(this.helmet.quaternion);
     for(const actor of this.cleaners){
       actor.feed.visible=actor.root.visible;actor.feed.position.copy(actor.root.position);actor.feed.quaternion.copy(actor.root.quaternion);
       const feedModel=actor.feed.children[0];feedModel.position.copy(actor.model.position);feedModel.quaternion.copy(actor.model.quaternion);
