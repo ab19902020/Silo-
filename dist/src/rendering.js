@@ -36,6 +36,10 @@ export class Rendering {
     this.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),this.material));
   }
   resize(){const size=this.renderer.getDrawingBufferSize(new THREE.Vector2());this.target.setSize(size.x,size.y);this.material.uniforms.resolution.value.copy(size);}
+  renderScreen(texture,aspect){
+    if(!this.screenScene){this.screenScene=new THREE.Scene();this.screenScene.background=new THREE.Color(0x101614);this.screenCamera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);this.screenMesh=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.MeshBasicMaterial({map:texture,depthTest:false,depthWrite:false,toneMapped:false}));this.screenScene.add(this.screenMesh);}
+    const ratio=30/6.8,w=Math.min(1.92,1.35*ratio/aspect),h=w*aspect/ratio;this.screenMesh.scale.set(w/2,h/2,1);this.renderer.setRenderTarget(null);this.renderer.render(this.screenScene,this.screenCamera);
+  }
   render(scene,camera){
     if(!this.enabled){this.renderer.render(scene,camera);return;}
     this.material.uniforms.nearClip.value=camera.near;this.material.uniforms.farClip.value=camera.far;

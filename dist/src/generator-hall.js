@@ -44,5 +44,6 @@ export function buildGeneratorHall(m){
   }
   addSign(root,'MECHANICAL · GENERATOR HALL',[0,5,-24.28],9,1,0);addSign(root,'LEVEL 144 ↑',[-6,2,-23.7],4,.6,0);addSign(root,'MINES ↓',[6,2,-23.7],4,.6,0);
   interactions.push({position:[-6,53.5,-22.5],label:'Return to Level 144',destination:144},{position:[6,53.5,-22.5],label:'Descend to the mines',destination:'mines'},{position:[0,53.5,-10],label:'Inspect the generator',action:'generator'});
-  root.add(k.group());return {root,walkways,solids,interactions,animated};
+  const lights=[];for(let i=0;i<6;i++){const a=(i+.5)*TAU/6,light=new THREE.PointLight(i%2?0xe5ba7c:0xbdcec0,230,40,1.8);light.position.set(Math.cos(a)*23.2,i%2?12.8:3,Math.sin(a)*23.2);root.add(light);lights.push(light);}
+  root.add(k.group());return {root,walkways,solids,interactions,animated,lights};
 }

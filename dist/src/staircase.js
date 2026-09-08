@@ -4,6 +4,23 @@ import { SILO, TAU, stairStepY } from './data.js';
 export const stairOpening=Math.asin((SILO.landingHalf+.22)/SILO.stairRadius);
 export function hasStairGuard(angle){return angle>stairOpening&&angle<TAU-stairOpening;}
 
+// The terminal parapet meets the circular core at the chord, not at its
+// radius. Using C as its start left a triangular gap beside the column.
+export const terminalStart=Math.sqrt(SILO.stairColumn**2-SILO.landingHalf**2)-.025;
+export function buildTerminalLanding(k,side){
+  const C=SILO.stairColumn,S=SILO.stairRadius,L=SILO.landingHalf,z=side*L;
+  k.box('concrete',(terminalStart+C)/2,-.2,0,C-terminalStart,.4,L*2);
+  k.box('darkConcrete',(terminalStart+S)/2,.36,z,S-terminalStart,.72,.2);
+  k.box('concrete',(terminalStart+S)/2,.745,z,S-terminalStart,.07,.26);
+  for(const h of [.95,1.12])k.beam('metal',[terminalStart,h,z],[S,h,z],.027);
+  for(let x=terminalStart+.3;x<S;x+=.95)k.cylinder('metal',x,.94,z,.022,.37);
+  // The helical rail finishes at a circular edge; return it to the straight
+  // bridge rail on the side where the surviving flight arrives.
+  const a=-side*stairOpening,x=Math.cos(a)*S,rz=Math.sin(a)*S;
+  k.beam('concrete',[x,.745,rz],[S,.745,-side*L],.13);
+  for(const h of [.95,1.12])k.beam('metal',[x,h,rz],[S,h,-side*L],.027);
+}
+
 // Smooth helical surfaces follow the rise while the actual treads stay flat.
 function ribbon(inner,outer,bottom,height,start,end){
   const segments=Math.ceil((end-start)*48),vertices=[],uv=[],indices=[];

@@ -76,7 +76,7 @@ export function createMaterials() {
     redLamp: new THREE.MeshBasicMaterial({color:0xff7951}),
     screen: standard(0xffffff,{map:terminalMap,emissive:0xd2dfc4,emissiveMap:terminalMap,emissiveIntensity:.8,roughness:.28}),
     black: standard(0x0d1513,{roughness:.55}),
-    water: standard(0x273f3d,{metalness:.65,roughness:.17,transparent:true,opacity:.88}),
+    water: standard(0x273f3d,{metalness:.22,roughness:.46,transparent:true,opacity:.76,depthWrite:false,side:THREE.DoubleSide}),
     glass: standard(0x86b9af,{metalness:.12,roughness:.2,transparent:true,opacity:.21,depthWrite:false}),
   };
   for(const name of ['wood','fabric','linen','rug'])projectMaterial(materials[name],name==='wood'?.7:.42);

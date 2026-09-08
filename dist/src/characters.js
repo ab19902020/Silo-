@@ -3,12 +3,15 @@ import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { clone } from '../vendor/SkeletonUtils.js';
 import { SILO, levelY } from './data.js';
 import { SkeletalMotion } from './locomotion.js';
+import { RESIDENT_CAST } from './resident-data.js';
+import { createResident } from './resident-model.js';
 
 export const CHARACTERS=Object.freeze([
   {id:'juliette',name:'Juliette Nichols',short:'Juliette',role:'Mechanical · engineer',level:144,wing:1,place:'Walker’s workshop',height:1.73},
   {id:'sims',name:'Robert Sims',short:'Sims',role:'Judicial · security',level:14,wing:0,place:'Judicial',height:1.83},
   {id:'bernard',name:'Bernard Holland',short:'Bernard',role:'Head of IT · acting mayor',level:19,wing:2,place:'IT administration',height:1.87},
 ]);
+export const PLAYABLE_CHARACTERS=Object.freeze([...CHARACTERS,...RESIDENT_CAST.filter(d=>!d.story).map(d=>({...d,generated:true,short:d.name.split(' ')[0],place:d.role}))]);
 export function roomPoint(level,wing,x,z){const a=wing*Math.PI/3;return new THREE.Vector3(Math.cos(a)*(SILO.deckOuter+z)+Math.sin(a)*x,levelY(level),Math.sin(a)*(SILO.deckOuter+z)-Math.cos(a)*x);}
 export const forwardYaw=(x,z)=>Math.atan2(x,z); // Supplied bodies face +Z.
 
@@ -31,6 +34,9 @@ export class CharacterCast{
   async load(onProgress=()=>{}){
     const loader=new GLTFLoader();let count=0;
     await Promise.all(CHARACTERS.map(async d=>{const gltf=await loader.loadAsync(new URL(`../assets/characters/${d.id}.glb`,import.meta.url).href),actor=actorFrom(gltf,d);this.actors.set(d.id,actor);this.scene.add(actor.root);this.world.surface.feedScene.add(actor.feed);onProgress(++count/4);}));
+    for(const d of PLAYABLE_CHARACTERS.filter(d=>d.generated)){
+      const actor=createResident(d);actor.meshes=[];actor.bones=[];actor.model.traverse(o=>{if(o.isMesh)actor.meshes.push(o);if(o.isBone)actor.bones.push(o);});actor.feed=clone(actor.root);actor.feedBones=[];actor.feed.traverse(o=>{if(o.isBone)actor.feedBones.push(o);});actor.feed.visible=false;actor.state='Idle';actor.heading=0;actor.visualY=null;actor.post=roomPoint(d.level,d.wing,2.8,5.5);this.actors.set(d.id,actor);this.scene.add(actor.root);this.world.surface.feedScene.add(actor.feed);
+    }
     const relic=await loader.loadAsync(new URL('../assets/characters/hard-drive-relic.glb',import.meta.url).href);this.relic=new THREE.Group();this.relic.add(relic.scene);this.relic.name='Hard drive relic';this.relic.rotation.order='YXZ';this.relic.rotation.x=-Math.PI/2;this.relic.rotation.y=Math.PI/2-Math.PI/3;this.relic.position.copy(roomPoint(144,1,-5.28,5.48));this.relic.position.y+=.863;this.relic.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true;}});this.scene.add(this.relic);onProgress(1);
   }
   select(id){if(!this.actors.has(id))return false;this.selected=id;this.active.motion.reset();this.active.visualY=null;return true;}
@@ -39,6 +45,7 @@ export class CharacterCast{
     const speed=body.horizontalSpeed;this.world.actorInteractions=[];
     for(const a of this.actors.values()){
       const selected=a.definition.id===this.selected,near=!this.world.special&&this.world.activeLevel===a.definition.level;
+      if(a.definition.generated&&!selected){a.root.visible=a.feed.visible=false;continue;}
       if(selected){
         if(a.visualY===null||a.root.position.distanceTo(body.position)>2.5){a.visualY=body.position.y;a.motion.reset();}
         a.visualY=THREE.MathUtils.damp(a.visualY,body.position.y,22,dt);a.root.position.copy(body.position);a.root.position.y=a.visualY;

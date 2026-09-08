@@ -29,9 +29,9 @@ export function buildTopFloor(m) {
   for(let j=0;j<16;j++){const a=j*Math.PI/8;rose.arc('lamp',3.25,13.8,.045,7.18,a+.025,Math.PI/8-.055,12);rose.beam('concrete',[Math.cos(a)*3,7.13,Math.sin(a)*3],[Math.cos(a)*14.65,7.13,Math.sin(a)*14.65],.14);}
   for(const r of [3.05,13.98,14.6])rose.torus('metal',0,7.12,0,r,.09,Math.PI/2);const roseRoot=rose.group();roseRoot.position.z=24;root.add(roseRoot);
   for(const x of [-17.45,17.45])for(const z of [14,22,36]){k.bevel('brass',x,3.3,z,.22,.75,.35);k.sphere('lamp',x,3.4,z,.18,.27,.18);}
-  for(const z of [12,17,22,27,32])for(const x of [-11,-5,2,9]){
+  for(const z of [12.8,17,22,27,32])for(const x of [-11,-5,2,9]){
     table(k,x,z,3.3,1.4);solids.push({x,z,w:3.3,d:1.4,y0:0,y1:.9});
-    for(const dx of [-1.05,0,1.05]){chair(k,x+dx,z-1.15,Math.PI);chair(k,x+dx,z+1.15);}
+    for(const dx of [-1.05,0,1.05]){chair(k,x+dx,z-1.15);chair(k,x+dx,z+1.15,Math.PI);for(const side of [-1,1])solids.push({x:x+dx,z:z+side*1.15,w:.52,d:.58,y0:0,y1:1.18});}
     k.cylinder('white',x+.6,.91,z,.11,.13);k.cylinder('white',x-.6,.84,z,.22,.02);
   }
   for(const x of [-15.8,-12.5,-9.2]){box('green',x,.7,7,3.1,1.4,1.5);k.bevel('metal',x,1.45,7,3.2,.1,1.6);}

@@ -431,6 +431,14 @@ export class SiloAudio {
     if(!this.live())return;
     this.hit(this.sfx,'click',this.context.currentTime+.002,{gain:.055,rate:rand(.96,1.05)});   // interface stays dry
   }
+  residents(count,watching=false){
+    if(!this.live()||count<1)return;
+    // Quiet clothing, chair movement and distant steps use the existing
+    // ambience bus. No synthetic speech or cloned character dialogue.
+    const t=this.context.currentTime+.005,out=this.voice(rand(-.8,.8),1100),gain=(watching?.003:.016)*Math.min(1,count/18);
+    this.hit(out,watching?'soft':'concrete',t,{gain,rate:rand(.82,1.12)});
+    if(!watching&&this.stepSurface==='concrete'&&Math.random()<.4)this.hit(out,'latch',t+.17,{gain:.006,rate:rand(1.4,1.8)});
+  }
 
   // --- occasional life ----------------------------------------------------
   scheduleEvent(){

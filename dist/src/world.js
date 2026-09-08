@@ -22,7 +22,7 @@ import { buildTopFloor } from './top-floor.js';
 import { SurfaceWorld, topPoint, topLocal, groundY, inRampCutout } from './surface.js';
 import { buildGeneratorHall } from './generator-hall.js';
 import { buildUnderground } from './underground.js';
-import { buildStairFlight, hasStairGuard } from './staircase.js';
+import { buildStairFlight, hasStairGuard, buildTerminalLanding, terminalStart } from './staircase.js';
 import { VOID, voidLedgeGaps, tunnelPoint } from './void-access.js';
 
 export class SiloWorld {
@@ -111,7 +111,12 @@ export class SiloWorld {
     for(let j=0;j<24;j++)fk.arc('concrete',C,S,.16,(j+1)*H/24-.16,j*TAU/24,TAU/24,2);
     this.distant=fk.group(transforms,true);this.scene.add(this.distant);this.updateStructure(1);
     // Crown closes the structure above the top landing; no exterior town.
-    const crown=new Kit(this.m);crown.cylinder('darkConcrete',0,levelY(1)+H,0,O+1,.65);for(let i=0;i<12;i++){const a=i*TAU/12;crown.beam('concrete',[Math.cos(a)*C,levelY(1)+H-.6,Math.sin(a)*C],[Math.cos(a)*O,levelY(1)+H-.6,Math.sin(a)*O],.35);}this.scene.add(crown.group());
+    const crown=new Kit(this.m);crown.cylinder('darkConcrete',0,levelY(1)+H,0,O+1,.65);for(let i=0;i<12;i++){const a=i*TAU/12;crown.beam('concrete',[Math.cos(a)*C,levelY(1)+H-.6,Math.sin(a)*C],[Math.cos(a)*O,levelY(1)+H-.6,Math.sin(a)*O],.35);}
+    // Continue the visible spine through the top storey. Previously only its
+    // collision continued: from the top landing it looked like a bare disk.
+    const core=new Kit(this.m);core.cylinder('concrete',0,H/2,0,C,H);
+    for(let j=0;j<8;j++){const a=j*TAU/8;core.box('darkMetal',Math.cos(a)*(C+.018),H/2,Math.sin(a)*(C+.018),.12,H-.5,.045,Math.PI/2-a);if(j%2===0)for(const y of [2.7,7.1]){core.cylinder('metal',Math.cos(a)*(C+.17),y,Math.sin(a)*(C+.17),.19,1.95);core.cylinder('lamp',Math.cos(a)*(C+.19),y,Math.sin(a)*(C+.19),.17,1.72);}}
+    this.topCore=core.group();this.topCore.name='top-floor-stair-spine';this.topCore.position.y=levelY(1);this.scene.add(this.topCore,crown.group());
   }
   updateStructure(level){
     const near=Array.from({length:15},(_,i)=>Math.max(1,Math.min(130,level-7))+i),stairs=near.filter(n=>n>1),far=Array.from({length:144},(_,i)=>i+1).filter(n=>!near.includes(n));
@@ -142,10 +147,8 @@ export class SiloWorld {
     // Close the open side of the top and bottom landings. Every other level has
     // the next flight arriving there; these two have a drop instead.
     if(level===1||level===144){
-      const side=level===1?1:-1,z=side*SILO.landingHalf,gk=new Kit(this.m),C=SILO.stairColumn,S=SILO.stairRadius;
-      gk.box('concrete',(C+S)/2,.35,z,S-C,.7,.18);
-      railing(gk,[C,z],[S,z],.05);
-      root.add(gk.group());
+      const gk=new Kit(this.m);buildTerminalLanding(gk,level===1?1:-1);
+      const landing=gk.group();landing.name='terminal-stair-parapet';root.add(landing);
     }
     this.scene.add(root);const entry={level,root,rooms,doors,interactions,passages};this.loaded.set(level,entry);return entry;
   }
@@ -167,7 +170,9 @@ export class SiloWorld {
       for(const b of below.solids)if(b.arc)c.addArc({innerRadius:b.r0,outerRadius:b.r1,minY:b.y0,maxY:b.y1,centre:b.a,halfWidth:b.half});else if(b.ring)c.addRing({innerRadius:b.r0,outerRadius:b.r1,minY:b.y0,maxY:b.y1});else c.addOrientedBox({cx:b.x,cz:b.z,halfX:b.w/2,halfZ:b.d/2,rotationY:b.ry||0,minY:b.y0,maxY:b.y1});
       if(this.special==='excavator'||this.special==='tunnel'){
         c.addRing({innerRadius:74,outerRadius:80,minY:0,maxY:9.5,gaps:[[VOID.tunnelAngle,.053]]});
-        c.addRing({innerRadius:74,outerRadius:80,minY:9.5,maxY:68});c.addRing({innerRadius:0,outerRadius:3.15,minY:0,maxY:60});
+        c.addRing({innerRadius:74,outerRadius:80,minY:9.5,maxY:11.6});
+        c.addRing({innerRadius:74,outerRadius:80,minY:11.6,maxY:15.35,gaps:[[0,.024]]});
+        c.addRing({innerRadius:74,outerRadius:80,minY:15.35,maxY:68});c.addRing({innerRadius:0,outerRadius:3.15,minY:0,maxY:60});
         c.addRing({innerRadius:67.9,outerRadius:68.2,minY:12,maxY:13.2,gaps:voidLedgeGaps});
         for(const z of [-1.8,1.8])c.addOrientedBox({cx:39,cz:z,halfX:31,halfZ:.08,rotationY:0,minY:12,maxY:13.1});
       }
@@ -198,12 +203,16 @@ export class SiloWorld {
           c.addRing({innerRadius:outer,outerRadius:outer+.18,minY:y,maxY:y+height,
           gaps:level===SPUR.level?[[SPUR.angle,SPUR.half/outer]]:[]});
         if(level===SPUR.level){
-          const {angle:a,half,inner:I,outer:X,height:SH}=SPUR,ry=Math.PI/2-a,mid=(I+X)/2,len=X-I;
+          const {angle:a,half,inner:I,outer:X,height:SH,openingHalf:Q,openingHeight:OH,throat}=SPUR,ry=Math.PI/2-a,mid=(I+X)/2,len=X-I;
           const at=(r,t=0)=>({cx:Math.cos(a)*r+Math.sin(a)*t,cz:Math.sin(a)*r-Math.cos(a)*t});
           c.addOrientedBox({...at(mid),halfX:half,halfZ:len/2,rotationY:ry,minY:y-.3,maxY:y,climbable:true});
           for(const side of [-1,1])c.addOrientedBox({...at(mid,side*(half+.11)),halfX:.11,halfZ:len/2,rotationY:ry,minY:y,maxY:y+SH});
-          // The end wall only stands while the notice is still on it.
-          if(!breach.open)c.addOrientedBox({...at(X-.13),halfX:half+.25,halfZ:.13,rotationY:ry,minY:y,maxY:y+SH});
+          for(const side of [-1,1])c.addOrientedBox({...at(X-.13,side*(half+Q)/2),halfX:(half-Q)/2,halfZ:.13,rotationY:ry,minY:y,maxY:y+SH});
+          c.addOrientedBox({...at(X-.13),halfX:Q,halfZ:.13,rotationY:ry,minY:y+OH,maxY:y+SH});
+          this.breachCollider=c.addOrientedBox({...at(X-.3),halfX:Q,halfZ:.06,rotationY:ry,minY:y,maxY:y+OH,enabled:!breach.open});
+          c.addOrientedBox({...at(X+throat/2),halfX:Q,halfZ:throat/2,rotationY:ry,minY:y-.34,maxY:y,climbable:true});
+          for(const side of [-1,1])c.addOrientedBox({...at(X+throat/2,side*(Q+.12)),halfX:.12,halfZ:throat/2,rotationY:ry,minY:y,maxY:y+OH});
+          c.addOrientedBox({...at(X+throat),halfX:Q,halfZ:.11,rotationY:ry,minY:y,maxY:y+OH});
         }
         for(let w=0;w<6;w++)if(hasRearPassage(level,e.rooms[w].userData.type)){
           const a=w*TAU/6,ry=Math.PI/2-a;
@@ -215,7 +224,8 @@ export class SiloWorld {
       // stairwell is open on that side with nothing to stop you walking in.
       if(level===1||level===144){
         const side=level===1?1:-1;
-        c.addOrientedBox({cx:(C+S)/2,cz:side*SILO.landingHalf,halfX:(S-C)/2,halfZ:.1,rotationY:0,minY:y,maxY:y+1.13});
+        c.addOrientedBox({cx:(terminalStart+C)/2,cz:0,halfX:(C-terminalStart)/2,halfZ:SILO.landingHalf,rotationY:0,minY:y-.4,maxY:y,climbable:true});
+        c.addOrientedBox({cx:(terminalStart+S)/2,cz:side*SILO.landingHalf,halfX:(S-terminalStart)/2,halfZ:.13,rotationY:0,minY:y,maxY:y+1.15});
       }
       for(const room of e.rooms){
         const ry=room.rotation.y,cos=Math.cos(ry),sin=Math.sin(ry),ox=room.position.x,oz=room.position.z;
@@ -240,7 +250,8 @@ export class SiloWorld {
     if(id==='surface')return {level:1,position:topPoint(26,groundY(26,114),114),yaw:-Math.PI/2};
     if(id==='generator')return {level:144,special:id,position:new THREE.Vector3(0,52,-20),yaw:Math.PI};
     if(id==='mines')return {level:144,special:id,position:new THREE.Vector3(105,48,-26),yaw:Math.PI};
-    if(id==='excavator')return {level:144,special:id,position:new THREE.Vector3(71,12,0),yaw:Math.PI/2};
+    if(id==='excavator')return {level:144,special:id,position:new THREE.Vector3(79.5,12,0),yaw:Math.PI/2};
+    if(id==='digger-passage')return {level:144,position:new THREE.Vector3(Math.cos(SPUR.angle)*(SPUR.outer-1.2),levelY(144),Math.sin(SPUR.angle)*(SPUR.outer-1.2)),yaw:Math.PI/2-SPUR.angle};
     if(id==='tunnel')return {level:144,special:id,position:tunnelPoint(0,.7,12),yaw:-Math.PI/2-VOID.tunnelAngle};
     if(id==='airlock')return {level:1,position:topPoint(26,0,50),yaw:-Math.PI/2};
     return {level:Number(id),position:this.spawn(Number(id)),yaw:-Math.PI/2};
@@ -248,6 +259,8 @@ export class SiloWorld {
   nearestInteraction(position,direction){
     const pool=this.special?(this.special==='generator'?this.generator:this.underground).interactions.map(v=>({...v,position:new THREE.Vector3(...v.position)})):[...this.doors.map(d=>({position:d.position,label:`${d.open?'Close':'Open'} ${TYPE_NAMES[d.type].toLowerCase()} door`,door:d})),...this.interactions];
     if(this.actorInteractions)pool.push(...this.actorInteractions);
+    if(this.residentInteractions)pool.push(...this.residentInteractions);
+    if(this.storyInteractions)pool.push(...this.storyInteractions);
     if(!this.special&&this.activeLevel===1)pool.push({position:this.surface.cleaningPoint,label:this.surface.cleaning?'Cleaning lens…':this.surface.cleanliness>.99?'Clean camera lens again':'Clean the outside camera lens',action:'clean-camera'});
     let nearest=null,best=5;
     for(const i of pool){const delta=i.position.clone().sub(position),dist=delta.length();if(dist>best||dist<.05)continue;if(delta.normalize().dot(direction)<.32)continue;best=dist;nearest=i;}return nearest;
@@ -259,7 +272,19 @@ export class SiloWorld {
     if(wanted.open||wanted.requested){wanted.open=false;wanted.requested=false;return;}
     other.open=false;other.requested=false;wanted.requested=true;
   }
+  openBreach(){
+    breach.open=true;if(this.breachCollider)this.breachCollider.enabled=false;
+    for(const entry of this.loaded.values())for(const i of entry.interactions)if(i.action==='breach'){delete i.action;i.destination='excavator';i.label='Step through the concealed opening';}
+  }
+  transitionAt(position){
+    if(this.special==='excavator'&&position.x>81.6&&Math.abs(position.z)<1.1&&Math.abs(position.y-12)<.4)return 'digger-passage';
+    if(this.special||this.activeLevel!==SPUR.level||!breach.open||breach.amount<.95)return null;
+    const a=SPUR.angle,r=position.x*Math.cos(a)+position.z*Math.sin(a),t=position.x*Math.sin(a)-position.z*Math.cos(a);
+    return r>SPUR.outer+.65&&Math.abs(t)<SPUR.openingHalf&&Math.abs(position.y-levelY(144))<.4?'excavator':null;
+  }
   update(dt,position){
+    breach.amount=THREE.MathUtils.damp(breach.amount,breach.open?1:0,5,dt);
+    const panel=this.loaded.get(SPUR.level)?.passages?.userData.breachPanel;if(panel)panel.rotation.y=Math.PI-breach.amount*Math.PI/2;
     this.surface.update(dt);const top=topLocal(position);this.outside=!this.special&&this.activeLevel===1&&(inRampCutout(top.x,top.z)?top.z>99&&top.y>10:top.y>=groundY(top.x,top.z)-.5);if(this.outside)this.surface.streamTerrain(top);
     const airlocks=this.loaded.get(1)?.rooms[0].userData.doors||[];
     for(const door of airlocks){const other=airlocks.find(d=>d!==door);if(door.requested&&other.amount<.01){door.open=true;door.requested=false;}door.amount=THREE.MathUtils.damp(door.amount,door.open?1:0,3.5,dt);door.pivot.position.y=door.amount*4.35;if(door.collider)door.collider.enabled=door.amount<.96;}
@@ -271,7 +296,7 @@ export class SiloWorld {
     const y=levelY(this.activeLevel);
     for(let i=0;i<this.localLights.length;i++){
       const l=this.localLights[i];l.visible=!this.outside;l.distance=38;
-      if(this.special){l.position.set(position.x+Math.cos(i*TAU/8)*7,position.y+3,position.z+Math.sin(i*TAU/8)*7);l.intensity=i<4?95:0;l.color.setHex(i%2?0xcda575:0xadc5bf);}
+      if(this.special){l.visible=false;l.intensity=0;}
       else if(i<6){const a=i*TAU/6;l.position.set(Math.cos(a)*21,y+4.8,Math.sin(a)*21);l.intensity=105;l.color.setHex(i%3?0xf4d39b:0xc0d4c3);}
       else {const angle=Math.atan2(position.z,position.x);l.position.set(Math.cos(angle)*(i===6?33:44),y+4.7,Math.sin(angle)*(i===6?33:44));l.intensity=150;l.color.setHex(roomType(this.activeLevel,Math.round(angle/TAU*6+6)%6)==='medical'?0xc1dcd5:0xe7d3a5);}
     }
@@ -285,10 +310,12 @@ export class SiloWorld {
         roomKey={...points[0],residential:room.userData.type==='residential'};
       }
     }
-    this.keyLight.visible=!this.outside;this.keyLight.position.set(position.x+3,position.y+(this.special==='generator'?12:4.2),position.z+1.5);this.keyLight.target.position.set(position.x,position.y,position.z);this.keyLight.intensity=this.special?310:260;
+    // Below Mechanical the practical fixtures own the light. A shadow-casting
+    // spotlight following every footstep made wet floors visibly swim.
+    this.keyLight.visible=!this.outside&&!this.special;this.keyLight.position.set(position.x+3,position.y+4.2,position.z+1.5);this.keyLight.target.position.set(position.x,position.y,position.z);this.keyLight.intensity=260;
     if(roomKey){this.keyLight.position.copy(roomKey.world);this.keyLight.target.position.copy(roomKey.world).add(new THREE.Vector3(0,-3,0));this.keyLight.color.setHex(roomKey.color);this.keyLight.intensity=roomKey.residential?95:150;this.keyLight.distance=14;}else{this.keyLight.color.setHex(0xffd6a0);this.keyLight.distance=48;}
     if(this.activeLevel===1&&top.z>10&&!this.special){for(let i=0;i<8;i++){const l=this.localLights[i];l.position.copy(topPoint(i<4?(i%2?10:-10):26,i<4?6.7:3.7,i<4?(i<2?17:31):[29,40,50,59][i-4]));l.intensity=i<4?240:95;l.distance=28;}if(top.z>64){this.keyLight.position.copy(position).add(new THREE.Vector3(0,3.4,0));this.keyLight.intensity=170;}}
     this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?2.4:.10;this.ambient.intensity=this.outside?1.65:.48;this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
-    this.scene.fog.density=this.outside?.0038:this.special==='excavator'?.004:this.special?.007:.008;this.scene.fog.color.setHex(this.outside?0x929fa3:0x242d2b);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);this.structure.visible=this.stairs.visible=this.distant.visible=!this.special&&!this.outside;
+    this.scene.fog.density=this.outside?.0038:this.special==='excavator'?.004:this.special?.007:.008;this.scene.fog.color.setHex(this.outside?0x929fa3:0x242d2b);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);this.structure.visible=this.stairs.visible=this.distant.visible=this.topCore.visible=!this.special&&!this.outside;
   }
 }

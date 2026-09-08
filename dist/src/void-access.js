@@ -52,10 +52,9 @@ export function buildVoidAccess(m){
   const tube=new THREE.Mesh(new THREE.CylinderGeometry(2.45,2.45,36,64,1,true),lining);tube.rotation.x=Math.PI/2;tube.position.set(0,2.2,18);tunnel.add(tube);
   for(let z=0;z<=36;z+=3){tk.torus('darkMetal',0,2.2,z,2.43,.045);for(const x of [-1.9,1.9])tk.cylinder('brass',x,3.63,z,.028,.045,Math.PI/2);}
   const ry=tunnel.rotation.y,box=(x,z,w,d,y,h,mat)=>{tk.box(mat,x,y-h/2,z,w,h,d);const p=tunnelPoint(x,y,z);walkways.push({kind:'box',x:p.x,z:p.z,w,d,y:p.y,ry});};
-  for(let j=0;j<20;j++)box(0,(j+.5)*.5,4.6,.51,(j+1)*.035,.18,'darkConcrete');
+  for(let j=0;j<20;j++)box(0,(j+.5)*.5,4.6,.5,(j+1)*.035,.18,'darkConcrete');
   box(0,23,4.6,26,.7,.2,'darkConcrete');
   for(const x of [-2.43,2.43]){const p=tunnelPoint(x,0,18);solids.push({x:p.x,z:p.z,w:.18,d:36,y0:bottom,y1:bottom+4.7,ry});}
-  const flood=new THREE.Mesh(new THREE.PlaneGeometry(4.55,9.6),m.water);flood.rotation.x=-Math.PI/2;flood.position.set(0,VOID.waterY-bottom,4.8);flood.name='tunnel-water';tunnel.add(flood);
   for(const x of [-2.05,2.05])tk.cylinder('rust',x,3.48,18,.10,35.5,Math.PI/2);
   // A heavy sealed door sits at the far end of the culvert, not on the digger.
   const door=new THREE.Group();door.name='hidden-tunnel-door';door.position.set(0,.7,35.65);const dk=new Kit(m);

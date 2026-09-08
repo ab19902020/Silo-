@@ -2,6 +2,17 @@
 
 A browser-based, first- and third-person reconstruction of the television silo, built in Adam’s **Silo-** repository using the circular collision system and selected interior assets from **Lost Signal**.
 
+## Living silo and cafeteria opening
+
+- Begin in the Level 1 cafeteria. Approach the directory book and press **Use / E**. The live screen shows Holston leaving, cleaning the sensor, removing his helmet and lying beside Allison. Open the book afterward to use the 144-level directory. Screen focus, skip and replay are available.
+- Added 20 original character models beyond the three supplied meshes. Seventeen living cast members join the playable selection: **20 playable characters** in total. Holston and Allison appear in the opening; George’s model is included as a reusable asset without placing him alive in this scene.
+- Added residents to every numbered level, seated cafeteria diners, bazaar groups, porters and workers in the generator hall and mines. Up to 28/48/72 nearby residents are active depending on graphics quality; 3,549 placement records span the environment.
+- Fixed overlapping void water and deck surfaces, disabled the moving shadow light in the lower areas, and added fixed practical lights. The camp-to-water ladder and sealed-door route remain walkable.
+- Finished the top landing’s visible central spine and terminal parapet. The concealed Mechanical entrance now has a movable warning plate, intact masonry around a real opening, supported approaches and a return route from the void.
+- Integrated Claude’s controller, jump, gait and audio changes before publishing this update.
+
+The cast is modeled from reference costumes and roles, with approximate faces. The public material does not establish a complete surveyed set plan or the exact warning-sign wording, so this is **not a verified one-to-one replica**. See [release details and limits](docs/living-silo.md) and the [22 reusable rigged GLBs](models/README.md).
+
 ## Latest visibility, staircase and void repairs
 
 - Character garments now render both faces as opaque surfaces, preventing reverse-facing coat panels from disappearing. The close camera hides the whole avatar before it cuts through a coat.

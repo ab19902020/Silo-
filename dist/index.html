@@ -22,15 +22,20 @@
   <div id="touchControls"><div id="joystick" aria-label="Move"><i></i></div><div class="touch-actions"><button id="runButton" aria-label="Toggle running">Run</button><button id="jumpButton" aria-label="Jump">Jump</button><button id="touchUse" aria-label="Interact">Use</button></div><span id="lookHint">Drag the right side to look</span></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="fade" aria-hidden="true"></div>
+  <aside id="chapterHud" hidden aria-label="Opening chapter">
+    <span class="eyebrow">CHAPTER ONE · THE CLEANING</span><strong id="chapterTitle">A book on the table</strong><p id="chapterObjective">Find the directory book on the table ahead.</p>
+    <div class="chapter-actions"><button id="focusScreenButton" hidden>Focus on screen</button><button id="openBookButton" hidden>Open your book</button><button id="skipOpening" hidden>Skip cleaning</button></div>
+  </aside>
 
   <dialog id="welcome" class="welcome">
-    <div class="welcome-top"><span class="eyebrow">AN UNDERGROUND WORLD</span><span class="edition">EXPLORATION BUILD 04</span></div>
-    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>From the last window on the world<br>to the machine that made it.</p><div class="welcome-actions"><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="welcomeDirectory" class="secondary">Explore all 144 levels <span>↗</span></button></div><div class="welcome-meta"><span>THREE PLAYABLE CHARACTERS</span><span>TOUCH & KEYBOARD</span><span>FREE EXPLORATION</span></div></div>
+    <div class="welcome-top"><span class="eyebrow">AN UNDERGROUND WORLD</span><span class="edition">CHAPTER ONE · THE CLEANING</span></div>
+    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>A book waits on a cafeteria table.<br>Today, Holston is going outside.</p><div class="welcome-actions"><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="welcomeDirectory" class="secondary">Free exploration <span>↗</span></button><button id="replayOpening" class="secondary">Replay cafeteria opening</button></div><div class="welcome-meta"><span>20 PLAYABLE CHARACTERS</span><span>TOUCH & KEYBOARD</span><span>A LIVING SILO</span></div></div>
     <footer><span>A reconstruction of the television world.</span><button id="aboutButton">Research & accuracy</button></footer>
   </dialog>
 
-  <dialog id="directory" class="panel">
-    <div class="panel-head"><div><span class="eyebrow accent">WAYFINDING</span><h2>Silo directory</h2></div><button class="close" data-close aria-label="Close directory">×</button></div>
+  <dialog id="directory" class="panel book-panel">
+    <div class="panel-head"><div><span class="eyebrow accent">SILO 18 · RESIDENT’S HANDBOOK</span><h2>Your directory</h2></div><button class="close" data-close aria-label="Close directory">×</button></div>
+    <p class="book-inscription">One hundred and forty-four levels. Find your way through the world below.</p>
     <div class="directory-tabs" role="tablist" aria-label="Directory view"><button id="allLevelsTab" class="active" role="tab" aria-selected="true">All 144 levels</button><button id="landmarksTab" role="tab" aria-selected="false">Landmarks & surface</button></div>
     <label class="search"><span>⌕</span><input id="search" type="search" placeholder="Find a room, level or department" autocomplete="off"></label>
     <div class="landmark-shortcuts" aria-label="Featured locations"><button data-travel="room:100:0">Bazaar</button><button data-travel="relic">Hard-drive relic</button><button data-travel="room:1:0">Cafeteria</button><button data-travel="surface">Surface</button></div>
@@ -40,7 +45,7 @@
 
   <dialog id="characters" class="panel cast-panel">
     <div class="panel-head"><div><span class="eyebrow accent">THE PEOPLE OF SILO 18</span><h2>Choose your character</h2></div><button class="close" data-close aria-label="Close characters">×</button></div>
-    <p class="cast-intro">Explore as Juliette, Sims or Bernard. The other two return to their departments.</p>
+    <p class="cast-intro">Explore as Juliette, Sims, Bernard or one of seventeen other residents. Their colleagues keep working, gathering and walking through the silo.</p>
     <div id="characterList" class="character-list"></div>
     <div class="panel-foot"><span id="characterStatus">Preparing characters…</span><small>Switch between first and third person with View or V.</small></div>
   </dialog>
@@ -56,7 +61,7 @@
 
   <dialog id="about" class="panel">
     <div class="panel-head"><div><span class="eyebrow accent">THE RECONSTRUCTION</span><h2>Research & accuracy</h2></div><button class="close" data-close aria-label="Close research">×</button></div>
-    <div class="about-content"><p>This is an explorable fan reconstruction, built at human scale. The show establishes <strong>144 numbered levels</strong>, the great staircase and the principal departments. No complete, dimensioned, room-by-room production blueprint was available in the references reviewed.</p><p>The 10 m level spacing, 36 m central shaft diameter, service routes and room plans are reconstruction estimates. Unseen floors use furnished layouts fitted to the silo. Department locations without reliable television confirmation are marked in the directory.</p><p>The connected Level 1 cafeteria, sheriff’s station, preparation area, pressure doors and ramp lead to an explorable barren surface. Clean the exterior camera with Use / E; its live view feeds the wall screens. The generator hall now lies below Level 144. The cavern and digging machine follow published production references. The mines and hidden passage contain inferred details. Spoilers for the television world are present.</p><p>The circular collision system and selected interior models come from your Lost Signal repository. The bazaar follows published market-set references; its placement on Level 100 is inferred. New rear passages link the wings on Levels 2–144. No combat or storyline is simulated.</p><h3>Reference sources</h3><div id="sources"></div></div>
+    <div class="about-content"><p>This is an explorable fan reconstruction, built at human scale. The show establishes <strong>144 numbered levels</strong>, the great staircase and the principal departments. No complete, dimensioned, room-by-room production blueprint was available in the references reviewed.</p><p>The 10 m level spacing, 36 m central shaft diameter, service routes and room plans are reconstruction estimates. Unseen floors use furnished layouts fitted to the silo. Department locations without reliable television confirmation are marked in the directory.</p><p>The connected Level 1 cafeteria, sheriff’s station, preparation area, pressure doors and ramp lead to an explorable barren surface. Clean the exterior camera with Use / E; its live view feeds the wall screens. The generator hall lies below Level 144. The cavern and digging machine follow published production references. The mines and hidden passage contain inferred details.</p><p>The opening recreates Holston’s cleaning with animated 3D figures on the cafeteria’s exterior feed. Allison is already on the hill; Holston cleans, removes his helmet and comes to rest beside her. The book and directory introduction are original game framing. Spoilers are present.</p><p>The three supplied character models are retained. Twenty additional Silo 18 character models have individual costume and silhouette treatments informed by Apple’s production stills; their faces are approximations, not scans of the actors. Seventeen join the playable cast. Holston and Allison appear in the cleaning, and George’s model is retained as a historical character rather than placed among the living residents. The ensemble uses the first two seasons; characters from Silo 17 and later timelines are not placed in Silo 18.</p><p>The bazaar’s placement on Level 100 and most residents’ exact stations are inferred. The population supports exploration rather than a complete simulation of the show’s chronology. Opening completion is remembered on this device; Replay starts it again.</p><h3>Reference sources</h3><div id="sources"></div></div>
   </dialog>
   <div id="fatal" hidden role="alert"><h2>The silo could not start</h2><p id="fatalText"></p><button onclick="location.reload()">Try again</button></div>
   <script type="module" src="./src/main.js"></script>
