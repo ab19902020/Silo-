@@ -1,3 +1,75 @@
+# Two music files now, and the opening is cut to one of them — 8 September 2026
+
+`dist/assets/audio/` holds two tracks and they have different jobs.
+
+| File | Job |
+| --- | --- |
+| `silo-18-theme.mp3` | The **bed**. Ten minute seamless loop, no speech. Plays everywhere in the silo, forever. |
+| `silo-18-opening.mp3` | The **opening piece**. Ten and a half minutes that start with the cleaning speech and turn into the score. Plays **once**, from the top, on the frame the directory book is picked up. When it ends the bed takes over and loops from there on. |
+
+They are mastered to -14.7 and -14.8 LUFS, within 0.1 LU, so the hand-over is
+not a step in level. **There is a test that keeps them there** — if you replace
+either file, match the other or the test fails and tells you by how much.
+
+## The API
+
+```
+holdMusic()            keep the bed silent; safe before start()
+playOpeningTheme()     start the opening piece from the top; the bed waits
+stopOpeningTheme()     stop it and rewind (used when the opening is replayed)
+releaseMusic()         start the bed — a no-op while the piece is still running
+setStoryPaused(bool)   hold the piece with the scene
+stopMusic()            stop the bed's source
+```
+
+`main.js` calls `syncMusicGate()` from `openingChanged()` and `begin()`: held
+while the state is `find-book`, released otherwise. The book pickup calls
+`playOpeningTheme()` **before** `takeBook()`, because `takeBook()` fires
+`openingChanged` and a gate that still read "held" there would start the bed
+for one frame.
+
+## Why the piece streams and the bed does not
+
+The bed is decoded into an `AudioBuffer` because it needs a sample-accurate
+loop point. The piece is a one-shot, so it does not — and streaming it through
+a media element buys three things: it starts on the frame it is asked to
+instead of after a ten minute decode (which matters, because the scene is cut
+against it), it costs no memory where a decode would cost about 230 MB, and the
+download is progressive.
+
+The catch, and the reason `setStoryPaused` exists: **a media element does not
+stop when the AudioContext is suspended**, the way a buffer source does. The
+scene stops advancing when the game is paused or the tab is hidden, so the
+element has to be paused with it or the two drift apart. `frame()` does that in
+one line.
+
+## The cut
+
+Measured off `silo-18-opening.mp3`, not guessed — a 2 s-window RMS envelope and
+a per-2 s crest factor, which is what separates speech from score:
+
+```
+0:00-0:54   spoken word          crest 5-11
+0:56-       score established    crest 3-4
+1:19        the loudest bar in the file
+1:27-1:29   a second swell
+```
+
+Against the beats in `opening.js` (0-12 emerge, 12-26 clean, 26-30 turn, 30-60
+walk, 60-68 helmet, 68-80 crawl, 80-90 rest): the climb out of the hatch, the
+clean and the long walk up the hill all play under the speech; the score
+arrives as he reaches the tree and the helmet comes off; the peak lands as he
+drags himself the last few metres to her; the swell is on him going still.
+**Retime one and you have to retime the other.**
+
+## Verified in Chromium
+
+Not just in the stub: silence on the music bus with the ambience muted while
+the book is still on the table, signal on it six seconds into the speech, the
+pause holding position to the millisecond, and the hand-over firing on `ended`.
+
+---
+
 # The soundtrack is now held for the opening — 8 September 2026
 
 `SiloAudio` gained four methods and nothing else in the mix changed.

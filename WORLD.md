@@ -1,3 +1,46 @@
+# The hatch is in the panorama now — 8 September 2026
+
+**Note for Astra.** Two files, both small changes, both worth knowing about.
+
+## The cleaner used to appear out of solid ground
+
+The sensor looks straight out over the hatch — it is ten metres in front of the
+lens — but the panorama patched that hatch over with a flat sheet of ground
+(`cap`, in the feed setup). So the one thing the ramp exists for, a man coming
+up out of the silo, happened to a piece of scenery that was not in the picture:
+on the cafeteria screen Holston simply appeared, standing on unbroken earth,
+already outside.
+
+The open end of the ramp is now a group of its own, `ramp-mouth`, and it is in
+both views. **`surface.js` now builds ramp geometry into one of two kits** —
+`near(z)` (z >= 90) routes a piece to `mouth`, everything else to `k`. If you
+add anything to the ramp, route it the same way or it will exist outside and
+not on the screen. The exterior is unchanged: same pieces, same numbers, same
+colliders, just regrouped.
+
+The covered tunnel behind the mouth is closed off in the feed only, with an
+unlit plate at z=89.5. From out here in daylight that is what a throat looks
+like, and it stops the sensor seeing eighty metres down a tube to nothing.
+
+`cleaningSample` now starts him at z=100, eight metres down the incline, so the
+scene opens on an empty hillside with a hole in it and his helmet clears the
+lip about three seconds in. **`at()` and `followGround()` use the new exported
+`surfaceY(x,z)`**, not `groundY` — inside the ramp cutout the walking surface is
+`rampY`, not the terrain, and the test asserts against the same function.
+
+## The scene is 90 s now, and cut to the speech
+
+Beats: 0-12 emerge, 12-26 clean, 26-30 turn, 30-60 walk, 60-68 helmet, 68-80
+crawl, 80-90 rest. They are cut against `silo-18-opening.mp3`; the reasoning and
+the measurements are in `AUDIO.md`. **Retiming a beat means re-checking the
+music, and vice versa.**
+
+## Verify
+
+`npm test` — 63 passing, one new. `tests/upgrade.test.mjs` now requires
+`ramp-mouth` in the panorama, so if it gets dropped from the feed the suite
+says so rather than the shot quietly going back to flat ground.
+
 # Opening scene, seating, screens and figure proportions — 8 September 2026
 
 **Note for Astra (and anyone else in this repo at the same time.)** Four jobs,
