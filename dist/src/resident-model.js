@@ -13,10 +13,14 @@ export function buildResidentModel(definition,{suit=false}={}){
   const a=definition.appearance||{},female=!!a.female,wide=(a.build||1)*(female?.92:1),bones=[],points={},byName={};
   const rig=(name,parent,x,y,z)=>{const b=new THREE.Bone();b.name=name;points[name]=V(x,y,z);b.position.copy(points[name]);if(parent)b.position.sub(points[parent]);(parent?byName[parent]:model).add(b);bones.push(b);byName[name]=b;return b;};
   const model=new THREE.Group();model.name=definition.name;
+  // The ankle joint sat at 6.5% of standing height; a real one is near 4%, and
+  // the difference came straight off the leg, which is what the gait swings.
+  // The boot mesh is unmoved — it hangs off this bone either way — so the sole
+  // still meets the floor, the leg is simply the length it should be.
   rig('Hips',null,0,.91,0);rig('Spine','Hips',0,1.08,0);rig('Chest','Spine',0,1.31,0);rig('Neck','Chest',0,1.49,0);rig('Head','Neck',0,1.63,0);
   for(const [s,sign] of [['L',1],['R',-1]]){
     rig('UpperArm'+s,'Chest',sign*.235*wide,1.39,0);rig('Forearm'+s,'UpperArm'+s,sign*.29*wide,1.115,.01);rig('Hand'+s,'Forearm'+s,sign*.31*wide,.865,.015);
-    rig('Thigh'+s,'Hips',sign*.105*wide,.90,0);rig('Shin'+s,'Thigh'+s,sign*.108*wide,.50,.012);rig('Foot'+s,'Shin'+s,sign*.108*wide,.115,.018);rig('Toe'+s,'Foot'+s,sign*.108*wide,.07,.155);rig('Coat'+s,'Hips',sign*.13,.85,-.04);
+    rig('Thigh'+s,'Hips',sign*.105*wide,.90,0);rig('Shin'+s,'Thigh'+s,sign*.108*wide,.50,.012);rig('Foot'+s,'Shin'+s,sign*.108*wide,.080,.018);rig('Toe'+s,'Foot'+s,sign*.108*wide,.07,.155);rig('Coat'+s,'Hips',sign*.13,.85,-.04);
   }
   const positions=[],normals=[],colors=[],weights=[],joints=[],indices=[],skin=new THREE.Color(a.skin??0xb79476),coat=new THREE.Color(suit?0xd4d0b6:a.coat??0x66715f),hair=new THREE.Color(a.hair??0x44352b),dark=new THREE.Color(0x242923),shirt=new THREE.Color(a.shirt??0xa29981);let helmetRange=null;
   const binding=(b,b2=null,w=1)=>[bones.indexOf(byName[b]),bones.indexOf(byName[b2||b]),clamp(w,0,1)];

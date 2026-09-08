@@ -107,7 +107,7 @@ export class Population{
         if(r.kind==='porter'){const angle=Math.atan2(r.position.z,r.position.x)+r.sign*.07;target=new THREE.Vector3(Math.cos(angle)*r.radius,r.position.y,Math.sin(angle)*r.radius);}
         else if(r.path?.length){target=r.path[r.goal%r.path.length];if(target.distanceTo(r.position)<.35){r.goal++;r.wait=1.2+(r.seed%7)*.3;target=r.path[r.goal%r.path.length];}}
         if(target&&r.wait<=0){
-          desired.copy(target).sub(r.position).setY(0);if(desired.length()>0)desired.normalize().multiplyScalar(.66+(r.seed%9)*.035);
+          desired.copy(target).sub(r.position).setY(0);if(desired.length()>0)desired.normalize().multiplyScalar(1.06+(r.seed%9)*.042);   // an unhurried indoor walk, not a shuffle
           // Residents yield to the player and one another, then keep walking.
           for(const other of this.actors.values())if(other!==a){unit.copy(a.root.position).sub(other.root.position).setY(0);const d=unit.length();if(d>0&&d<.85)desired.addScaledVector(unit,Math.min(1.4,(.85-d)*1.6)/d);}
           unit.copy(a.root.position).sub(body.position).setY(0);const d=unit.length();if(d>0&&d<1.25)desired.addScaledVector(unit,(1.25-d)*1.5/d);
