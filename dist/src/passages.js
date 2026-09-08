@@ -5,6 +5,16 @@ import { SILO, TAU } from './data.js';
 // Back-of-house circulation is inferred. It gives the six wings a second
 // physical connection instead of turning every department into a dead end.
 export const PASSAGE = Object.freeze({inner:52,outer:55.2,height:3.7});
+// A short dead-end spur off the back walkway on the bottom floor. It ends in a
+// plain wall with a notice on it — no doorway, no frame, nothing to show that
+// anything was ever there. Move the notice and the wall behind it is already
+// broken through. The wording of the filmed plate was not available, so this is
+// written to match the silo's other stencilled signage.
+//
+// Module state on purpose: the level is rebuilt when it changes, so the opening
+// gets real collision instead of a wall you can walk through.
+export const SPUR=Object.freeze({level:144,angle:Math.PI/6,half:1.45,inner:55.38,outer:65.4,height:3.2});
+export const breach={open:false};
 export const hasRearPassage = (level,type) => level !== 1 && type !== 'cafeteria';
 export function buildPassages(m,level,types){
   const root=new THREE.Group(),k=new Kit(m),{inner:R,outer:O,height:H}=PASSAGE;
@@ -38,5 +48,29 @@ export function buildPassages(m,level,types){
     }
   }
   for(const y of [2.8,3.12])k.arc('rust',O-.42,O-.31,.095,y,0,TAU,144);
+  root.userData.interactions=[];
+  if(level===SPUR.level){
+    const {angle:a,half,inner:I,outer:X,height:SH}=SPUR,mid=(I+X)/2,len=X-I;
+    const spur=new THREE.Group();spur.name='digger-passage';spur.rotation.y=Math.PI/2-a;root.add(spur);
+    const sk=new Kit(m);                                   // local +z runs radially outward
+    sk.box('floor',0,-.15,mid,half*2,.3,len);
+    sk.box('darkConcrete',0,SH,mid,half*2+.5,.22,len);
+    for(const side of [-1,1])sk.box('pale',side*(half+.11),SH/2,mid,.22,SH,len);
+    for(let z=I+2.2;z<X-1;z+=3.6)fixture(sk,0,SH-.28,z,1.1,false);
+    for(const side of [-1,1])pipe(sk,side*(half-.25),mid,SH-.5,len-.6,.11);
+    if(breach.open){
+      // Broken through. The blockwork was only ever a skin over the opening.
+      for(const side of [-1,1])sk.box('darkConcrete',side*(half-.3),SH/2,X-.13,.62,SH,.26);
+      sk.box('darkConcrete',0,SH-.32,X-.13,half*2,.64,.26);
+      sk.box('black',0,1.25,X-.31,half*1.55,2.45,.05);
+      for(let i=0;i<12;i++){const t=(i/11-.5)*2.2;sk.box('rock',t,(i%2?.2:2.42)+(i%3)*.05,X-.34,.26+(i%3)*.07,.2,.22,false);}
+      root.userData.interactions.push({position:[Math.cos(a)*(X-2.4),1.5,Math.sin(a)*(X-2.4)],label:'Climb through the wall',destination:'excavator'});
+    }else{
+      sk.box('darkConcrete',0,SH/2,X-.13,half*2+.5,SH,.26);
+      addSign(spur,'DO NOT PASS THIS POINT\nSTRUCTURAL LIMIT · MECHANICAL',[0,1.86,X-.27],2.55,.72,Math.PI,{background:'#3a2f22',color:'#d9cbaa'});
+      root.userData.interactions.push({position:[Math.cos(a)*(X-2.4),1.5,Math.sin(a)*(X-2.4)],label:'Move the sign aside',action:'breach'});
+    }
+    spur.add(sk.group());
+  }
   root.add(k.group());root.userData.openings=openings;return root;
 }

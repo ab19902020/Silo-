@@ -6,7 +6,7 @@ import { SiloAudio } from './audio.js';
 import { Rendering, makeEnvironment } from './rendering.js';
 import { topLocal } from './surface.js';
 import { CharacterCast, CHARACTERS } from './characters.js';
-import { breach } from './rooms.js';
+import { breach } from './passages.js';
 import { disposeGroup } from './kit.js';
 import { LadderClimb } from './climbing.js';
 

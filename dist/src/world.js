@@ -16,7 +16,7 @@ const SIGN_WALL=SILO.deckOuter-.2-SIGN_DEPTH/2;
 const SIGN_WALL_HIGH=SILO.deckOuter-.3-SIGN_DEPTH/2;
 import { buildRoom } from './rooms.js';
 import { buildBazaar } from './bazaar.js';
-import { buildPassages, PASSAGE, hasRearPassage } from './passages.js';
+import { buildPassages, PASSAGE, hasRearPassage, SPUR, breach } from './passages.js';
 import { loadPhotographicMaterials } from './materials.js';
 import { buildTopFloor } from './top-floor.js';
 import { SurfaceWorld, topPoint, topLocal, groundY, inRampCutout } from './surface.js';
@@ -137,7 +137,16 @@ export class SiloWorld {
       for(const interact of room.userData.interactions){const p=new THREE.Vector3(...interact.position).applyAxisAngle(new THREE.Vector3(0,1,0),ry).add(room.position);p.y+=y;interactions.push({...interact,position:p});}
     }
     addSign(root,`LEVEL ${String(level).padStart(3,'0')}`,[13,.44,-(SILO.landingHalf+.09+SIGN_DEPTH/2)],2.4,.42,Math.PI);
-    const passages=level===1?null:buildPassages(this.m,level,rooms.map(r=>r.userData.type));if(passages)root.add(passages);
+    const passages=level===1?null:buildPassages(this.m,level,rooms.map(r=>r.userData.type));
+    if(passages){root.add(passages);for(const i of passages.userData.interactions||[])interactions.push({...i,position:new THREE.Vector3(i.position[0],i.position[1]+y,i.position[2])});}
+    // Close the open side of the top and bottom landings. Every other level has
+    // the next flight arriving there; these two have a drop instead.
+    if(level===1||level===144){
+      const side=level===1?1:-1,z=side*SILO.landingHalf,gk=new Kit(this.m),C=SILO.stairColumn,S=SILO.stairRadius;
+      gk.box('concrete',(C+S)/2,.35,z,S-C,.7,.18);
+      railing(gk,[C,z],[S,z],.05);
+      root.add(gk.group());
+    }
     this.scene.add(root);const entry={level,root,rooms,doors,interactions,passages};this.loaded.set(level,entry);return entry;
   }
   setLevel(level,special=null){
@@ -186,12 +195,27 @@ export class SiloWorld {
         const {inner,outer,height}=PASSAGE;
         c.addRing({innerRadius:inner,outerRadius:outer,minY:y-.3,maxY:y,climbable:true});
         c.addRing({innerRadius:inner-.16,outerRadius:inner,minY:y,maxY:y+height,gaps:e.passages.userData.openings});
-        c.addRing({innerRadius:outer,outerRadius:outer+.18,minY:y,maxY:y+height});
+          c.addRing({innerRadius:outer,outerRadius:outer+.18,minY:y,maxY:y+height,
+          gaps:level===SPUR.level?[[SPUR.angle,SPUR.half/outer]]:[]});
+        if(level===SPUR.level){
+          const {angle:a,half,inner:I,outer:X,height:SH}=SPUR,ry=Math.PI/2-a,mid=(I+X)/2,len=X-I;
+          const at=(r,t=0)=>({cx:Math.cos(a)*r+Math.sin(a)*t,cz:Math.sin(a)*r-Math.cos(a)*t});
+          c.addOrientedBox({...at(mid),halfX:half,halfZ:len/2,rotationY:ry,minY:y-.3,maxY:y,climbable:true});
+          for(const side of [-1,1])c.addOrientedBox({...at(mid,side*(half+.11)),halfX:.11,halfZ:len/2,rotationY:ry,minY:y,maxY:y+SH});
+          // The end wall only stands while the notice is still on it.
+          if(!breach.open)c.addOrientedBox({...at(X-.13),halfX:half+.25,halfZ:.13,rotationY:ry,minY:y,maxY:y+SH});
+        }
         for(let w=0;w<6;w++)if(hasRearPassage(level,e.rooms[w].userData.type)){
           const a=w*TAU/6,ry=Math.PI/2-a;
           c.addOrientedBox({cx:Math.cos(a)*51.6,cz:Math.sin(a)*51.6,halfX:1.55,halfZ:2.2,rotationY:ry,minY:y-.3,maxY:y,climbable:true});
           for(const side of [-1,1]){const x=side*1.55,z=SILO.deckOuter+25.25;c.addOrientedBox({cx:Math.cos(a)*z+Math.sin(a)*x,cz:Math.sin(a)*z-Math.cos(a)*x,halfX:.08,halfZ:1.25,rotationY:ry,minY:y,maxY:y+height});}
         }
+      }
+      // The top and bottom landings have no flight continuing past them, so the
+      // stairwell is open on that side with nothing to stop you walking in.
+      if(level===1||level===144){
+        const side=level===1?1:-1;
+        c.addOrientedBox({cx:(C+S)/2,cz:side*SILO.landingHalf,halfX:(S-C)/2,halfZ:.1,rotationY:0,minY:y,maxY:y+1.13});
       }
       for(const room of e.rooms){
         const ry=room.rotation.y,cos=Math.cos(ry),sin=Math.sin(ry),ox=room.position.x,oz=room.position.z;

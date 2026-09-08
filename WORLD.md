@@ -148,15 +148,37 @@ further pulls the hips off their own feet.
 
 ### The way into the void
 
-The back of the Mechanical wing on 144 no longer has an open stair to the
-excavator. The old opening is **blocked up in newer blockwork with a routine
-bulkhead notice screwed over it**; lift the notice and the wall behind it was
-broken through long ago. The directory shortcut still works for anyone who
-would rather skip it.
+Walk the **rear service gallery on 144** and there is a short spur off it that
+dead-ends in a **plain wall** — no doorway, no frame, no blocked-up opening, no
+hint that anything was ever there. Just a notice reading *DO NOT PASS THIS
+POINT · STRUCTURAL LIMIT*. Move the notice and the wall behind it is already
+broken through; climb through into the excavator void. The directory shortcut
+still works for anyone who would rather skip it, and the Mechanical wing no
+longer offers a direct way down.
 
-`breach` is module state in `rooms.js` and the level is **rebuilt** when it
-changes. That is deliberate: the blockwork carries collision, so hiding the
-mesh alone would leave an invisible wall across the opening.
+The first attempt put this **inside** the wing and showed a visible blocked-up
+opening with jambs and a lintel. Both were wrong: it belongs off the back
+walkway, and the point is that you cannot see it.
+
+`SPUR` and `breach` live in `passages.js` and the level is **rebuilt** when
+`breach` changes. That is deliberate: the end wall carries collision, so hiding
+the mesh alone would leave an invisible wall across the opening.
+
+### You could walk off the top of the stairwell
+
+Stair treads are only built for `level > 1`, so at the **top landing** the
+stairwell on one side of the bridge had no floor at that height and nothing
+stopping you walking into it — a 10 m drop, and further once past the modelled
+treads. Level 144 had the mirror of it: no level 145 flight arriving on the
+other side. Every level in between is fine, because the next flight lands there.
+
+Both landings now carry a parapet and rail across the open side, matching the
+bridge's own. Measured with a probe that walks a real `CharacterBody` out from
+every standing point in 24 directions: **26 free falls before, 0 after**, and
+the same probe still reports 0 on levels 2, 50 and 143. Walking downstairs also
+loses height, so the probe scores a fall by downward *speed* — no staircase in
+the silo can push you past 6 m/s — not by how far you dropped. There are tests
+for both.
 
 The exact wording of the filmed plate was not available in the sources
 reviewed, so the sign text is written to match the silo's other stencilled

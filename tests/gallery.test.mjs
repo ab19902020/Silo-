@@ -76,3 +76,76 @@ test('a body can walk straight out of every wing without meeting a column',()=>{
     assert.ok(body.position.distanceTo(target)<.35,`wing ${wing}: blocked leaving the doorway`);
   }
 });
+
+// --- landings and the way to the digger ------------------------------------
+const { SPUR, breach } = await import('../dist/src/passages.js');
+
+// Walking downstairs also loses height. A fall is free flight: the body reaches
+// a downward speed no staircase in the silo could ever give it.
+function freeFalls(level){
+  world.setLevel(level);
+  const y=world.loaded.get(level).root.position.y,dt=1/120,found=[];
+  const starts=[];
+  for(let x=8;x<=17.5;x+=1.2)starts.push(new THREE.Vector3(x,y,0));
+  for(let j=0;j<10;j++){const a=j*TAU/SILO.stairSteps,r=(SILO.stairColumn+SILO.stairRadius)/2;
+    starts.push(new THREE.Vector3(Math.cos(a)*r,y,Math.sin(a)*r));}
+  for(const p of starts){
+    const floor=world.colliders.floorAt(p.x,p.z,.3,p.y+.8);
+    if(!Number.isFinite(floor)||Math.abs(floor-p.y)>.9)continue;
+    for(let d=0;d<24;d++){
+      const a=d*TAU/24,dir=new THREE.Vector3(Math.cos(a),0,Math.sin(a)).multiplyScalar(3.8);
+      const b=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3});
+      b.teleport(p.x,floor,p.z);
+      let worst=0;
+      for(let i=0;i<420;i++){b.step(dt,dir,world.colliders);if(b.velocity.y<worst)worst=b.velocity.y;}
+      if(worst<-6)found.push(`from ${p.x.toFixed(1)},${p.z.toFixed(1)} heading ${Math.round(a*180/Math.PI)}° (${worst.toFixed(1)} m/s)`);
+    }
+  }
+  return found;
+}
+
+test('the top and bottom landings cannot be walked off',()=>{
+  // Every other level has the next flight arriving at the landing; these two
+  // have an open stairwell on that side instead, and used to let you straight in.
+  for(const level of [1,144]){
+    const falls=freeFalls(level);
+    assert.equal(falls.length,0,`level ${level}: ${falls.length} way(s) to fall off — ${falls[0]}`);
+  }
+});
+
+test('mid-silo landings stay walkable and still cannot be fallen from',()=>{
+  for(const level of [2,50,143])assert.equal(freeFalls(level).length,0,`level ${level} lets you fall`);
+});
+
+test('the digger passage is a dead end until the notice is moved',()=>{
+  const spurEnd=new THREE.Vector3(Math.cos(SPUR.angle)*(SPUR.outer-2.4),0,Math.sin(SPUR.angle)*(SPUR.outer-2.4));
+  const reach=()=>{
+    world.loaded.forEach((e,n)=>{e.root.parent?.remove(e.root);world.loaded.delete(n);});
+    world.setLevel(SPUR.level);
+    const y=world.loaded.get(SPUR.level).root.position.y;
+    const here=world.interactions.filter(i=>Math.hypot(i.position.x-spurEnd.x,i.position.z-spurEnd.z)<3);
+    // Can a body stand at the end of the spur, and is the end wall solid?
+    const b=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3});
+    b.teleport(spurEnd.x,y,spurEnd.z);
+    const out=new THREE.Vector3(Math.cos(SPUR.angle),0,Math.sin(SPUR.angle)).multiplyScalar(3);
+    for(let i=0;i<360;i++)b.step(1/120,out,world.colliders);
+    return {here,radius:Math.hypot(b.position.x,b.position.z)};
+  };
+  breach.open=false;
+  const sealed=reach();
+  assert.equal(sealed.here.length,1,'the spur should offer exactly one thing to do');
+  assert.equal(sealed.here[0].action,'breach');
+  assert.equal(sealed.here[0].destination,undefined,'a sealed wall must not travel anywhere');
+  assert.ok(sealed.radius<SPUR.outer-.3,`walked through the sealed end wall to r=${sealed.radius.toFixed(2)}`);
+
+  breach.open=true;
+  const open=reach();
+  assert.equal(open.here.length,1);
+  assert.equal(open.here[0].destination,'excavator','once through, the wall leads to the excavator');
+  breach.open=false;
+  // And the wing itself no longer offers a direct way down to the excavator.
+  world.loaded.forEach((e,n)=>{e.root.parent?.remove(e.root);world.loaded.delete(n);});
+  world.setLevel(SPUR.level);
+  assert.ok(!world.interactions.some(i=>i.destination==='excavator'&&Math.hypot(i.position.x,i.position.z)<40),
+    'the excavator must not still be reachable straight from the Mechanical wing');
+});
