@@ -6,6 +6,8 @@ import { SiloAudio } from './audio.js';
 import { Rendering, makeEnvironment } from './rendering.js';
 import { topLocal } from './surface.js';
 import { CharacterCast, CHARACTERS } from './characters.js';
+import { breach } from './rooms.js';
+import { disposeGroup } from './kit.js';
 import { LadderClimb } from './climbing.js';
 
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic');
@@ -95,6 +97,7 @@ const inspectionText={
   chute:'The refuse chute carries discarded material down for recovery. It is not a passenger route.',
   mines:'An inferred mining working with ore carts, timber supports and a rock drill. A complete filmed mine plan was not available in the sources.',
   tunnel:'A sealed lower passage beneath the silo. This build does not invent an open route into another silo.',
+  breach:'A routine bulkhead notice, screwed to newer blockwork than the wall around it. Whoever filled this opening in did not want it found, and whoever came after had already broken back through.',
   camp:'George and Juliette’s secluded hideout beside the excavation: a bed, a table and salvaged relics. The ladder outside the open side descends to the water. The room’s exact dimensions and position remain reconstructed from the available references.',
   relics:'Tins, bottles, books and wound cable carried down from the levels above and kept where a sweep would not find them. Possession of relics from before is an offence under the Pact.',
 };
@@ -109,6 +112,16 @@ function use(){
   if(interaction.action==='hard-drive'){audio.click();openDialog(relic);return;}
   if(interaction.action==='clean-camera'){audio.click();world.surface.beginCleaning();notify('Cleaning the camera lens. The cafeteria feed clears as you wipe.');return;}
   if(interaction.action?.startsWith('airlock-')){audio.airlock();world.cycleAirlock(interaction.action.slice(8));return;}
+  if(interaction.action==='breach'){
+    // Rebuilding the level is what turns the panel into a real hole: the
+    // blockwork carries collision, so hiding the mesh alone would leave an
+    // invisible wall across the opening.
+    breach.open=true;audio.door(true);
+    for(const [n,entry] of world.loaded){disposeGroup(entry.root);world.loaded.delete(n);}
+    world.setLevel(world.activeLevel,world.special);
+    notify('The notice comes away. The blockwork behind it was broken through a long time ago.');
+    return;
+  }
   if(interaction.door){interaction.door.open=!interaction.door.open;audio.door(interaction.door.open);}
   else if(interaction.destination!==undefined){audio.click();travel(interaction.destination);}
   else{audio.click();notify(inspectionText[interaction.action]||interaction.label);}
@@ -122,8 +135,27 @@ $('characterButton').addEventListener('click',()=>{renderCharacters();openDialog
 $('settingsButton').addEventListener('click',()=>openDialog(settings));$('aboutButton').addEventListener('click',()=>openDialog(about));
 for(const button of document.querySelectorAll('[data-travel]'))button.addEventListener('click',()=>travel(button.dataset.travel));
 $('landmarksTab').addEventListener('click',()=>setDirectoryMode(false));$('allLevelsTab').addEventListener('click',()=>setDirectoryMode(true));$('search').addEventListener('input',renderDirectory);
-$('interaction').addEventListener('click',use);$('touchUse').addEventListener('click',use);$('runButton').addEventListener('click',()=>{running=!running;$('runButton').classList.toggle('active',running);});$('torchButton').addEventListener('click',toggleTorch);
-$('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement){await document.exitFullscreen();}else if(document.documentElement.requestFullscreen){await document.documentElement.requestFullscreen();}else notify('Use your browser’s fullscreen option on this device.');}catch{notify('Fullscreen is not available in this browser.');}});
+$('interaction').addEventListener('click',use);$('touchUse').addEventListener('click',use);$('jumpButton').addEventListener('click',()=>{jumpQueued=true;});$('runButton').addEventListener('click',()=>{running=!running;$('runButton').classList.toggle('active',running);});$('torchButton').addEventListener('click',toggleTorch);
+$('fullscreen').addEventListener('click',async()=>{
+  try{
+    if(document.fullscreenElement){await document.exitFullscreen();return;}
+    if(!document.documentElement.requestFullscreen){notify('Use your browser’s fullscreen option on this device.');return;}
+    // Leave the panel before going fullscreen. A modal dialog and the
+    // fullscreen element share the top layer, and the root can end up drawn
+    // over the panel: still open, so the game stays paused and every touch
+    // control stays hidden, with the close button no longer visible.
+    if(settings.open)closeDialog(settings);
+    await document.documentElement.requestFullscreen();
+  }catch{notify('Fullscreen is not available in this browser.');}
+});
+// Entering or leaving fullscreen resizes the viewport and can strand a stale
+// pause state or a captured pointer, which reads as the touch controls dying.
+for(const event of ['fullscreenchange','webkitfullscreenchange'])addEventListener(event,()=>{
+  lookPointer=lookStart=null;movePointer=null;stick.x=stick.y=0;
+  $('joystick').firstElementChild.style.transform='';
+  resize();syncPause();
+  $('fullscreen').textContent=document.fullscreenElement?'Leave fullscreen':'Enter fullscreen';
+});
 $('resetPosition').addEventListener('click',()=>travel(world.special||world.activeLevel));
 for(const id of ['brightness','sensitivity','quality','sound','music','reduceMotion']){if(saved[id]!==undefined){if(typeof saved[id]==='boolean')$(id).checked=saved[id];else $(id).value=saved[id];}$(id).addEventListener('input',updateSettings);}
 if(saved.reduceMotion===undefined)$('reduceMotion').checked=matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -137,13 +169,13 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyC'){if(characters.open)closeDialog(characters);else{renderCharacters();openDialog(characters);}return;}
   if(paused())return;
   if(e.code==='KeyV'){toggleView();return;}
-  keys.add(e.code);if(e.code==='KeyE')use();if(e.code==='KeyF')toggleTorch();
+  keys.add(e.code);if(e.code==='KeyE')use();if(e.code==='KeyF')toggleTorch();if(e.code==='Space')jumpQueued=true;
   if(e.code==='Escape')openDialog(welcome);
 });
 addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',()=>{keys.clear();stick.x=stick.y=0;});
 document.addEventListener('visibilitychange',()=>{keys.clear();stick.x=stick.y=0;if(document.hidden&&audio.context)audio.context.suspend().catch(()=>{});else if(started&&!paused())audio.start();});
 
-let lookPointer=null,lookStart=null,lookTravel=0;
+let lookPointer=null,lookStart=null,lookTravel=0,jumpQueued=false;
 canvas.addEventListener('pointerdown',e=>{if(paused())return;if(e.pointerType==='touch'&&e.clientX<innerWidth*.32)return;lookPointer=e.pointerId;lookStart={x:e.clientX,y:e.clientY};lookTravel=0;canvas.setPointerCapture(e.pointerId);});
 canvas.addEventListener('pointermove',e=>{
   if(paused())return;
@@ -160,19 +192,66 @@ function moveStick(e){if(movePointer!==e.pointerId)return;const r=joystick.getBo
 joystick.addEventListener('pointerdown',e=>{if(paused())return;e.preventDefault();movePointer=e.pointerId;joystick.setPointerCapture(e.pointerId);moveStick(e);});joystick.addEventListener('pointermove',moveStick);
 const releaseStick=e=>{if(e.pointerId!==movePointer)return;movePointer=null;stick.x=stick.y=0;joystick.firstElementChild.style.transform='';};for(const event of ['pointerup','pointercancel','lostpointercapture'])joystick.addEventListener(event,releaseStick);
 
+// --- gamepad ---------------------------------------------------------------
+// Standard mapping, which is what a DualShock 4, a DualSense and an Xbox pad
+// all report over USB and Bluetooth in every current browser.
+const PAD={CROSS:0,CIRCLE:1,SQUARE:2,TRIANGLE:3,L1:4,R1:5,L2:6,R2:7,SHARE:8,OPTIONS:9,L3:10,R3:11};
+const pad={move:{x:0,y:0},look:{x:0,y:0},run:false,connected:false},padHeld=new Set();
+// Sticks rest slightly off centre and report noise even untouched.
+const deadzone=(v,d=.16)=>{const m=Math.abs(v);return m<d?0:Math.sign(v)*((m-d)/(1-d))**1.6;};
+function readPad(){
+  let device=null;
+  for(const p of navigator.getGamepads?.()||[])if(p?.connected&&p.axes?.length>=2){device=p;break;}
+  if(!device){pad.connected=false;pad.move.x=pad.move.y=pad.look.x=pad.look.y=0;pad.run=false;padHeld.clear();return null;}
+  if(!pad.connected){pad.connected=true;notify('Controller connected. Left stick moves, right stick looks, ✕ jumps.');}
+  pad.move.x=deadzone(device.axes[0]||0);pad.move.y=deadzone(device.axes[1]||0);
+  pad.look.x=deadzone(device.axes[2]||0);pad.look.y=deadzone(device.axes[3]||0);
+  const down=i=>!!device.buttons?.[i]?.pressed;
+  pad.run=down(PAD.R2)||down(PAD.L1)||down(PAD.L3);
+  // Edge detection: every mapped button acts on the press, not while held.
+  const tapped=i=>{const held=padHeld.has(i),now=down(i);if(now)padHeld.add(i);else padHeld.delete(i);return now&&!held;};
+  return {tapped,down};
+}
+function applyPad(dt){
+  const device=readPad();if(!device)return;
+  const {tapped}=device;
+  if(tapped(PAD.OPTIONS)||tapped(PAD.SHARE)){if(directory.open)closeDialog(directory);else{renderDirectory();openDialog(directory);}return;}
+  if(paused()){
+    // On the panels the pad still has to be able to get you out again.
+    if(tapped(PAD.CIRCLE)){const open=dialogs.find(d=>d.open);if(open)closeDialog(open);}
+    if(tapped(PAD.CROSS)&&welcome.open&&ready)begin();
+    return;
+  }
+  if(tapped(PAD.CROSS))jumpQueued=true;
+  if(tapped(PAD.SQUARE)||tapped(PAD.R1))use();
+  if(tapped(PAD.TRIANGLE))toggleTorch();
+  if(tapped(PAD.R3))toggleView();
+  if(tapped(PAD.CIRCLE))openDialog(welcome);
+  // Right stick look. The squared response above the deadzone gives fine aim
+  // near centre and a usable sweep at full deflection.
+  yaw-=pad.look.x*2.9*dt*lookSensitivity;
+  pitch=THREE.MathUtils.clamp(pitch-pad.look.y*2.2*dt*lookSensitivity,-1.48,1.48);
+}
+
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer?.setSize(innerWidth,innerHeight,false);rendering?.resize();}addEventListener('resize',resize);
 function fatal(error){console.error(error);for(const d of dialogs)if(d.open)d.close();$('fatal').hidden=false;$('fatalText').textContent=`${error.message||error}. Try refreshing, or use a browser with WebGL 2 enabled.`;}
 
 function frame(){
   requestAnimationFrame(frame);if(!renderer||!world)return;
   const dt=Math.min(clock.getDelta(),.05),time=performance.now()*.001;
+  applyPad(dt);
   if(!paused()){
-    const forward=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-stick.y;
-    const right=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0)+stick.x;
-    const speed=(running||keys.has('ShiftLeft')||keys.has('ShiftRight'))?3.8:1.45;
+    const forward=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-stick.y-pad.move.y;
+    const right=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0)+stick.x+pad.move.x;
+    const speed=(running||pad.run||keys.has('ShiftLeft')||keys.has('ShiftRight'))?3.8:1.45;
     desired.set(-Math.sin(yaw)*forward+Math.cos(yaw)*right,0,-Math.cos(yaw)*forward-Math.sin(yaw)*right);if(desired.length()>1)desired.normalize();desired.multiplyScalar(speed);
     // Bound movement substeps prevent thin rail/door tunneling after slow frames.
-    const count=Math.max(1,Math.ceil(dt/(1/120)));for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders);
+    // The jump impulse belongs to one substep only, or it is applied N times.
+    const count=Math.max(1,Math.ceil(dt/(1/120))),wasAirborne=!body.grounded;
+    for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders,{jump:jumpQueued&&i===0});
+    if(jumpQueued&&body.velocity.y>.5)audio.jump();
+    jumpQueued=false;
+    if(wasAirborne&&body.grounded&&body.landingImpact>.05)audio.land(body.landingImpact);
     if(body.position.y<2&&!world.special){const p=world.spawn(world.activeLevel);body.teleport(p.x,p.y,p.z);notify('Returned to the nearest safe landing.');}
     const bob=$('reduceMotion').checked?0:Math.sin(body.distanceWalked*8)*.018*Math.min(1,body.horizontalSpeed);
     world.update(dt,body.position);cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;interaction=body.climbing?null:world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;if(interaction)$('interaction').lastElementChild.textContent=interaction.label;

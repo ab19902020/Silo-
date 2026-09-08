@@ -93,6 +93,77 @@ relics kept hidden, and a sealed lower door; no filmed plan of this space was
 available, and the layout, dimensions and contents here are inferred. This is
 recorded in the in-world inspection text as well.
 
+## Later pass: movement, controls and the way into the void
+
+### The gait was wrong by the numbers
+
+The rig is good — real two-bone IK, foot planting, phase continuity. What made
+it look bad was the gait itself, and it was measurable:
+
+| | before | after | real human |
+| --- | --- | --- | --- |
+| Walk cadence | 145 steps/min | **120** | ~120 |
+| Walk step length | 0.60 m | **0.72 m** | ~0.72 m |
+| Run cadence | — | **168 steps/min** | ~165 |
+| Both feet off the ground, running | **0%** | **17%** | a run has a flight phase |
+| Both feet down, walking | — | 23% | ~20–25% |
+
+`STANCE` and `REACH` now live in one place at the top of `locomotion.js`,
+because the pose and the phase advance must agree exactly or the feet skate.
+Step length is `REACH*height/STANCE`; change one and the cadence moves.
+
+Three things were missing outright:
+
+- **Vertical bob.** The pelvis never rose or fell, so the body glided along on
+  moving legs. It now rises over the planted leg and falls through double
+  support, twice a stride, and inverts at a run — highest at mid-flight.
+- **Foot roll.** The foot was held flat for the entire cycle. It now lands
+  heel-first with the toe up, rolls flat, and leaves off the toe, and the ankle
+  rises as the heel comes up so the heel does not drive through the floor.
+- **Stride shortening on slopes.** People take smaller steps up a staircase.
+  This is also what keeps the ankle inside the leg's reach on a tread — without
+  it the longer stride puts it 5 cm out and the regression test fails.
+
+Pelvic list, shoulder counter-rotation, a proper elbow that closes as the arm
+comes through, and landing absorption driven by `body.landingImpact` are all in
+too. **Pelvic rotation is deliberately kept small** (0.04): foot goals in this
+rig are placed in model space and do not follow the pelvis, so turning it
+further pulls the hips off their own feet.
+
+### Controls
+
+- **Jump.** `physics.js` has supported `{jump:true}` all along and nothing ever
+  passed it. Space, ✕ on a pad, or the new touch button. The impulse is applied
+  on one substep only, or it fires N times a frame.
+- **Gamepad.** DualShock/DualSense/Xbox over the standard mapping: sticks to
+  move and look, ✕ jump, □/R1 use, △ torch, R2 run, Options directory, R3 view.
+  Buttons act on the press, not while held.
+- **Fullscreen no longer kills the touch controls.** The fullscreen button sits
+  inside a modal panel, and a modal dialog and the fullscreen element share the
+  top layer — the root going fullscreen ends up drawn *over* the panel, which
+  stays open. The game therefore stays paused, `.paused` hides every touch
+  control, and the close button is no longer visible. The panel is now closed
+  before the request, and `fullscreenchange` clears any captured pointer and
+  re-syncs.
+
+### The way into the void
+
+The back of the Mechanical wing on 144 no longer has an open stair to the
+excavator. The old opening is **blocked up in newer blockwork with a routine
+bulkhead notice screwed over it**; lift the notice and the wall behind it was
+broken through long ago. The directory shortcut still works for anyone who
+would rather skip it.
+
+`breach` is module state in `rooms.js` and the level is **rebuilt** when it
+changes. That is deliberate: the blockwork carries collision, so hiding the
+mesh alone would leave an invisible wall across the opening.
+
+The exact wording of the filmed plate was not available in the sources
+reviewed, so the sign text is written to match the silo's other stencilled
+signage rather than copied. Everything else here follows the established
+mechanism: residents found the digging machine and concealed the entrance, and
+access is through breaks in Mechanical's walls.
+
 ## Verify
 
 `npm test` — 39 tests, 9 of them new. The void tests walk a real

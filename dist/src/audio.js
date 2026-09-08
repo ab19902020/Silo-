@@ -359,6 +359,24 @@ export class SiloAudio {
       this.burst(out,t+.03,{frequency:rand(1400,2600),to:rand(600,1000),q:.7,gain:.018*force,decay:.13,attack:.02,rate:rand(.7,1.1)});
   }
 
+  // Take-off is the scuff of a sole pushing away, not an impact.
+  jump(){
+    if(!this.live())return;
+    const t=this.context.currentTime+.005,out=this.voice(rand(-.1,.1));
+    this.burst(out,t,{frequency:rand(900,1400),to:rand(320,520),q:.8,gain:.05,decay:.16,attack:.012,rate:rand(.8,1.1)});
+    const material=FLOORS.includes(this.stepSurface)?this.stepSurface:'concrete';
+    this.hit(out,material,t,{gain:FOOTFALL[material].level*.55,rate:rand(1.05,1.2)});
+  }
+  // Landing is both feet at once and the whole body's weight behind them.
+  land(strength=1){
+    if(!this.live())return;
+    const material=FLOORS.includes(this.stepSurface)?this.stepSurface:'concrete';
+    const force=clamp(strength,0,1),t=this.context.currentTime+.005,out=this.voice(0);
+    this.hit(out,material,t,{gain:FOOTFALL[material].level*(1.5+1.6*force),rate:rand(.80,.90)});
+    this.hit(out,material,t+.018,{gain:FOOTFALL[material].level*(.9+1.0*force),rate:rand(.92,1.02)});
+    if(force>.35)this.hit(out,'thunk',t,{gain:.05*force,rate:rand(1.1,1.35)});
+  }
+
   // --- interactions -------------------------------------------------------
   door(open){
     if(!this.live())return;

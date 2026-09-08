@@ -7,6 +7,16 @@ import { dressWorkshop } from './workshop-details.js';
 import { dressRoom } from './environment-details.js';
 
 const TAU=Math.PI*2;
+// The way down to the digger is not a doorway. The people who found the
+// machine blocked the old opening up and hung a routine notice over it, so
+// nobody walking the back of Mechanical would look twice. Lift the notice and
+// the blockwork behind it is already broken through. The exact wording of the
+// filmed plate was not available, so the text here is written to match the
+// silo's other stencilled utility signage rather than copied.
+//
+// This is module state on purpose: the level is rebuilt when it changes, so
+// the hole gets real collision instead of a panel you can walk through.
+export const breach={open:false};
 export function buildRoom(materials,type,level,wing,assets) {
   const root=new THREE.Group(),k=new Kit(materials), solids=[],interactions=[],animated=[];
   const rng=random(level*107+wing*7919), H=SILO.roomHeight, W=SILO.roomHalf, D=SILO.roomDepth;
@@ -160,7 +170,28 @@ export function buildRoom(materials,type,level,wing,assets) {
       label(level===144?'WALKER · ELECTRICAL REPAIRS':'MECHANICAL · REPAIR SHOP',0,4.2,1,6,.55);
       interactions.push({position:[0,1.2,19],label:'Inspect the repair bench',action:'workshop'});
     },
-    mechanical(){furnishings.workshop();if(level===144){label('GENERATOR HALL ↓',0,3.4,23.91,5,.65);interactions.push({position:[0,1.5,22],label:'Descend to generator hall',destination:'generator'},{position:[-6,1.5,22],label:'Descend to mines',destination:'mines'},{position:[6,1.5,22],label:'Descend to excavator',destination:'excavator'});}for(const x of [-3.5,3.5]){k.cylinder('metal',x,1.1,11,1,2.5,Math.PI/2);solids.push({x,z:11,w:2,d:2.6,y0:0,y1:2.2});pipe(k,x,13,3.8,17,.32,'rust');}},
+    mechanical(){furnishings.workshop();if(level===144){
+      label('GENERATOR HALL ↓',0,3.4,23.91,5,.65);
+      interactions.push({position:[0,1.5,22],label:'Descend to generator hall',destination:'generator'},{position:[-6,1.5,22],label:'Descend to mines',destination:'mines'});
+      // The blocked-up opening at the back of the wing, and what is behind it.
+      const blocked=new THREE.Group();blocked.name='digger-access';root.add(blocked);const bk=new Kit(materials);
+      if(breach.open){
+        // Broken through: jambs and a lintel left standing, the middle gone.
+        for(const dx of [-1.35,1.35]){bk.box('darkConcrete',8+dx,1.45,23.55,.5,2.9,.46);solids.push({x:8+dx,z:23.55,w:.5,d:.46,y0:0,y1:2.9});}
+        bk.box('darkConcrete',8,2.62,23.55,3.2,.56,.46);solids.push({x:8,z:23.55,w:3.2,d:.46,y0:2.34,y1:2.9});
+        for(let i=0;i<14;i++){const t=(i/13-.5)*2.1;bk.box('rock',8+t,(i%2?.18:2.2)+(i%3)*.05,23.4,.26+(i%3)*.08,.2,.22,false);}
+        bk.box('black',8,1.1,23.8,2.2,2.2,.05);
+        interactions.push({position:[8,1.5,22],label:'Climb through the wall',destination:'excavator'});
+      }else{
+        bk.box('darkConcrete',8,1.45,23.55,3.2,2.9,.46);solids.push({x:8,z:23.55,w:3.2,d:.46,y0:0,y1:2.9});
+        // Newer blockwork than the wall it fills: the giveaway, if you look.
+        for(let row=0;row<7;row++)for(let col=0;col<4;col++)
+          bk.box('concrete',8+(col-1.5)*.76+(row%2?.19:-.19),.28+row*.41,23.31,.72,.37,.04,false);
+        addSign(blocked,'SECTION SEALED\nPRESSURE BULKHEAD · NO ACCESS',[8,2.28,23.29],2.7,.78,Math.PI,{background:'#3a2f22',color:'#d9cbaa'});
+        interactions.push({position:[8,1.5,22],label:'Lift the notice plate aside',action:'breach'});
+      }
+      blocked.add(bk.group());
+    }for(const x of [-3.5,3.5]){k.cylinder('metal',x,1.1,11,1,2.5,Math.PI/2);solids.push({x,z:11,w:2,d:2.6,y0:0,y1:2.2});pipe(k,x,13,3.8,17,.32,'rust');}},
     recycling(){
       box('metal',0,.7,13,3,1.4,15);k.box('black',0,1.43,13,2.7,.05,14.8);for(let z=6;z<20;z+=.4)k.box('metal',0,1.49,z,2.65,.035,.04);
       for(let i=0;i<18;i++)k.box(i%3?'rust':'wood',(rng()-.5)*2,1.7,6+rng()*13,.3+rng()*.5,.3,.4,false);

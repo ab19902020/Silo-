@@ -47,7 +47,7 @@ export class CharacterCast{
         a.root.rotation.y=a.heading;a.root.updateMatrixWorld(true);
         const ground=(x,z)=>{const f=this.world.colliders.floorAt(x,z,.035,body.position.y+.35);return Number.isFinite(f)&&Math.abs(f-body.position.y)<.48?f:body.position.y;};
         if(body.climbing){a.motion.climb(body.climbing);a.state='Climb';}
-        else {if(a.state==='Climb')a.motion.reset();a.motion.update(dt,{speed:started?speed:0,position:body.position,grounded:body.grounded,heading:a.heading,ground,active:started});a.state=a.motion.state;}
+        else {if(a.state==='Climb')a.motion.reset();a.motion.update(dt,{speed:started?speed:0,position:body.position,grounded:body.grounded,heading:a.heading,ground,active:started,impact:body.landingImpact||0});a.state=a.motion.state;}
         a.root.visible=started&&this.thirdPerson;
       }else{
         a.root.position.copy(a.post);a.root.rotation.y=-a.definition.wing*Math.PI/3-Math.PI/2;a.root.updateMatrixWorld(true);if(near)a.motion.update(dt,{position:a.post,active:false});a.state='Idle';a.root.visible=near;
