@@ -22,6 +22,11 @@ test('actual walking exits and reenters all 864 directory wing destinations',()=
     for(let w=0;w<6;w++){
       const a=w*Math.PI/3,radial=new THREE.Vector3(Math.cos(a),0,Math.sin(a));
       const b=new CharacterBody({radius:.3,stepHeight:.3});b.teleport(...world.destination(`room:${n}:${w}`).position.toArray());
+      // Wing doors start shut. Work the handle first, the way a player does —
+      // this test is looking for walls you cannot see, not for the ones you can.
+      const door=world.doors.find(d=>d.level===n&&d.wing===w);
+      assert.ok(door,`level ${n} wing ${w} has no door`);
+      door.open=true;for(let j=0;j<120;j++)world.update(1/60,b.position);
       for(const radius of [23,29]){
         const target=radial.clone().multiplyScalar(radius);target.y=levelY(n);
         for(let j=0;j<420&&b.position.distanceTo(target)>.09;j++){
@@ -30,6 +35,25 @@ test('actual walking exits and reenters all 864 directory wing destinations',()=
         assert.ok(b.position.distanceTo(target)<.1,`Invisible wall on ${n}/${w} toward r=${radius}: ${b.position.toArray()}`);
       }
     }
+  }
+});
+
+test('a shut wing door is shut, and opening it is what lets you through',()=>{
+  const level=100;world.setLevel(level);
+  for(let w=0;w<6;w++){
+    const door=world.doors.find(d=>d.level===level&&d.wing===w);
+    if(['cafeteria','bazaar','park','bar'].includes(door.type))continue;   // the public halls stand open
+    assert.equal(door.open,false,`the ${door.type} wing opens itself`);
+    const a=w*Math.PI/3,inside=new THREE.Vector3(Math.cos(a)*30,levelY(level),Math.sin(a)*30);
+    const b=new CharacterBody({radius:.3,stepHeight:.3});
+    b.teleport(Math.cos(a)*22,levelY(level),Math.sin(a)*22);
+    const push=()=>{for(let j=0;j<600;j++){const v=inside.clone().sub(b.position);v.y=0;v.normalize().multiplyScalar(3.2);b.step(1/120,v,world.colliders);}};
+    const r=()=>Math.hypot(b.position.x,b.position.z);
+    push();
+    assert.ok(r()<26.6,`walked straight through a shut ${door.type} door to r=${r().toFixed(1)}`);
+    door.open=true;for(let j=0;j<150;j++)world.update(1/60,b.position);
+    push();
+    assert.ok(r()>29,`the ${door.type} door opened but still blocks, r=${r().toFixed(1)}`);
   }
 });
 

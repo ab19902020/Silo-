@@ -16,6 +16,9 @@ const SIGN_WALL=SILO.deckOuter-.2-SIGN_DEPTH/2;
 const SIGN_WALL_HIGH=SILO.deckOuter-.3-SIGN_DEPTH/2;
 import { buildRoom } from './rooms.js';
 import { updateLivestock } from './livestock.js';
+
+// The rooms a silo leaves standing open.
+const PUBLIC_ROOMS=new Set(['cafeteria','bazaar','park','bar']);
 import { buildBazaar } from './bazaar.js';
 import { buildPassages, PASSAGE, hasRearPassage, SPUR, breach } from './passages.js';
 import { loadPhotographicMaterials } from './materials.js';
@@ -154,7 +157,15 @@ export class SiloWorld {
       const surround=new Kit(this.m);surround.portal('concrete',0,.01,0,3.9,3.2,.48,0,.34,.18);surround.portal('metal',0,.02,-.27,3.85,3.16,.045,0,.32,.045);const surroundRoot=surround.group();surroundRoot.position.copy(room.position);surroundRoot.rotation.y=ry;root.add(surroundRoot);
       const doorRoot=new THREE.Group();doorRoot.position.copy(room.position);doorRoot.rotation.y=ry;root.add(doorRoot);const leaves=[];
       for(const side of [-1,1]){const pivot=new THREE.Group();pivot.position.set(side*1.95,0,0);const dk=new Kit(this.m);dk.box('green',-side*.975,1.6,0,1.95,3.2,.12);dk.box('darkMetal',-side*.975,2.15,-.075,1.25,.85,.04);dk.box('glass',-side*.975,2.15,-.105,1.1,.7,.02);dk.box('brass',-side*1.7,1.35,-.12,.065,.34,.07);for(let z=0;z<5;z++)dk.box('metal',-side*.975,.38+z*.11,-.08,1.45,.03,.025);pivot.add(dk.group());doorRoot.add(pivot);leaves.push({pivot,side});}
-      const door={level,wing,position:new THREE.Vector3(room.position.x,y+1.5,room.position.z),ry,open:true,amount:1,leaves,type,collider:null};doors.push(door);
+      // Every wing has had a real double leaf door on it all along and every
+      // one of them started wide open, which is why the silo read as one open
+      // plan floor rather than a corridor of shut doors. They start shut. The
+      // three genuinely public halls — the cafeteria you begin in, the bazaar
+      // and the park — stand open, because those are the rooms a silo leaves
+      // open; everything else you have to work the handle on.
+      const open=PUBLIC_ROOMS.has(type);
+      const door={level,wing,position:new THREE.Vector3(room.position.x,y+1.5,room.position.z),ry,open,amount:open?1:0,leaves,type,collider:null};doors.push(door);
+      for(const leaf of leaves)leaf.pivot.rotation.y=-leaf.side*door.amount*Math.PI*.52;
       for(const interact of room.userData.interactions){const p=new THREE.Vector3(...interact.position).applyAxisAngle(new THREE.Vector3(0,1,0),ry).add(room.position);p.y+=y;interactions.push({...interact,position:p});}
     }
     const plate=landingPoint(level,13,-(SILO.landingHalf+.09+SIGN_DEPTH/2));
