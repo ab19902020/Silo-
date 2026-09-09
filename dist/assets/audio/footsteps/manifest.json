@@ -1,0 +1,259 @@
+{
+  "description": "Recorded footsteps, one set per walking surface in the silo.",
+  "source": {
+    "repository": "luanti-org/minetest_game",
+    "path": "mods/default/sounds",
+    "url": "https://github.com/luanti-org/minetest_game",
+    "licence": "CC BY-SA 3.0 — see LICENSE.txt beside this file"
+  },
+  "changes": "Decoded from Ogg Vorbis to 16-bit PCM WAV, leading and trailing silence trimmed, level-matched within each surface. No other processing.",
+  "materials": {
+    "concrete": {
+      "source": "default_hard_footstep",
+      "takes": [
+        {
+          "file": "concrete-1.wav",
+          "bytes": 26968,
+          "seconds": 0.28,
+          "rate": 48000
+        },
+        {
+          "file": "concrete-2.wav",
+          "bytes": 26970,
+          "seconds": 0.28,
+          "rate": 48000
+        },
+        {
+          "file": "concrete-3.wav",
+          "bytes": 21596,
+          "seconds": 0.225,
+          "rate": 48000
+        }
+      ]
+    },
+    "grating": {
+      "source": "default_metal_footstep",
+      "takes": [
+        {
+          "file": "grating-1.wav",
+          "bytes": 23938,
+          "seconds": 0.249,
+          "rate": 48000
+        },
+        {
+          "file": "grating-2.wav",
+          "bytes": 16458,
+          "seconds": 0.171,
+          "rate": 48000
+        },
+        {
+          "file": "grating-3.wav",
+          "bytes": 21704,
+          "seconds": 0.226,
+          "rate": 48000
+        }
+      ]
+    },
+    "metal": {
+      "source": "default_metal_footstep",
+      "takes": [
+        {
+          "file": "metal-1.wav",
+          "bytes": 23938,
+          "seconds": 0.249,
+          "rate": 48000
+        },
+        {
+          "file": "metal-2.wav",
+          "bytes": 16458,
+          "seconds": 0.171,
+          "rate": 48000
+        },
+        {
+          "file": "metal-3.wav",
+          "bytes": 21704,
+          "seconds": 0.226,
+          "rate": 48000
+        }
+      ]
+    },
+    "rock": {
+      "source": "default_hard_footstep",
+      "takes": [
+        {
+          "file": "rock-1.wav",
+          "bytes": 26968,
+          "seconds": 0.28,
+          "rate": 48000
+        },
+        {
+          "file": "rock-2.wav",
+          "bytes": 26970,
+          "seconds": 0.28,
+          "rate": 48000
+        },
+        {
+          "file": "rock-3.wav",
+          "bytes": 21596,
+          "seconds": 0.225,
+          "rate": 48000
+        }
+      ]
+    },
+    "grit": {
+      "source": "default_gravel_footstep",
+      "takes": [
+        {
+          "file": "grit-1.wav",
+          "bytes": 25686,
+          "seconds": 0.267,
+          "rate": 48000
+        },
+        {
+          "file": "grit-2.wav",
+          "bytes": 40364,
+          "seconds": 0.42,
+          "rate": 48000
+        },
+        {
+          "file": "grit-3.wav",
+          "bytes": 28566,
+          "seconds": 0.297,
+          "rate": 48000
+        },
+        {
+          "file": "grit-4.wav",
+          "bytes": 34604,
+          "seconds": 0.36,
+          "rate": 48000
+        }
+      ]
+    },
+    "soil": {
+      "source": "default_dirt_footstep",
+      "takes": [
+        {
+          "file": "soil-1.wav",
+          "bytes": 43244,
+          "seconds": 0.45,
+          "rate": 48000
+        },
+        {
+          "file": "soil-2.wav",
+          "bytes": 43244,
+          "seconds": 0.45,
+          "rate": 48000
+        }
+      ]
+    },
+    "soft": {
+      "source": "default_grass_footstep",
+      "takes": [
+        {
+          "file": "soft-1.wav",
+          "bytes": 40364,
+          "seconds": 0.42,
+          "rate": 48000
+        },
+        {
+          "file": "soft-2.wav",
+          "bytes": 40364,
+          "seconds": 0.42,
+          "rate": 48000
+        },
+        {
+          "file": "soft-3.wav",
+          "bytes": 40364,
+          "seconds": 0.42,
+          "rate": 48000
+        }
+      ]
+    },
+    "wet": {
+      "source": "default_water_footstep",
+      "takes": [
+        {
+          "file": "wet-1.wav",
+          "bytes": 72044,
+          "seconds": 0.75,
+          "rate": 48000
+        },
+        {
+          "file": "wet-2.wav",
+          "bytes": 72044,
+          "seconds": 0.75,
+          "rate": 48000
+        },
+        {
+          "file": "wet-3.wav",
+          "bytes": 72044,
+          "seconds": 0.75,
+          "rate": 48000
+        }
+      ]
+    },
+    "timber": {
+      "source": "default_wood_footstep",
+      "takes": [
+        {
+          "file": "timber-1.wav",
+          "bytes": 15126,
+          "seconds": 0.157,
+          "rate": 48000
+        },
+        {
+          "file": "timber-2.wav",
+          "bytes": 15170,
+          "seconds": 0.158,
+          "rate": 48000
+        }
+      ]
+    },
+    "sand": {
+      "source": "default_sand_footstep",
+      "takes": [
+        {
+          "file": "sand-1.wav",
+          "bytes": 26932,
+          "seconds": 0.28,
+          "rate": 48000
+        },
+        {
+          "file": "sand-2.wav",
+          "bytes": 27908,
+          "seconds": 0.29,
+          "rate": 48000
+        },
+        {
+          "file": "sand-3.wav",
+          "bytes": 26436,
+          "seconds": 0.275,
+          "rate": 48000
+        }
+      ]
+    },
+    "grass": {
+      "source": "default_grass_footstep",
+      "takes": [
+        {
+          "file": "grass-1.wav",
+          "bytes": 46124,
+          "seconds": 0.48,
+          "rate": 48000
+        },
+        {
+          "file": "grass-2.wav",
+          "bytes": 46124,
+          "seconds": 0.48,
+          "rate": 48000
+        },
+        {
+          "file": "grass-3.wav",
+          "bytes": 46124,
+          "seconds": 0.48,
+          "rate": 48000
+        }
+      ]
+    }
+  }
+}

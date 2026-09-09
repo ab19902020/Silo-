@@ -19,6 +19,7 @@
 // up; when it ends the bed takes over and loops from there on. The two are
 // mastered to the same loudness (-14.7 and -14.8 LUFS) so the hand-over is not
 // a step in level.
+const FOOTSTEP_URL = new URL('../assets/audio/footsteps/', import.meta.url);
 const MUSIC_URL = new URL('../assets/audio/silo-18-theme.mp3', import.meta.url);
 const OPENING_URL = new URL('../assets/audio/silo-18-opening.mp3', import.meta.url);
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,rand=(a,b)=>a+Math.random()*(b-a);
@@ -68,61 +69,65 @@ const IMPACTS={
   metal:   {duration:.62,burst:.0038,shape:2.4,bright:3200,direct:0.019,body:[70,0.045,0.03],
     grains:6, grainLevel:.13,grainSpread:.110,send:1.0,
     modes:[[118,0.07,0.03],[210,0.055,0.05],[760,0.055,0.13],[1390,0.045,0.21],[2340,0.032,0.32],[3720,0.022,0.32],[5800,0.014,1]]},
-  rock:    {duration:.40,burst:.0090,shape:1.3,bright:2200,direct:0.022,body:[58,0.06,0.07],
+  rock:    {duration:.40,burst:.0090,shape:1.3,bright:2200,direct:0.023,body:[58,0.06,0.07],
     grains:12,grainLevel:.20,grainSpread:.070,send:.85,
     modes:[[78,0.07,0.07],[132,0.05,0.08],[310,0.028,0.15],[640,0.015,0.15],[1400,0.009,0.53],[2900,0.005,1],[5400,0.003,0.75]]},
   grit:    {duration:.40,burst:.0130,shape:1.0,bright:1600, direct:0.021,body:[54,0.055,0.04],
     grains:24,grainLevel:.30,grainSpread:.110,send:.6,
     modes:[[80,0.055,0.04],[115,0.038,0.04],[260,0.02,0.1],[620,0.012,0.25],[1500,0.008,1],[3600,0.005,0.77],[6400,0.003,0.39]]},
   // Soil under a growing bed: almost no ring at all, just a soft compression.
-  soil:    {duration:.30,burst:.0160,shape:.9, bright:1200, direct:2.71,body:[48,0.06,0.07],
+  soil:    {duration:.30,burst:.0160,shape:.9, bright:1200, direct:0.25,body:[48,0.06,0.06],
     grains:16,grainLevel:.20,grainSpread:.090,send:.35,
-    modes:[[70,0.035,0.07],[104,0.024,0.07],[210,0.012,0.16],[480,0.008,0.21],[1200,0.005,0.68],[2800,0.003,1]]},
+    modes:[[70,0.035,0.06],[104,0.024,0.06],[210,0.012,0.17],[480,0.008,0.37],[1200,0.005,0.71],[2800,0.003,1]]},
+  // Growing beds and the park. Almost all of this is the plants, not the floor.
+  grass:   {duration:.34,burst:.0150,shape:.9, bright:1400, direct:0.18,body:[52,.045,0.06],
+    grains:18,grainLevel:.22,grainSpread:.100,send:.32,
+    modes:[[74,.030,0.06],[112,.022,0.08],[240,.014,0.20],[560,.009,0.35],[1400,.006,0.80],[3200,.004,1]]},
   // A covered floor damps its own low mode faster than bare concrete does; the
   // first pass gave it a longer decay, which made a rug ring like a slab.
-  soft:    {duration:.26,burst:.0110,shape:1.2,bright:1500, direct:1.052,body:[52,0.048,0.03],
+  soft:    {duration:.26,burst:.0110,shape:1.2,bright:1500, direct:0.231,body:[52,0.048,0.03],
     grains:2, grainLevel:.04,grainSpread:.030,send:.3,
-    modes:[[92,0.04,0.03],[142,0.026,0.05],[330,0.012,0.02],[720,0.007,0.02],[1600,0.005,0.54],[3400,0.003,1]]},
+    modes:[[92,0.04,0.03],[142,0.026,0.05],[330,0.012,0.09],[720,0.007,0.09],[1600,0.005,0.79],[3400,0.003,1]]},
   // Standing water on concrete. The slap is bright and the splash is short.
   wet:     {duration:.44,burst:.0060,shape:1.8,bright:2600,direct:0.099,body:[60,0.05,0.09],
     grains:20,grainLevel:.26,grainSpread:.055,send:1.0,
     modes:[[92,0.07,0.09],[165,0.048,0.13],[420,0.026,0.25],[1250,0.014,0.56],[2600,0.008,0.95],[5200,0.004,1]]},
   // Fittings. These are struck objects rather than floors: no body, no sole.
-  latch:   {duration:.12,burst:.0014,shape:3.4,bright:9000,direct:2.71,body:null,
+  latch:   {duration:.12,burst:.0014,shape:3.4,bright:9000,direct:0.247,body:null,
     grains:0, grainLevel:0,grainSpread:0,send:.8,
-    modes:[[560,0.02,0.01],[1800,0.014,0.02],[3400,0.009,0.8],[5200,0.005,1],[7600,0.003,1]]},
-  thunk:   {duration:.70,burst:.0060,shape:1.8,bright:1400,direct:1.674,body:[46,0.075,0.1],
+    modes:[[560,0.02,0.17],[1800,0.014,0.62],[3400,0.009,1],[5200,0.005,0.91],[7600,0.003,0.91]]},
+  thunk:   {duration:.70,burst:.0060,shape:1.8,bright:1400,direct:0.208,body:[46,0.075,0.07],
     grains:2, grainLevel:.08,grainSpread:.040,send:1.0,
-    modes:[[62,0.11,0.1],[128,0.085,0.08],[255,0.05,0.08],[520,0.022,0.03],[1200,0.012,0.28],[2600,0.007,1]]},
-  clunk:   {duration:1.10,burst:.0090,shape:1.6,bright:1000,direct:1.032,body:[38,0.095,0.04],
+    modes:[[62,0.11,0.07],[128,0.085,0.07],[255,0.05,0.07],[520,0.022,0.19],[1200,0.012,0.36],[2600,0.007,1]]},
+  clunk:   {duration:1.10,burst:.0090,shape:1.6,bright:1000,direct:0.175,body:[38,0.095,0.04],
     grains:3, grainLevel:.10,grainSpread:.060,send:1.05,
-    modes:[[48,0.19,0.04],[96,0.15,0.04],[190,0.09,0.07],[410,0.045,0.02],[980,0.02,0.29],[2200,0.01,1]]},
+    modes:[[48,0.19,0.04],[96,0.15,0.04],[190,0.09,0.08],[410,0.045,0.11],[980,0.02,0.35],[2200,0.01,1]]},
   // Something large and steel giving, a long way off down the shaft.
-  clank:   {duration:1.8,burst:.0034,shape:2.6,bright:5200,direct:0.034,body:[64,0.07,0.02],
+  clank:   {duration:1.8,burst:.0034,shape:2.6,bright:5200,direct:0.031,body:[64,0.07,0.02],
     grains:4, grainLevel:.12,grainSpread:.090,send:1.3,
     modes:[[128,0.46,0.04],[287,0.4,0.04],[604,0.32,0.1],[1130,0.24,0.16],[1980,0.15,0.16],[3600,0.1,0.46],[6100,0.06,1]]},
-  click:   {duration:.06,burst:.0009,shape:3.6,bright:11000,direct:1.467,body:null,
+  click:   {duration:.06,burst:.0009,shape:3.6,bright:11000,direct:0.25,body:null,
     grains:0, grainLevel:0,grainSpread:0,send:.5,
-    modes:[[720,0.01,0.01],[2400,0.007,0.34],[4100,0.004,0.34],[7200,0.002,1]]},
-  switch:  {duration:.08,burst:.0011,shape:3.2,bright:9000,direct:2.927,body:null,
+    modes:[[720,0.01,0.1],[2400,0.007,0.4],[4100,0.004,0.4],[7200,0.002,1]]},
+  switch:  {duration:.08,burst:.0011,shape:3.2,bright:9000,direct:0.242,body:null,
     grains:0, grainLevel:0,grainSpread:0,send:.5,
-    modes:[[620,0.012,0.01],[1400,0.008,0.02],[3000,0.005,0.49],[5400,0.003,1],[8200,0.002,1]]},
+    modes:[[620,0.012,0.2],[1400,0.008,0.51],[3000,0.005,0.82],[5400,0.003,1],[8200,0.002,1]]},
   // --- things you pick up and put down ------------------------------------
   paper:   {duration:.34,burst:.0220,shape:.7, bright:5200,direct:0.02,body:null,
     grains:14,grainLevel:.22,grainSpread:.170,send:.5,
     modes:[[420,0.022,0.12],[1150,0.016,0.54],[2600,0.011,1],[4900,0.007,0.41],[7800,0.004,0.98]]},
-  cloth:   {duration:.30,burst:.0260,shape:.6, bright:2400,direct:0.022,body:null,
+  cloth:   {duration:.30,burst:.0260,shape:.6, bright:2400,direct:0.023,body:null,
     grains:9, grainLevel:.16,grainSpread:.150,send:.4,
     modes:[[180,0.028,0.04],[240,0.024,0.04],[680,0.017,0.24],[1600,0.011,1],[3200,0.006,0.77],[6000,0.003,0.66]]},
-  glass:   {duration:.75,burst:.0016,shape:3.0,bright:12000,direct:0.976,body:null,
+  glass:   {duration:.75,burst:.0016,shape:3.0,bright:12000,direct:0.228,body:null,
     grains:2, grainLevel:.06,grainSpread:.040,send:1.0,
-    modes:[[1180,0.3,0.02],[2450,0.26,0.31],[3900,0.2,0.31],[6200,0.13,1],[9200,0.08,1]]},
-  plastic: {duration:.22,burst:.0028,shape:2.4,bright:5200,direct:1.08,body:null,
+    modes:[[1180,0.3,0.21],[2450,0.26,0.36],[3900,0.2,0.36],[6200,0.13,1],[9200,0.08,1]]},
+  plastic: {duration:.22,burst:.0028,shape:2.4,bright:5200,direct:0.221,body:null,
     grains:1, grainLevel:.05,grainSpread:.030,send:.6,
-    modes:[[240,0.034,0.01],[560,0.03,0.02],[1420,0.02,0.3],[2900,0.012,0.5],[5600,0.006,1]]},
-  timber:  {duration:.40,burst:.0055,shape:1.9,bright:2200,direct:1.259,body:[88,0.045,0.03],
+    modes:[[240,0.034,0.05],[560,0.03,0.14],[1420,0.02,0.37],[2900,0.012,0.56],[5600,0.006,1]]},
+  timber:  {duration:.40,burst:.0055,shape:1.9,bright:2200,direct:0.235,body:[88,0.045,0.04],
     grains:2, grainLevel:.07,grainSpread:.045,send:.8,
-    modes:[[105,0.06,0.03],[190,0.055,0.05],[420,0.04,0.02],[880,0.024,0.18],[1700,0.013,0.18],[3400,0.007,1]]},
+    modes:[[105,0.06,0.04],[190,0.055,0.07],[420,0.04,0.13],[880,0.024,0.25],[1700,0.013,0.25],[3400,0.007,1]]},
 };
 // One impact, rendered offline. Three things happen here that the old build
 // did not do. The excitation is filtered before it reaches the resonators, so
@@ -213,22 +218,24 @@ function renderImpact(spec,rate,rng){
   if(peak>0)for(let i=0;i<length;i++)out[i]/=peak;
   return out;
 }
-const FLOORS=['concrete','grating','metal','rock','grit','soil','soft','wet'];
-// How hard a foot lands, how much of it comes back off the forefoot, and how
-// much scuff the sole drags off the surface as it leaves. A walk is heel, then
+const FLOORS=['concrete','grating','metal','rock','grit','soil','soft','grass','wet'];
+// How loud a step is on each floor. `sample` is the level of the recording,
+// which is what actually plays; `level`, `toe` and `scuff` drive the synthesised
+// fallback underneath it, for the moments before the recordings finish decoding. A walk is heel, then
 // forefoot about a tenth of a second later at a fraction of the level and
 // duller — the old build put the second contact at a third of full level and
 // *brighter*, fifty milliseconds behind the first, which is a heel-toe tap
 // figure and is most of why it sounded like dancing.
 const FOOTFALL={
-  concrete:{level:0.041,toe:.16,scuff:.10},
-  grating: {level:0.043,toe:.20,scuff:.16},
-  metal:   {level:0.04,toe:.18,scuff:.13},
-  rock:    {level:0.041,toe:.12,scuff:.26},
-  grit:    {level:0.035,toe:.09,scuff:.42},
-  soil:    {level:0.032,toe:.07,scuff:.34},
-  soft:    {level:0.025,toe:.10,scuff:.08},
-  wet:     {level:0.043,toe:.15,scuff:.30},
+  concrete:{level:0.041,sample:0.091,toe:.16,scuff:.10},
+  grating: {level:0.043,sample:0.064,toe:.20,scuff:.16},
+  metal:   {level:0.04,sample:0.06,toe:.18,scuff:.13},
+  rock:    {level:0.041,sample:0.091,toe:.12,scuff:.26},
+  grit:    {level:0.035,sample:0.135,toe:.09,scuff:.42},
+  soil:    {level:0.032,sample:0.06,toe:.07,scuff:.34},
+  soft:    {level:0.025,sample:0.04,toe:.10,scuff:.08},
+  grass:   {level:0.028,sample:0.052,toe:.09,scuff:.20},
+  wet:     {level:0.043,sample:0.061,toe:.15,scuff:.30},
 };
 
 
@@ -262,8 +269,8 @@ const PLACES={
   workshop:  {hum:.034,air:.020,wind:0,   machine:.010,tone:11000,space:.24,step:'metal',   event:'metal'},
   water:     {hum:.034,air:.022,wind:0,   machine:.014,tone:9500, space:.30,step:'concrete',event:'water'},
   recycling: {hum:.038,air:.024,wind:0,   machine:.018,tone:9000, space:.30,step:'metal',   event:'metal'},
-  farm:      {hum:.026,air:.030,wind:0,   machine:0,   tone:13000,space:.18,step:'soft',    event:'water'},
-  park:      {hum:.020,air:.028,wind:0,   machine:0,   tone:14000,space:.16,step:'soft',    event:'water'},
+  farm:      {hum:.026,air:.030,wind:0,   machine:0,   tone:13000,space:.18,step:'grass',   event:'water'},
+  park:      {hum:.020,air:.028,wind:0,   machine:0,   tone:14000,space:.16,step:'grass',   event:'water'},
   residential:{hum:.024,air:.016,wind:0,  machine:0,   tone:12000,space:.10,step:'soft',    event:'interior'},
   bazaar:    {hum:.026,air:.018,wind:0,   machine:0,   tone:13500,space:.20,step:'concrete',event:'interior'},
   cafeteria: {hum:.026,air:.018,wind:0,   machine:0,   tone:14000,space:.24,step:'concrete',event:'interior'},
@@ -277,7 +284,7 @@ export class SiloAudio {
   constructor(){
     this.context=null;this.enabled=true;this.musicVolume=.148;this.lastStep=0;this.foot=1;
     this.musicHeld=false;this.musicOffset=0;this.musicBuffer=null;this.musicCue=null;this.musicFade=5;this.openingPlaying=false;this.openingElement=null;
-    this.place=INTERIOR;this.stepSurface='concrete';this.surfaceOverride=null;this.musicRequested=false;this.musicPlaying=false;this.scrub=null;
+    this.place=INTERIOR;this.stepSurface='concrete';this.surfaceOverride=null;this.steps=null;this.musicRequested=false;this.musicPlaying=false;this.scrub=null;
   }
 
   // Created on the first user gesture; browsers refuse an AudioContext before one.
@@ -285,7 +292,7 @@ export class SiloAudio {
     if(!this.context){
       const Context=globalThis.AudioContext||globalThis.webkitAudioContext;if(!Context)return;
       let context;try{context=new Context();}catch{return;}
-      this.context=context;this.build();this.loadMusic();this.scheduleEvent();
+      this.context=context;this.build();this.loadFootsteps();this.loadMusic();this.scheduleEvent();
     }
     this.context.resume?.().catch(()=>{});
   }
@@ -612,6 +619,51 @@ export class SiloAudio {
   live(){return this.context&&this.enabled&&this.master;}
 
   // --- footsteps ----------------------------------------------------------
+  // Footsteps are recordings, not synthesis.
+  //
+  // They were modelled: a strike fed through a bank of damped resonators. That
+  // is the right tool for a bell, a steel plate or a pane of glass, and the
+  // wrong one for a floor — a floor answers with broadband noise, not with a
+  // set of tuned partials, and no amount of retuning the mode tables fixed the
+  // artificial quality that gave every step. One set of real recordings per
+  // surface does what three passes of modelling could not.
+  //
+  // Provenance and licence: dist/assets/audio/footsteps/README.txt. The synth
+  // is kept as the fallback below, for the moments before the samples finish
+  // decoding and for any surface that has no recording.
+  async loadFootsteps(){
+    let manifest;
+    try{
+      const response=await fetch(new URL('manifest.json',FOOTSTEP_URL));
+      if(!response.ok)throw new Error(response.status);
+      manifest=await response.json();
+    }catch{return;}                                        // no recordings: the synth stays
+    const steps={};
+    await Promise.all(Object.entries(manifest.materials||{}).map(async([material,entry])=>{
+      const takes=await Promise.all((entry.takes||[]).map(async take=>{
+        try{
+          const response=await fetch(new URL(take.file,FOOTSTEP_URL));
+          if(!response.ok)return null;
+          return await this.decode(await response.arrayBuffer());
+        }catch{return null;}
+      }));
+      const usable=takes.filter(Boolean);
+      if(usable.length)steps[material]=usable;
+    }));
+    if(Object.keys(steps).length)this.steps=steps;
+  }
+  // One recording, pitched and levelled for this particular step. Rotating
+  // through the variants matters more than any single one of them: the same
+  // sample retriggered at a walking cadence is the machine-gun footstep, and
+  // it is audible after about three steps.
+  sample(out,material,t,{gain=1,rate=1}={}){
+    const takes=this.steps?.[material];if(!takes||!takes.length)return false;
+    const c=this.context,source=c.createBufferSource(),level=c.createGain();
+    source.buffer=takes[Math.floor(Math.random()*takes.length)];
+    source.playbackRate.value=rate;level.gain.value=gain;
+    source.connect(level);level.connect(out);source.start(t);
+    return true;
+  }
   // A walking step is not one event. The heel lands; the forefoot follows it
   // down about a tenth of a second later, quieter and *duller*, because that
   // second contact is a sole flattening rather than an edge striking; then the
@@ -630,6 +682,10 @@ export class SiloAudio {
     const material=this.material(),fall=FOOTFALL[material],spec=IMPACTS[material];
     const t=this.context.currentTime+.005,force=(running?1.15:.72)*rand(.86,1.14);
     const out=this.voice(this.foot*.18,0,spec.send);
+    // A recording is already a whole footstep — heel, roll and all — so it is
+    // played once. Layering the synthesised forefoot on top of one would be
+    // hearing the same step twice.
+    if(this.sample(out,material,t,{gain:fall.sample*force,rate:running?rand(.94,1.04):rand(.92,1.08)}))return;
     // One tilt per step, shared by both contacts so they read as one foot.
     const tilt=spec.bright*rand(.72,1.35),heel=rand(.90,1.06);
     this.hit(out,material,t,{gain:fall.level*force,rate:heel,tilt});
@@ -654,15 +710,22 @@ export class SiloAudio {
     const material=this.material(),spec=IMPACTS[material];
     const t=this.context.currentTime+.005,out=this.voice(rand(-.1,.1),0,spec.send);
     this.burst(out,t,{frequency:rand(900,1400),to:rand(320,520),q:.8,gain:.038,decay:.16,attack:.012,rate:rand(.8,1.1)});
-    this.hit(out,material,t,{gain:FOOTFALL[material].level*.55,rate:rand(1.02,1.16),tilt:spec.bright*rand(.9,1.3)});
+    if(!this.sample(out,material,t,{gain:FOOTFALL[material].sample*.7,rate:rand(1.04,1.16)}))
+      this.hit(out,material,t,{gain:FOOTFALL[material].level*.55,rate:rand(1.02,1.16),tilt:spec.bright*rand(.9,1.3)});
   }
   // Landing is both feet at once and the whole body's weight behind them.
   land(strength=1){
     if(!this.live())return;
     const material=this.material(),spec=IMPACTS[material],fall=FOOTFALL[material];
     const force=clamp(strength,0,1),t=this.context.currentTime+.005,out=this.voice(0,0,spec.send*1.15);
-    this.hit(out,material,t,{gain:fall.level*(.95+.95*force),rate:rand(.80,.90),tilt:spec.bright*rand(.55,.85)});
-    this.hit(out,material,t+.022,{gain:fall.level*(.65+.7*force),rate:rand(.92,1.02),tilt:spec.bright*rand(.7,1.0)});
+    // Both feet at once, so the recording is played twice a few milliseconds
+    // apart and pitched down — a landing is heavier than a step, not just louder.
+    if(this.sample(out,material,t,{gain:fall.sample*(1.1+1.1*force),rate:rand(.82,.90)}))
+      this.sample(out,material,t+.028,{gain:fall.sample*(.5+.6*force),rate:rand(.90,.99)});
+    else{
+      this.hit(out,material,t,{gain:fall.level*(.95+.95*force),rate:rand(.80,.90),tilt:spec.bright*rand(.55,.85)});
+      this.hit(out,material,t+.022,{gain:fall.level*(.65+.7*force),rate:rand(.92,1.02),tilt:spec.bright*rand(.7,1.0)});
+    }
     if(fall.scuff>.05)this.burst(out,t+.04,{frequency:rand(1200,2200),to:rand(400,700),q:.7,gain:.012*fall.scuff*(.4+force),decay:.18,attack:.02});
     if(force>.35)this.hit(out,'thunk',t,{gain:.016*force,rate:rand(1.1,1.35)});
   }

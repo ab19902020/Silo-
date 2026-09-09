@@ -243,6 +243,8 @@ test('the staircase overrides the floor of the room it passes through',()=>{
   audio.setLocation('farm');
   assert.equal(audio.material(),'grating','the override must survive a change of level');
   audio.setSurface(null);
+  assert.equal(audio.material(),'grass','a growing bed is not a carpeted floor');
+  audio.setLocation('residential');
   assert.equal(audio.material(),'soft');
   audio.setSurface('nonsense');
   assert.equal(audio.material(),'soft','an unknown surface falls back rather than going silent');
@@ -257,4 +259,44 @@ test('picking something up is the object, not one interface click',()=>{
   // Every collectable names a material, or it falls back to a generic relic.
   audio.pickup('nothing-like-this');
   audio.drop('glass');
+});
+
+test('every walking surface has recordings behind it, and they are real files',()=>{
+  const manifest=JSON.parse(fs.readFileSync('dist/assets/audio/footsteps/manifest.json','utf8'));
+  const source=fs.readFileSync('dist/src/audio.js','utf8');
+  const floors=source.match(/const FLOORS=\[([^\]]+)\]/)[1].split(',').map(s=>s.replace(/['"\s]/g,''));
+  for(const floor of floors){
+    const entry=manifest.materials[floor];
+    assert.ok(entry,`${floor} is a walking surface with no recording behind it`);
+    assert.ok(entry.takes.length>=2,`${floor} has ${entry.takes.length} recording(s); one retriggered is the machine-gun footstep`);
+    for(const take of entry.takes){
+      const file=`dist/assets/audio/footsteps/${take.file}`;
+      assert.ok(fs.existsSync(file),`${take.file} is in the manifest but not on disk`);
+      assert.equal(fs.statSync(file).size,take.bytes,`${take.file} is not the size the manifest records`);
+      // A step that runs longer than the walking cadence stacks on the next one.
+      assert.ok(take.seconds<=.8,`${take.file} runs ${take.seconds}s; that is longer than a step`);
+      assert.equal(fs.readFileSync(file).subarray(0,4).toString('latin1'),'RIFF');
+    }
+    // Every floor needs a level for the recording, not just for the fallback.
+    assert.match(source,new RegExp(`${floor}\\s*:\\s*\\{level:[\\d.]+,sample:`),`${floor} has no sample level`);
+  }
+  // The recordings are CC BY-SA 3.0. Shipping them without the licence and the
+  // record of what was changed is the one thing that is not allowed.
+  for(const file of ['LICENSE.txt','README.txt'])
+    assert.ok(fs.existsSync(`dist/assets/audio/footsteps/${file}`),`footsteps/${file} is missing`);
+  assert.match(fs.readFileSync('dist/assets/audio/footsteps/README.txt','utf8'),/CC BY-SA 3\.0/);
+  assert.ok(manifest.source?.url&&manifest.changes,'the manifest must record where they came from and what was changed');
+});
+
+test('the raw contact never overwhelms the floor it lands on',()=>{
+  // `direct` is how much of the bare contact patch is heard on top of the modal
+  // bank in the synthesised fallback. Left unbounded, a fitting pass pushed it
+  // to 2.9 on ten materials because raising the click was a cheaper way to hit
+  // a band target than balancing the modes, and every one of those played as a
+  // click with the floor buried underneath it.
+  const source=fs.readFileSync('dist/src/audio.js','utf8');
+  for(const match of source.matchAll(/(\w+)\s*:\s*\{duration:[^}]*?direct:([\d.]+)/gs)){
+    const value=Number(match[2]);
+    assert.ok(value<=.3,`${match[1]} has direct:${value}; above about .3 it is a click, not a surface`);
+  }
 });
