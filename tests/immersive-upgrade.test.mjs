@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
-import { conversationFor } from '../dist/src/conversations.js';
+import { conversationFor, ALGORITHM } from '../dist/src/conversations.js';
 import { PLAYABLE_CHARACTERS } from '../dist/src/characters.js';
 import { SiloWorld } from '../dist/src/world.js';
 import { levelY,TAU,roomType } from '../dist/src/data.js';
@@ -126,4 +126,39 @@ test('every agricultural wing keeps animals as well as crops, and they stay in t
     assert.ok(stock[i].group.position.distanceTo(stock[j].group.position)>.25,'two animals ended up inside each other');
   }
   assert.ok(stock.some((a,i)=>a.group.position.distanceTo(start[i])>.5),'nothing moved at all in half an hour');
+});
+
+// --- IT -------------------------------------------------------------------
+test('Level 19 carries the IT floor, the Head of IT behind a corridor, and the vault',()=>{
+  const world=new SiloWorld(new T.Scene());
+  world.setLevel(19);
+  const [it,vault,office]=[0,1,2].map(w=>world.loaded.get(19).rooms[w]);
+  assert.equal(it.userData.type,'it');
+  assert.equal(vault.userData.type,'vault');
+  assert.equal(office.userData.type,'office');
+  const actions=r=>r.userData.interactions.map(i=>i.action);
+  assert.ok(actions(vault).includes('algorithm'),'you cannot address the Algorithm');
+  assert.ok(actions(vault).includes('vault-radio'),'the concealed radio is missing');
+  assert.ok(actions(it).includes('it-servers'),'the server room notice is missing');
+  assert.ok(actions(office).includes('head-of-it'));
+  assert.ok(vault.getObjectByName('algorithm-interface'),'the interface is not in the room');
+  assert.ok(world.animated.some(a=>a.object.name==='algorithm-interface'),'the interface is not turning');
+  // All three doorways have to stay clear: the wing entrance is a 4 m gap in
+  // the gallery wall and a partition standing in it makes the room unreachable.
+  for(const [wing,room] of [[0,it],[1,vault],[2,office]]){
+    room.updateWorldMatrix(true,false);
+    const b=new CharacterBody({radius:.3,stepHeight:.3});
+    const door=world.doors.find(d=>d.level===19&&d.wing===wing);door.open=true;
+    const target=new T.Vector3(0,0,10).applyMatrix4(room.matrixWorld);
+    b.teleport(...new T.Vector3(0,0,-3.4).applyMatrix4(room.matrixWorld).toArray());
+    for(let j=0;j<200;j++)world.update(1/60,b.position);
+    for(let j=0;j<900;j++){const v=target.clone().sub(b.position);v.y=0;v.normalize().multiplyScalar(3.2);b.step(1/120,v,world.colliders);}
+    assert.ok(b.position.distanceTo(target)<1.2,`wing ${wing} of Level 19 cannot be walked into: ${b.position.distanceTo(target).toFixed(1)} m short`);
+  }
+});
+
+test('the Algorithm answers, and does not read out television lines',()=>{
+  assert.equal(ALGORITHM.name,'LEGACY');
+  assert.ok(ALGORITHM.topics.length>=4);
+  for(const t of ALGORITHM.topics){assert.ok(t.label&&t.reply&&t.reply.length>30,`thin reply for ${t.id}`);}
 });

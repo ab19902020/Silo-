@@ -34,6 +34,22 @@ const trades={
   water:['Pumps, filters and pipework. A small leak becomes everyone’s problem if we leave it.','Water treatment is on Level 55. You can see the circulation equipment there.'],
   recycling:['We sort what comes down and save whatever can be used again.','Try Supply or the bazaar before throwing away something repairable.'],
 };
+
+// Legacy, the machine in the vault on Level 19. Original dialogue in its
+// voice, not transcribed television lines: it answers what it is asked, it
+// declines what it will not say, and it volunteers things nobody asked for.
+export const ALGORITHM={
+  id:'algorithm',name:'LEGACY',role:'Vault interface · Level 19',
+  greeting:'You are not the Head of Information Technology. Your presence has been recorded. Ask.',
+  topics:[
+    {id:'what',label:'What are you?',reply:'I hold the order of this silo. I read what the silo does and I calculate what it will do next. I have been doing so since before anyone you have met was born.'},
+    {id:'outside',label:'What is outside?',reply:'That question is answered on the screen in your cafeteria. You are asking me whether the screen is true. I am not authorised to widen that answer.'},
+    {id:'cleaning',label:'Why do they clean?',reply:'Because they are sent out, and because every one of them cleans. That has never once failed to happen. Consider what that means before you ask me anything else.'},
+    {id:'silo1',label:'Who do you answer to?',reply:'To the Pact, and to the order it protects. There are conditions under which I act without being asked. You would not enjoy meeting one.'},
+    {id:'leave',label:'Say nothing further.',reply:'Recorded. The door behind you is the way you came in.'},
+  ],
+};
+
 export function conversationFor(resident,{cleaned=false,playerName=''}={}){
   const id=resident.id,raw=resident.kind||resident.appearance?.outfit||'resident',kind=({engineer:'mechanical',workshop:'mechanical',miner:'mines',cafeteria:'diner'}[raw]||raw),lines=voices[id]||[...(trades[kind]||['I live and work here, like everyone else. Each floor has its own routines.','The galleries take you around a level; the central stairs take you between them.']),'It was quiet after the cleaning. Some people stayed to watch the hill.'];
   const greeting=id==='walker'&&playerName.includes('Juliette')?'Jules. Come here. What have you broken this time?':id==='shirley'&&playerName.includes('Juliette')?'There you are. I was wondering where you had got to.':cleaned?'You saw the cleaning too?':'Morning. Have you found where you are going?';

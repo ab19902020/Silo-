@@ -6,6 +6,7 @@ import { hasRearPassage } from './passages.js';
 import { dressWorkshop } from './workshop-details.js';
 import { dressRoom } from './environment-details.js';
 import { buildLivestock } from './livestock.js';
+import { buildITOffices, buildHeadOffice, buildVault } from './it-department.js';
 
 const TAU=Math.PI*2;
 export function buildRoom(materials,type,level,wing,assets) {
@@ -92,6 +93,7 @@ export function buildRoom(materials,type,level,wing,assets) {
       if(level>1)label('DOWN DEEP · COMMON ROOM',0,4.7,1,6,.45);
     },
     office(){
+      if(level===19){buildHeadOffice(k,{box,solids,interactions,label});return;}
       box('wood',0,.88,18,4.6,.18,1.4);for(const x of [-1.8,1.8])box('wood',x,.42,18,.7,.84,1.1);
       chair(k,0,19.3);chair(k,-1,16.3,Math.PI);chair(k,1,16.3,Math.PI);k.box('wood',0,1.05,18,1.2,.18,.7);
       for(let i=0;i<6;i++){shelf(k,-8.5+i*3.3,22.3,2.7);for(let j=0;j<12;j++)k.box(j%3?'fabric':'red',-9.6+i*3.3+j*.18,.99,22.3,.12,.3,.4);}
@@ -105,16 +107,10 @@ export function buildRoom(materials,type,level,wing,assets) {
       prop('wall_camera',-9.4,12,.7);
     },
     judicial(){furnishings.office();box('wood',0,.15,18,8,.3,5);label('JUDICIAL',0,4.8,23.9,5,.75);for(const x of [-6.7,6.7])box('green',x,1.8,18,2,3.6,.6);},
-    it(){
-      for(const z of [5,9,13,17])for(const x of [-5,0,5]){desk(k,x,z);chair(k,x,z+1);solids.push({x,z,w:2,d:1,y0:0,y1:1.6});}
-      for(const x of [-7.5,-4.5,-1.5,1.5,4.5,7.5]){serverRack(x,22);}
-      label('INFORMATION TECHNOLOGY',0,4.3,23.92,6,.7);
-    },
+    it(){buildITOffices(k,{box,solids,interactions,label});},
     vault(){
-      for(const x of [-6,-2,2,6])for(const z of [6,11,16])serverRack(x,z);
-      box('metal',0,1.5,21.5,3,3,.4);k.torus('brass',0,1.6,21.22,.5,.07);
-      label('18',0,3.6,23.9,2,1.2);label('RESTRICTED · HEAD OF IT',0,4.3,1,5,.55);
-      interactions.push({position:[0,1.5,20.9],label:'Inspect the vault terminal',action:'vault'});
+      const halo=buildVault(k,{box,solids,interactions,label,animated});
+      root.add(halo);
     },
     surveillance(){
       for(let x=-8;x<=8;x+=2.1)for(const y of [1.6,2.9,4.2]){k.box('darkMetal',x,y,22.7,1.94,1.18,.45);k.box('screen',x,y,22.45,1.7,.93,.015);for(let j=0;j<5;j++)k.box('darkMetal',x-.65+j*.3,y,22.43,.05,.8,.01);}

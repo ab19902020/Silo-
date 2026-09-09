@@ -84,6 +84,13 @@ export function createMaterials() {
     black: standard(0x0d1513,{roughness:.55}),
     water: standard(0x273f3d,{metalness:.22,roughness:.46,transparent:true,opacity:.76,depthWrite:false,side:THREE.DoubleSide}),
     glass: standard(0x86b9af,{metalness:.12,roughness:.2,transparent:true,opacity:.21,depthWrite:false}),
+    // The vault is the one room in the silo that is not made of poured
+    // concrete: white composite panel, and the light the Algorithm sits in.
+    panel: standard(0x8e948f,{roughness:.38,metalness:.07}),
+    panelDark: standard(0x2b3136,{roughness:.4,metalness:.25}),
+    holo: new THREE.MeshBasicMaterial({color:new THREE.Color(.42,1.35,1.55),transparent:true,opacity:.26,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide}),
+    holoCore: new THREE.MeshBasicMaterial({color:new THREE.Color(1.25,2.7,2.9),toneMapped:false,transparent:true,opacity:.8,depthWrite:false}),
+    cove: new THREE.MeshBasicMaterial({color:new THREE.Color(1.05,1.15,1.18),toneMapped:false}),
   };
   for(const name of ['wood','fabric','linen','rug'])projectMaterial(materials[name],name==='wood'?.7:.42);
   return materials;

@@ -9,7 +9,7 @@ import { CharacterCast, PLAYABLE_CHARACTERS } from './characters.js';
 import { LadderClimb } from './climbing.js';
 import { Population } from './population.js';
 import { CafeteriaOpening, CAFETERIA_START } from './opening.js';
-import { conversationFor } from './conversations.js';
+import { conversationFor, ALGORITHM } from './conversations.js';
 import { RESIDENT_CAST } from './resident-data.js';
 
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation');
@@ -35,7 +35,7 @@ function updateInterface(time){
   document.body.classList.toggle('screen-focused',!!opening?.focus);
 }
 function startConversation(person){
-  const text=conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name});$('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;$('dialogueChoices').replaceChildren();
+  const text=person===ALGORITHM?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name});$('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;$('dialogueChoices').replaceChildren();
   for(const topic of text.topics){const b=document.createElement('button');b.textContent=topic.label;b.addEventListener('click',()=>{$('dialogueLine').textContent=topic.reply;for(const other of $('dialogueChoices').children)other.setAttribute('aria-pressed',String(other===b));});$('dialogueChoices').append(b);}
   audio.click();openDialog(conversation);
 }
@@ -137,7 +137,9 @@ function updateHUD(){
 const inspectionText={
   generator:'Six removable panels protect the turbine. The rear panel is held open for inspection; the rotor, gantry and crane can be seen around the housing.',
   water:'Filter vessels, treatment lines and pump controls keep water circulating through the silo. This department is associated with Level 55.',
-  vault:'The Head of IT’s restricted space. The computer and vault interiors are a reconstruction of the television setting.',
+  'it-servers':'The server room is behind this door and only IT opens it. Level 19 is the department’s floor in the published material; the room plan beyond that is inferred.',
+  'head-of-it':'The Head of IT works apart from the floor, down the corridor from it. The desk, the shelved records and the motto are reconstructed.',
+  'vault-radio':'A panel in the vault’s server steps that does not sit quite flush with the rest. Behind it is a radio set, and it is not tuned to anything inside this silo.',
   surveillance:'The concealed observation room watches the residences. Its exact floor plan is reconstructed.',
   workshop:'Salvaged electronics, analogue test equipment and spare parts. Almost everything here has to be repaired and used again.',
   airlock:'Cycle the inner door, enter the chamber, then cycle the outer door. The other door closes before the selected door opens. The ramp leads up to the surface.',
@@ -153,6 +155,7 @@ function use(){
   if(!interaction||paused()||body.climbing)return;
   if(interaction.action==='opening-book'){audio.click();audio.playOpeningTheme();opening.takeBook();return;}
   if(interaction.resident){startConversation(interaction.resident);return;}
+  if(interaction.action==='algorithm'){startConversation(ALGORITHM);return;}
   if(interaction.ladder){
     const ladder=world.underground.ladders.find(l=>l.id===interaction.ladder);
     if(ladder&&LadderClimb.begin(body,ladder,interaction.up)){yaw=ladder.heading+Math.PI;pitch=0;notify(interaction.up?'Climbing back to the camp.':'Climbing down to the water.');}

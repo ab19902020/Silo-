@@ -62,6 +62,9 @@ export function dressRoom(k,root,type,level,wing){
     for(const dx of [-.1,0,.1])k.cylinder('black',side*8.75+dx,5.22,12,.028,23.5,Math.PI/2);
   }
   for(const z of [3.4,10.4,17.4,22.6]){
+    // The vault is the one room with no hanging fittings in it: its light comes
+    // from the coves built into the panelling, and it is cold rather than warm.
+    if(type==='vault'){lightPoints.push({position:[0,4.3,z],color:0xbcd6d8,intensity:78});continue;}
     if(type!=='residential'){pendant(k,0,4.35,z,level>100?'rust':'green',type==='medical'||type==='it');lightPoints.push({position:[0,4.15,z],color:type==='medical'?0xd7e5d9:type==='it'?0xc8dcd3:0xf5d8ad,intensity:110});}
   }
   if(type==='residential'){
