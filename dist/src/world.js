@@ -1,7 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { ColliderSet } from './physics.js';
-import { SILO, TAU, levelY, levelAt, roomType, TYPE_NAMES, stairStepY } from './data.js';
+import { SILO, TAU, levelY, levelAt, roomType, TYPE_NAMES, stairStepY, STAIR_SWEEP, landingAngle, landingPoint } from './data.js';
 import { Kit, createMaterials, addSign, fixture, disposeGroup, SIGN_DEPTH } from './kit.js';
 
 // Gallery pylons, four to a wing sector. Spacing them evenly round the ring put
@@ -54,13 +54,14 @@ export class SiloWorld {
   }
   buildStructure() {
     const k=new Kit(this.m),R=SILO.wellRadius,O=SILO.deckOuter,H=SILO.levelHeight,C=SILO.stairColumn,S=SILO.stairRadius;
-    const gap=Math.asin(SILO.landingHalf/R),stepAngle=TAU/SILO.stairSteps,rise=H/SILO.stairSteps;
+    const gap=Math.asin((SILO.landingHalf+.02)/R),lk=new Kit(this.m);
     // Repeated structural geometry is instanced through the complete 144-level
     // shaft. Room contents stream independently; distant galleries stay real.
     k.arc('concrete',R,O,.42,-.42);k.arc('darkConcrete',R-.08,R+.5,.72,-.67);
-    k.arc('concrete',R-.07,R+.16,.65,.02,gap,TAU-gap*2,96);
-    for(const y of [.87,1.1])k.arc('metal',R+.005,R+.04,.035,y,gap,TAU-gap*2,96);
-    for(let j=1;j<96;j++){const a=j*TAU/96;if(a<gap||a>TAU-gap)continue;k.cylinder('metal',Math.cos(a)*(R+.02),.88,Math.sin(a)*(R+.02),.025,.5);}
+    const galleryPath=Array.from({length:129},(_,i)=>{const a=gap+(TAU-gap*2)*i/128;return [Math.cos(a)*(R+.04),0,Math.sin(a)*(R+.04)];});
+    sweepParapet(lk,galleryPath);
+    // Three pairs of columns stay vertically aligned as the bridges rotate.
+    for(let bearing=1;bearing<=3;bearing++)for(const side of [-1,1]){const p=landingPoint(bearing,NEWEL.x,side*NEWEL.z);buildNewel(k,p.cx,p.cz,H);}
     // Four-meter door gaps and service clerestories articulate the curved wall.
     const doorGap=2.05/O;
     for(let wing=0;wing<6;wing++){
@@ -93,15 +94,15 @@ export class SiloWorld {
     // Full-depth bridge, including the last landing at the top of the stairs.
     // The deck runs .16 m past the walkable half-width so the guard, which sits
     // on the same line as the flight's, stands on slab rather than on air.
-    k.box('concrete',(C+R+.3)/2,-.2,0,R+.3-C,.4,(SILO.landingHalf+.16)*2);
+    lk.box('concrete',(terminalStart+R+.3)/2,-.2,0,R+.3-terminalStart,.4,(SILO.landingHalf+.16)*2);
     // One guard section for the whole stairwell: the bridge run is the same
     // swept profile the flight uses, and it dies into a column at the well lip.
-    for(const side of [-1,1]){sweepParapet(k,straightPath(S,NEWEL.x,side*guardZ));buildNewel(k,NEWEL.x,side*NEWEL.z,H);}
-    k.box('darkConcrete',(S+R)/2,-.85,0,R-S,.85,1.1);
+    for(const side of [-1,1]){sweepParapet(lk,straightPath(S,NEWEL.x,side*guardZ));}
+    lk.box('darkConcrete',(S+R)/2,-.85,0,R-S,.85,1.1);
     // Bridges have a narrow center stripe and real join plates at their ends.
-    for(let x=S+.5;x<R;x+=1.4)k.box('yellow',x,.012,-1.56,.65,.025,.08);
+    for(let x=S+.5;x<R;x+=1.4)lk.box('yellow',x,.012,-1.56,.65,.025,.08);
     const transforms=Array.from({length:144},(_,i)=>new THREE.Matrix4().makeTranslation(0,levelY(i+1),0));
-    this.structure=k.group(transforms.slice(0,15),true);this.scene.add(this.structure);
+    this.structure=k.group(transforms.slice(0,15),true);this.scene.add(this.structure);this.landings=lk.group(transforms.slice(0,15),true);this.scene.add(this.landings);
     const sk=new Kit(this.m);
     sk.cylinder('concrete',0,H/2,0,C,H);
     for(let j=0;j<8;j++){const a=j*TAU/8,ry=Math.PI/2-a;for(const da of [-.06,0,.06]){const aa=a+da;sk.box('darkMetal',Math.cos(aa)*(C+.018),H/2,Math.sin(aa)*(C+.018),.12,H-.5,.04,Math.PI/2-aa);}
@@ -112,14 +113,16 @@ export class SiloWorld {
     this.stairs=sk.group(transforms.slice(1,16),true);this.scene.add(this.stairs);
     // Far levels retain the full silhouette while nearby floors carry the
     // individual treads, railings, windows and fittings. No floors are omitted.
-    const fk=new Kit(this.m);fk.arc('concrete',R,O,.42,-.42,0,TAU,36);fk.arc('darkConcrete',O-.12,O+.12,H,0,0,TAU,36);fk.arc('darkConcrete',R-.06,R+.16,.7,0,0,TAU,36);fk.box('concrete',(C+R)/2,-.21,0,R-C,.42,(SILO.landingHalf+.16)*2);fk.cylinder('concrete',0,H/2,0,C-.01,H);
-    // Distant flights are coarser, never different: the same rise, the same
-    // guard and the same lit columns, so a level does not change shape as it
-    // crosses the detail boundary and the shaft reads as one staircase.
-    for(let j=0;j<24;j++)fk.arc('concrete',C,S,.16,stairStepY((j+.5)*SILO.stairSteps/24)-.16,j*TAU/24,TAU/24*1.02,2);
-    sweepParapet(fk,helixPath(stairOpening,TAU-stairOpening,railRadius,0,7),3);
-    for(const side of [-1,1]){sweepParapet(fk,straightPath(S,NEWEL.x,side*guardZ),3);buildNewel(fk,NEWEL.x,side*NEWEL.z,H,{slats:10,rings:false});}
-    this.distant=fk.group(transforms,true);this.scene.add(this.distant);this.updateStructure(1);
+    const fk=new Kit(this.m),fl=new Kit(this.m),fs=new Kit(this.m);
+    fk.arc('concrete',R,O,.42,-.42,0,TAU,36);fk.arc('darkConcrete',O-.12,O+.12,H,0,0,TAU,36);
+    for(let bearing=1;bearing<=3;bearing++)for(const side of [-1,1]){const p=landingPoint(bearing,NEWEL.x,side*NEWEL.z);buildNewel(fk,p.cx,p.cz,H,{slats:10,rings:false});}
+    sweepParapet(fl,galleryPath.filter((_,i)=>i%4===0),3);
+    fl.box('concrete',(terminalStart+R+.3)/2,-.2,0,R+.3-terminalStart,.4,(SILO.landingHalf+.16)*2);
+    for(const side of [-1,1])sweepParapet(fl,straightPath(S,NEWEL.x,side*guardZ),3);
+    fs.cylinder('concrete',0,H/2,0,C,H);
+    buildStairFlight(fs,{steps:36,quality:3,density:7});
+    this.distant=fk.group(transforms,true);this.distantLandings=fl.group(transforms,true);this.distantStairs=fs.group(transforms,true);
+    this.scene.add(this.distant,this.distantLandings,this.distantStairs);this.updateStructure(1);
     // Crown closes the structure above the top landing; no exterior town.
     const crown=new Kit(this.m);crown.cylinder('darkConcrete',0,levelY(1)+H,0,O+1,.65);for(let i=0;i<12;i++){const a=i*TAU/12;crown.beam('concrete',[Math.cos(a)*C,levelY(1)+H-.6,Math.sin(a)*C],[Math.cos(a)*O,levelY(1)+H-.6,Math.sin(a)*O],.35);}
     // Continue the visible spine through the top storey. Previously only its
@@ -130,7 +133,9 @@ export class SiloWorld {
   }
   updateStructure(level){
     const near=Array.from({length:15},(_,i)=>Math.max(1,Math.min(130,level-7))+i),stairs=near.filter(n=>n>1),far=Array.from({length:144},(_,i)=>i+1).filter(n=>!near.includes(n));
-    for(const [group,numbers] of [[this.structure,near],[this.stairs,stairs],[this.distant,far]])for(const mesh of group.children){mesh.count=numbers.length;for(let i=0;i<numbers.length;i++)mesh.setMatrixAt(i,new THREE.Matrix4().makeTranslation(0,levelY(numbers[i]),0));mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();}
+    for(const [group,numbers,rotate] of [[this.structure,near,false],[this.landings,near,true],[this.stairs,stairs,true],[this.distant,far,false],[this.distantLandings,far,true],[this.distantStairs,far.filter(n=>n>1),true]])for(const mesh of group.children){
+      mesh.count=numbers.length;for(let i=0;i<numbers.length;i++){const matrix=new THREE.Matrix4().makeRotationY(rotate?-landingAngle(numbers[i]):0);matrix.setPosition(0,levelY(numbers[i]),0);mesh.setMatrixAt(i,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();
+    }
   }
   loadLevel(level){
     if(this.loaded.has(level))return this.loaded.get(level);
@@ -151,14 +156,15 @@ export class SiloWorld {
       const door={level,wing,position:new THREE.Vector3(room.position.x,y+1.5,room.position.z),ry,open:true,amount:1,leaves,type,collider:null};doors.push(door);
       for(const interact of room.userData.interactions){const p=new THREE.Vector3(...interact.position).applyAxisAngle(new THREE.Vector3(0,1,0),ry).add(room.position);p.y+=y;interactions.push({...interact,position:p});}
     }
-    addSign(root,`LEVEL ${String(level).padStart(3,'0')}`,[13,.44,-(SILO.landingHalf+.09+SIGN_DEPTH/2)],2.4,.42,Math.PI);
+    const plate=landingPoint(level,13,-(SILO.landingHalf+.09+SIGN_DEPTH/2));
+    addSign(root,`LEVEL ${String(level).padStart(3,'0')}`,[plate.cx,.44,plate.cz],2.4,.42,Math.PI-landingAngle(level));
     const passages=level===1?null:buildPassages(this.m,level,rooms.map(r=>r.userData.type));
     if(passages){root.add(passages);for(const i of passages.userData.interactions||[])interactions.push({...i,position:new THREE.Vector3(i.position[0],i.position[1]+y,i.position[2])});}
     // Close the open side of the top and bottom landings. Every other level has
     // the next flight arriving there; these two have a drop instead.
     if(level===1||level===144){
       const gk=new Kit(this.m);buildTerminalLanding(gk,level===1?1:-1);
-      const landing=gk.group();landing.name='terminal-stair-parapet';root.add(landing);
+      const landing=gk.group();landing.name='terminal-stair-parapet';landing.rotation.y=-landingAngle(level);root.add(landing);
     }
     this.scene.add(root);const entry={level,root,rooms,doors,interactions,passages};this.loaded.set(level,entry);return entry;
   }
@@ -189,28 +195,29 @@ export class SiloWorld {
       this.colliders=c;return;
     }
     for(let level=Math.max(1,this.activeLevel-2);level<=Math.min(144,this.activeLevel+2);level++){
-      const y=levelY(level),gap=Math.asin(SILO.landingHalf/R);
+      const y=levelY(level),angle=landingAngle(level),at=(x,z=0)=>landingPoint(level,x,z),gap=Math.asin(SILO.landingHalf/R);
       for(const a of PYLON_ANGLES)c.addColumn({cx:Math.cos(a)*(O-1),cz:Math.sin(a)*(O-1),radius:.68,minY:y,maxY:y+H});
       c.addRing({innerRadius:R,outerRadius:O,minY:y-.42,maxY:y,climbable:true});
-      c.addRing({innerRadius:R-.07,outerRadius:R+.16,minY:y,maxY:y+1.13,gaps:[[0,gap]]});
+      c.addRing({innerRadius:R-.07,outerRadius:R+.16,minY:y,maxY:y+1.13,gaps:[[angle,gap]]});
       c.addRing({innerRadius:O-.2,outerRadius:O+.2,minY:y,maxY:y+3.35,gaps:Array.from({length:6},(_,j)=>[j*TAU/6,2.05/O])});
       c.addRing({innerRadius:O-.3,outerRadius:O+.3,minY:y+3.35,maxY:y+H});
-      c.addOrientedBox({cx:(C+R+.3)/2,cz:0,halfX:(R+.3-C)/2,halfZ:SILO.landingHalf,rotationY:0,minY:y-.4,maxY:y,climbable:true});
+      c.addOrientedBox({...at((terminalStart+R+.3)/2),halfX:(R+.3-terminalStart)/2,halfZ:SILO.landingHalf,rotationY:-angle,minY:y-.4,maxY:y,climbable:true});
       // The guard is solid from the corner the flight sweeps out of, right
       // along the bridge and into the column, so there is no unguarded pocket
-      // beside the landing. The columns are boxed rather than added as columns:
-      // they are stairwell newels, not gallery pylons standing in a doorway.
+      // beside the landing. The newels line up vertically at all three bearings;
+      // their round collision leaves the gallery doorway approaches clear.
       const guardStart=Math.cos(stairOpening)*railRadius;
       for(const side of [-1,1]){
-        c.addOrientedBox({cx:(guardStart+R)/2,cz:side*guardZ,halfX:(R-guardStart)/2,halfZ:PARAPET.half,rotationY:0,minY:y,maxY:y+PARAPET_TOP});
-        c.addOrientedBox({cx:NEWEL.x,cz:side*NEWEL.z,halfX:NEWEL.radius,halfZ:NEWEL.radius,rotationY:0,minY:y,maxY:y+H});
+        c.addOrientedBox({...at((guardStart+R)/2,side*guardZ),halfX:(R-guardStart)/2,halfZ:PARAPET.half,rotationY:-angle,minY:y,maxY:y+PARAPET_TOP});
+
       }
+      for(let bearing=1;bearing<=3;bearing++)for(const side of [-1,1])c.addColumn({...landingPoint(bearing,NEWEL.x,side*NEWEL.z),radius:NEWEL.radius,minY:y,maxY:y+H});
       if(level>1){
-        const lower=y,stepAngle=TAU/SILO.stairSteps,rise=H/SILO.stairSteps;
+        const lower=y,stepAngle=STAIR_SWEEP/SILO.stairSteps;
         for(let j=0;j<SILO.stairSteps;j++){
           const center=(j+.5)*stepAngle,top=lower+stairStepY(j);
-          c.addArc({innerRadius:C,outerRadius:S,minY:top-.18,maxY:top,centre:center,halfWidth:stepAngle*.505,climbable:true});
-          if(hasStairGuard(center))c.addArc({innerRadius:railRadius-PARAPET.half,outerRadius:railRadius+PARAPET.half,minY:top,maxY:top+PARAPET_TOP,centre:center,halfWidth:stepAngle*.51});
+          c.addArc({innerRadius:C,outerRadius:S,minY:top-.18,maxY:top,centre:angle+center,halfWidth:stepAngle*.505,climbable:true});
+          if(hasStairGuard(center))c.addArc({innerRadius:railRadius-PARAPET.half,outerRadius:railRadius+PARAPET.half,minY:top,maxY:top+PARAPET_TOP,centre:angle+center,halfWidth:stepAngle*.51});
         }
       }
       const e=this.loaded.get(level);if(!e)continue;
@@ -242,8 +249,7 @@ export class SiloWorld {
       // stairwell is open on that side with nothing to stop you walking in.
       if(level===1||level===144){
         const side=level===1?1:-1;
-        c.addOrientedBox({cx:(terminalStart+C)/2,cz:0,halfX:(C-terminalStart)/2,halfZ:SILO.landingHalf,rotationY:0,minY:y-.4,maxY:y,climbable:true});
-        c.addOrientedBox({cx:(terminalStart+S)/2,cz:side*guardZ,halfX:(S-terminalStart)/2,halfZ:PARAPET.half,rotationY:0,minY:y,maxY:y+PARAPET_TOP});
+        c.addOrientedBox({...at((terminalStart+S)/2,side*guardZ),halfX:(S-terminalStart)/2,halfZ:PARAPET.half,rotationY:-angle,minY:y,maxY:y+PARAPET_TOP});
       }
       for(const room of e.rooms){
         const ry=room.rotation.y,cos=Math.cos(ry),sin=Math.sin(ry),ox=room.position.x,oz=room.position.z;
@@ -261,7 +267,7 @@ export class SiloWorld {
     }
     this.colliders=c;
   }
-  spawn(level,wing=null){const y=levelY(level);if(wing===null)return new THREE.Vector3(20.6,y,0);const a=wing*TAU/6;return new THREE.Vector3(Math.cos(a)*29,y,Math.sin(a)*29);}
+  spawn(level,wing=null){const y=levelY(level);if(wing===null){const p=landingPoint(level,20.6);return new THREE.Vector3(p.cx,y,p.cz);}const a=wing*TAU/6;return new THREE.Vector3(Math.cos(a)*29,y,Math.sin(a)*29);}
   destination(id){
     if(typeof id==='string'&&id.startsWith('room:')){const [,n,w]=id.split(':').map(Number);return {level:n,position:this.spawn(n,w),yaw:Math.PI/2-w*TAU/6+Math.PI};}
     if(id==='relic')return {level:144,position:new THREE.Vector3(-3.8,0,4.9).applyAxisAngle(new THREE.Vector3(0,1,0),Math.PI/6).add(new THREE.Vector3(SILO.deckOuter*.5,levelY(144),SILO.deckOuter*Math.sqrt(3)/2)),yaw:Math.PI*.786};
@@ -272,7 +278,7 @@ export class SiloWorld {
     if(id==='digger-passage')return {level:144,position:new THREE.Vector3(Math.cos(SPUR.angle)*(SPUR.outer-1.2),levelY(144),Math.sin(SPUR.angle)*(SPUR.outer-1.2)),yaw:Math.PI/2-SPUR.angle};
     if(id==='tunnel')return {level:144,special:id,position:tunnelPoint(0,.7,12),yaw:-Math.PI/2-VOID.tunnelAngle};
     if(id==='airlock')return {level:1,position:topPoint(26,0,50),yaw:-Math.PI/2};
-    return {level:Number(id),position:this.spawn(Number(id)),yaw:-Math.PI/2};
+    return {level:Number(id),position:this.spawn(Number(id)),yaw:Math.PI/2-landingAngle(Number(id))};
   }
   nearestInteraction(position,direction){
     const pool=this.special?(this.special==='generator'?this.generator:this.underground).interactions.map(v=>({...v,position:new THREE.Vector3(...v.position)})):[...this.doors.map(d=>({position:d.position,label:`${d.open?'Close':'Open'} ${TYPE_NAMES[d.type].toLowerCase()} door`,door:d})),...this.interactions];
@@ -303,7 +309,7 @@ export class SiloWorld {
   update(dt,position){
     breach.amount=THREE.MathUtils.damp(breach.amount,breach.open?1:0,5,dt);
     const panel=this.loaded.get(SPUR.level)?.passages?.userData.breachPanel;if(panel)panel.rotation.y=Math.PI-breach.amount*Math.PI/2;
-    this.surface.update(dt);const top=topLocal(position);this.outside=!this.special&&this.activeLevel===1&&(inRampCutout(top.x,top.z)?top.z>99&&top.y>10:top.y>=groundY(top.x,top.z)-.5);if(this.outside)this.surface.streamTerrain(top);
+    this.surface.update(dt);const top=topLocal(position);this.outside=!this.special&&this.activeLevel===1&&(inRampCutout(top.x,top.z)?top.z>99&&top.y>10:top.y>=groundY(top.x,top.z)-.5);if(this.outside){this.surface.streamTerrain(top);this.surface.sky.mesh.position.set(top.x,top.y+1.7,top.z);}this.surface.sky.mesh.visible=this.outside;
     const airlocks=this.loaded.get(1)?.rooms[0].userData.doors||[];
     for(const door of airlocks){const other=airlocks.find(d=>d!==door);if(door.requested&&other.amount<.01){door.open=true;door.requested=false;}door.amount=THREE.MathUtils.damp(door.amount,door.open?1:0,3.5,dt);door.pivot.position.y=door.amount*4.35;if(door.collider)door.collider.enabled=door.amount<.96;}
 
@@ -333,7 +339,7 @@ export class SiloWorld {
     this.keyLight.visible=!this.outside&&!this.special;this.keyLight.position.set(position.x+3,position.y+4.2,position.z+1.5);this.keyLight.target.position.set(position.x,position.y,position.z);this.keyLight.intensity=260;
     if(roomKey){this.keyLight.position.copy(roomKey.world);this.keyLight.target.position.copy(roomKey.world).add(new THREE.Vector3(0,-3,0));this.keyLight.color.setHex(roomKey.color);this.keyLight.intensity=roomKey.residential?95:150;this.keyLight.distance=14;}else{this.keyLight.color.setHex(0xffd6a0);this.keyLight.distance=48;}
     if(this.activeLevel===1&&top.z>10&&!this.special){for(let i=0;i<8;i++){const l=this.localLights[i];l.position.copy(topPoint(i<4?(i%2?10:-10):26,i<4?6.7:3.7,i<4?(i<2?17:31):[29,40,50,59][i-4]));l.intensity=i<4?240:95;l.distance=28;}if(top.z>64){this.keyLight.position.copy(position).add(new THREE.Vector3(0,3.4,0));this.keyLight.intensity=170;}}
-    this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?2.4:.10;this.ambient.intensity=this.outside?1.65:.48;this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
-    this.scene.fog.density=this.outside?.0029:this.special==='excavator'?.004:this.special?.007:.008;this.scene.fog.color.setHex(this.outside?0x929fa3:0x242d2b);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);this.structure.visible=this.stairs.visible=this.distant.visible=this.topCore.visible=!this.special&&!this.outside;
+    this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):.10;this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):.48;this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
+    this.scene.fog.density=this.outside?.0029:this.special==='excavator'?.004:this.special?.007:.008;this.scene.fog.color.setHex(this.outside?0x929fa3:0x242d2b);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);if(this.outside)this.scene.fog.color.copy(this.surface.sky.fogColor);this.structure.visible=this.landings.visible=this.stairs.visible=this.distant.visible=this.distantLandings.visible=this.distantStairs.visible=this.topCore.visible=!this.special&&!this.outside;
   }
 }

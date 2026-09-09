@@ -517,7 +517,11 @@ export class CharacterBody {
 
     this.position.y += this.velocity.y * dt;
     this.groundY = colliders.floorAt(this.position.x, this.position.z, this.radius, this.position.y + this.stepHeight);
-    if (this.position.y <= this.groundY + EPSILON) {
+    // Keep a supported foot on the next descending tread. Without a small
+    // step-down snap a brisk walk becomes repeated free falls on the helix.
+    // An intentional jump and a real drop never take this branch.
+    const stepDown=this.grounded&&this.velocity.y<=0&&feet-this.groundY<=this.stepHeight+EPSILON;
+    if (this.position.y <= this.groundY + EPSILON || stepDown) {
       if (!this.grounded && this.velocity.y < -2.2) this.landingImpact = Math.min(1, -this.velocity.y / 9);
       this.position.y = this.groundY;
       this.velocity.y = 0;

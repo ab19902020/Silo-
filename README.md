@@ -2,6 +2,12 @@
 
 A browser-based, first- and third-person reconstruction of the television silo, built in Adam’s **Silo-** repository using the circular collision system and selected interior assets from **Lost Signal**.
 
+## Latest reference update
+
+Stair bridges now rotate between three directions throughout all 144 floors, with matching walkable flights, concrete gallery guards and protected terminal landings. The cafeteria has rounded petal lights and layered ceiling frames based on the supplied still. The exterior sensor looks over the exit from behind: Holston emerges with his back to the camera, then turns and approaches it. The raised panorama includes sky and stars; choose **Settings → Outside sky → Night** to see them immediately.
+
+NPC faces, hair, clothing and boots have more detail; walking, activity transitions, jump ascent and landing poses are improved. The opening audio and ambience are preserved. See [implementation, checks and reconstruction limits](docs/reference-update.md).
+
 ## Living silo and cafeteria opening
 
 - Begin in the Level 1 cafeteria. Approach the directory book and press **Use / E**. The live screen shows Holston leaving, cleaning the sensor, removing his helmet and lying beside Allison. Open the book afterward to use the 144-level directory. Screen focus, skip and replay are available.
@@ -47,7 +53,7 @@ See [the animation and visual upgrade notes](docs/visual-upgrade.md) for referen
 - Three supplied characters are rigged and selectable: Juliette Nichols, Robert Sims and Bernard Holland. Each has a relaxed bind pose, foot planting, and first/third-person views. The other two stay at their departments.
 - The supplied hard-drive relic is on Walker’s repair bench; use the directory shortcut to inspect it.
 - Fixed the false ground gap around the exit and added streaming exterior terrain without a finite collision edge.
-- Reframed the live cafeteria panorama around the barren bowl and right-hand dead tree. The sensor housing, ramp and city skyline are absent from the panorama. The exterior contains no city geometry.
+- Reframed the live cafeteria panorama around the barren bowl and right-hand dead tree. The sensor housing and city skyline are absent from the panorama; the actual ramp mouth is visible. The exterior contains no city geometry.
 
 ## Earlier environment update
 

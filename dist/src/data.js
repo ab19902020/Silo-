@@ -4,7 +4,7 @@ export const TAU = Math.PI * 2;
 export const SILO = Object.freeze({
   levels: 144, levelHeight: 10, bottomY: 80,
   wellRadius: 18, deckOuter: 25.6, shellRadius: 56,
-  stairColumn: 3.1, stairRadius: 7.3, stairTurns: 1, stairSteps: 72, stairLandingSteps: 8,
+  stairColumn: 3.1, stairRadius: 7.3, stairTurns: 2/3, stairSteps: 72, stairLandingSteps: 11,
   landingHalf: 1.8, roomDepth: 24, roomHalf: 10, roomHeight: 5.8,
 });
 export const levelY = level => SILO.bottomY + (SILO.levels - level) * SILO.levelHeight;
@@ -109,11 +109,17 @@ export function roomType(level, wing) {
 export const TYPE_NAMES = { bazaar:'BAZAAR', cafeteria: 'CAFETERIA', sheriff: 'SHERIFF', office: 'ADMINISTRATION', judicial: 'JUDICIAL', it: 'INFORMATION TECHNOLOGY', recycling: 'RECYCLING', school: 'EDUCATION', medical: 'MEDICAL', water: 'WATER FILTRATION', residential: 'RESIDENCES', farm: 'AGRICULTURE', supply: 'SUPPLY', workshop: 'WORKSHOP', mechanical: 'MECHANICAL', generator: 'GENERATOR', airlock: 'CLEANING AIRLOCK', surveillance: 'WATCHER ROOM', vault: 'THE VAULT', utility: 'SERVICES', janitorial:'JANITORIAL', porter:'PORTER DISPATCH', bar:'BAR', park:'PARK & ORCHARD', laundry:'LAUNDRY' };
 export const roomsForLevel = level => Array.from({length:6},(_,wing)=>({id:`room:${level}:${wing}`,level,wing,type:roomType(level,wing),name:RESIDENCES[`${level}:${wing}`]||TYPE_NAMES[roomType(level,wing)]}));
 export const normalizeAngle = a => ((a % TAU) + TAU) % TAU;
-export function stairHeight(x, z, nearY) {
-  const angle = normalizeAngle(Math.atan2(z, x));
-  const risePerTurn = SILO.levelHeight / SILO.stairTurns;
-  const raw = SILO.bottomY + stairStepY(Math.floor(angle / TAU * SILO.stairSteps));
-  const turn = Math.round((nearY - raw) / risePerTurn);
-  const value = raw + turn * risePerTurn;
-  return value >= SILO.bottomY - 0.02 && value <= levelY(1) + 0.02 ? value : null;
+export function stairHeight(x,z,nearY){
+  const angle=normalizeAngle(Math.atan2(z,x));let best=null,distance=Infinity;
+  for(let level=Math.max(2,levelAt(nearY)-1);level<=Math.min(144,levelAt(nearY)+2);level++){
+    const local=normalizeAngle(angle-landingAngle(level));if(local>STAIR_SWEEP)continue;
+    const y=levelY(level)+stairStepY(Math.min(SILO.stairSteps-1,Math.floor(local/STAIR_SWEEP*SILO.stairSteps)));
+    if(Math.abs(y-nearY)<distance){best=y;distance=Math.abs(y-nearY);}
+  }return best;
 }
+
+// A bridge advances one third-turn per floor; each rising flight wraps the
+// remaining two thirds of the core to meet the bridge above.
+export const STAIR_SWEEP=TAU*2/3;
+export const landingAngle=level=>((level-1)%3)*TAU/3;
+export const landingPoint=(level,x,z=0)=>{const a=landingAngle(level);return {cx:x*Math.cos(a)-z*Math.sin(a),cz:x*Math.sin(a)+z*Math.cos(a)};};

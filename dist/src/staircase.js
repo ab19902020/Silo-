@@ -1,8 +1,8 @@
 import * as THREE from '../vendor/three.module.js';
-import { SILO, TAU, stairStepY } from './data.js';
+import { SILO, TAU, STAIR_SWEEP, stairStepY } from './data.js';
 
 export const stairOpening=Math.asin((SILO.landingHalf+.22)/SILO.stairRadius);
-export function hasStairGuard(angle){return angle>stairOpening&&angle<TAU-stairOpening;}
+export function hasStairGuard(angle){return angle>stairOpening&&angle<STAIR_SWEEP-stairOpening;}
 
 // The stairwell in the reference has no metal balustrade anywhere. Helix,
 // landing and bridge are one cast wall finished with a half-round coping, and
@@ -73,7 +73,7 @@ export function helixPath(from,to,radius,lift=0,density=44){
   const segments=Math.max(2,Math.ceil(Math.abs(to-from)*density)),path=[];
   for(let i=0;i<=segments;i++){
     const a=THREE.MathUtils.lerp(from,to,i/segments);
-    path.push([Math.cos(a)*radius,lift+stairStepY(a/TAU*SILO.stairSteps-.5),Math.sin(a)*radius]);
+    path.push([Math.cos(a)*radius,lift+stairStepY(a/STAIR_SWEEP*SILO.stairSteps-.5),Math.sin(a)*radius]);
   }
   return path;
 }
@@ -97,19 +97,37 @@ export function landingPath(side,lift,segments=14){
 
 // Bare concrete treads: the reference has no nosing strip, and the wedges read
 // on their own shadow the way they do in the shaft.
-export function buildStairFlight(k){
-  const C=SILO.stairColumn,S=SILO.stairRadius,stepAngle=TAU/SILO.stairSteps;
-  for(let j=0;j<SILO.stairSteps;j++){const y=stairStepY(j);k.arc('concrete',C,S,.18,y-.18,j*stepAngle,stepAngle*1.005,2);}
-  sweepParapet(k,helixPath(stairOpening,TAU-stairOpening,railRadius));
-  sweepParapet(k,landingPath(1,0));
-  sweepParapet(k,landingPath(-1,SILO.levelHeight));
+// Clip level treads against the bridge footprint. Two coplanar slabs at a
+// landing shimmer even with perfect lighting; there must be only one top face.
+function flatTread(k,start,span,y){
+  const end=y===SILO.levelHeight,rotation=end?STAIR_SWEEP:0,side=end?-1:1,edge=SILO.landingHalf+.16;
+  let polygon=[];for(const [r,reverse] of [[SILO.stairRadius,false],[SILO.stairColumn,true]])for(let i=0;i<=2;i++){
+    const a=start+span*(reverse?1-i/2:i/2)-rotation;polygon.push([Math.cos(a)*r,Math.sin(a)*r]);
+  }
+  const clipped=[];
+  for(let i=0;i<polygon.length;i++){
+    const a=polygon[i],b=polygon[(i+1)%polygon.length],da=side*a[1]-edge,db=side*b[1]-edge;
+    if(da>=0)clipped.push(a);if((da>=0)!==(db>=0)){const t=da/(da-db);clipped.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);}
+  }
+  if(clipped.length<3)return;const shape=new THREE.Shape();shape.moveTo(...clipped[0]);for(const p of clipped.slice(1))shape.lineTo(...p);shape.closePath();
+  const geometry=new THREE.ExtrudeGeometry(shape,{depth:.18,bevelEnabled:false,steps:1});geometry.rotateX(Math.PI/2);geometry.rotateY(-rotation);k.mesh(geometry,'concrete',0,y,0);
+}
+export function buildStairFlight(k,{steps=SILO.stairSteps,quality=7,density=44}={}){
+  const C=SILO.stairColumn,S=SILO.stairRadius,stepAngle=STAIR_SWEEP/steps;
+  for(let j=0;j<steps;j++){
+    const y=stairStepY((j+1)*SILO.stairSteps/steps-1);
+    if(y===0||y===SILO.levelHeight)flatTread(k,j*stepAngle,stepAngle,y);
+    else k.arc('concrete',C,S,.18,y-.18,j*stepAngle,stepAngle,2);
+  }
+  sweepParapet(k,helixPath(stairOpening,STAIR_SWEEP-stairOpening,railRadius,0,density),quality);
+  sweepParapet(k,landingPath(1,0),quality);
+  sweepParapet(k,landingPath(-1,SILO.levelHeight).map(([x,y,z])=>[x*Math.cos(STAIR_SWEEP)-z*Math.sin(STAIR_SWEEP),y,x*Math.sin(STAIR_SWEEP)+z*Math.cos(STAIR_SWEEP)]),quality);
 }
 
 // The top and bottom landings have no flight leaving on one side, so the same
 // guard closes the opening there instead of sweeping away into a flight.
 export function buildTerminalLanding(k,side){
   const C=SILO.stairColumn,S=SILO.stairRadius;
-  k.box('concrete',(terminalStart+C)/2,-.2,0,C-terminalStart,.4,(SILO.landingHalf+.16)*2);
   sweepParapet(k,straightPath(terminalStart,S+.15,side*guardZ));
 }
 

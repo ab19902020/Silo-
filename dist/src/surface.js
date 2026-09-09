@@ -1,6 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit, random, addSign } from './kit.js';
 import { SILO, levelY } from './data.js';
+import { ExteriorSky } from './sky.js';
 import { projectMaterial } from './materials.js';
 export const topPoint=(x,y,z)=>new THREE.Vector3(SILO.deckOuter+z,levelY(1)+y,-x);
 export const topLocal=p=>({x:-p.z,y:p.y-levelY(1),z:p.x-SILO.deckOuter});
@@ -14,7 +15,7 @@ export const inRampCutout=(x,z)=>inRampPassage(x,z)&&z>=94;
 // Holston walks up; the far crest, at a quarter of a kilometre, closes the sky.
 const rise=(a,b,r)=>{const t=THREE.MathUtils.clamp((r-a)/(b-a),0,1);return t*t*(3-2*t);};
 export function groundY(x,z){
-  const r=Math.hypot(x-26,z-139);
+  const r=Math.hypot(x-26,z-108);
   const bowl=11*rise(30,96,r)+24*rise(130,320,r)+10*(1-Math.exp(-Math.max(0,r-320)/1500));
   // Long, shallow folds across the slope, on wavelengths the 16 m outer terrain
   // tiles can still carry. They fade out past the fog, where nothing reads them.
@@ -33,6 +34,12 @@ const terrainShade=(x,y,z)=>.80+.055*Math.sin(x*.031+z*.023)+.03*Math.cos(z*.047
 // is the incline itself, everywhere else it is the terrain. The cleaners walk
 // on rails rather than through the collider, so they need this directly.
 export const surfaceY=(x,z)=>inRampCutout(x,z)?rampY(z):groundY(x,z);
+
+// The lens is behind and alongside the sunken exit, looking outwards. A
+// cleaner climbs away from it and must turn back around the curb to clean.
+export const SENSOR=Object.freeze({x:20.5,z:99,eye:1.85});
+export const TREE=Object.freeze({x:-5,z:155});
+export const sensorLocal=()=>new THREE.Vector3(SENSOR.x,groundY(SENSOR.x,SENSOR.z)+SENSOR.eye,SENSOR.z+.95);
 
 export class SurfaceWorld {
   constructor(m){
@@ -65,16 +72,19 @@ export class SurfaceWorld {
     for(const x of [22.7,29.3])mouth.bevel('concrete',x,14.28,108.6,1.4,.56,.85);
     for(const side of [-1,1]){const hatch=new THREE.Group(),hk=new Kit(m);hk.bevel('metal',side*1.7,0,0,3.35,.17,12.4);for(let j=0;j<9;j++){const z=-5.5+j*1.4;hk.beam('darkMetal',[side*.15,.13,0],[side*3.2,.13,z],.046);}hatch.add(hk.group());hatch.position.set(26+side*3.25,14.45,101.8);hatch.rotation.z=-side*.35;mouthRoot.add(hatch);}
     mouthRoot.add(mouth.group());
-    // A squat, buttressed sensor monument beyond the lip of the ramp.
-    const sensorZ=119,base=groundY(26,sensorZ);
-    k.bevel('concrete',26,base+.1,sensorZ,6.7,.2,3.1);k.bevel('concrete',26,base+1.35,sensorZ+.45,5.6,2.5,.65);k.bevel('concrete',26,base+2.8,sensorZ,6.25,.35,2.4);
-    for(const side of [-1,1]){const shape=new THREE.Shape();shape.moveTo(-.55,0);shape.lineTo(.55,0);shape.lineTo(.2,2.6);shape.lineTo(-.2,2.6);const geo=new THREE.ExtrudeGeometry(shape,{depth:1.8,bevelEnabled:true,bevelSize:.06,bevelThickness:.06,bevelSegments:2,steps:1});const buttress=new THREE.Mesh(geo,m.concrete);buttress.position.set(26+side*2.55,base,sensorZ-.9);buttress.castShadow=buttress.receiveShadow=true;this.root.add(buttress);}
-    k.bevel('concrete',26,base+.65,sensorZ-.6,2.4,1.3,1.15);
-    this.solids.push({x:26,z:sensorZ+.3,w:6,d:1.3,y0:base,y1:base+3});
-    const lens=new Kit(m);lens.bevel('metal',26,base+1.85,sensorZ-.3,1.16,.64,.75);lens.cylinder('darkMetal',26,base+1.85,sensorZ-.73,.26,.15,Math.PI/2);lens.cylinder('glass',26,base+1.85,sensorZ-.83,.2,.035,Math.PI/2);lens.torus('brass',26,base+1.85,sensorZ-.855,.235,.025);this.root.add(lens.group());
-    this.lensDirt=new THREE.MeshBasicMaterial({color:0x81775b,transparent:true,opacity:.48,depthWrite:false,side:THREE.DoubleSide});const dirt=new THREE.Mesh(new THREE.CircleGeometry(.2,32),this.lensDirt);dirt.position.set(26,base+1.85,sensorZ-.88);this.root.add(dirt);
-    this.sensorPoint=topPoint(26,base+1.85,sensorZ-.95);
-    addSign(this.root,'18',[26,base+.6,sensorZ-1.2],.9,.65,Math.PI,{background:'#77796e',color:'#252c27',font:'bold 180px Arial',border:false});
+    // A low camera plinth behind the exit; its housing never enters its own feed.
+    const {x:sx,z:sz}=SENSOR,base=groundY(sx,sz),sensor=new Kit(m);
+    sensor.bevel('concrete',sx,base+.09,sz,2.45,.18,2.05);
+    sensor.bevel('concrete',sx,base+1.2,sz-.25,1.8,2.4,.65);
+    sensor.bevel('concrete',sx,base+2.5,sz,2.4,.25,1.8);
+    for(const side of [-1,1]){sensor.beam('concrete',[sx+side*.98,base+.2,sz+.66],[sx+side*.78,base+2.4,sz-.35],.26);}
+    sensor.bevel('metal',sx,base+1.85,sz+.3,1.16,.64,.75);
+    sensor.cylinder('darkMetal',sx,base+1.85,sz+.73,.26,.15,Math.PI/2);sensor.cylinder('glass',sx,base+1.85,sz+.83,.2,.035,Math.PI/2);sensor.torus('brass',sx,base+1.85,sz+.855,.235,.025);
+    const sensorRoot=sensor.group();sensorRoot.name='exterior-sensor-housing';this.root.add(sensorRoot);
+    this.solids.push({x:sx,z:sz-.3,w:2.2,d:1.3,y0:base,y1:base+2.65});
+    this.lensDirt=new THREE.MeshBasicMaterial({color:0x81775b,transparent:true,opacity:.48,depthWrite:false,side:THREE.DoubleSide});const dirt=new THREE.Mesh(new THREE.CircleGeometry(.2,32),this.lensDirt);dirt.position.set(sx,base+1.85,sz+.88);this.root.add(dirt);
+    this.sensorPoint=topPoint(...sensorLocal().toArray());
+    addSign(this.root,'18',[sx,base+.6,sz+.12],.65,.48,0,{background:'#77796e',color:'#252c27',font:'bold 180px Arial',border:false});
     // Hatch boundaries are actual grid edges; no triangle bridges the opening.
     this.groundMaterial=m.rock.clone();this.groundMaterial.color.setHex(0xa09d8b);this.groundMaterial.vertexColors=true;this.groundMaterial.normalScale.set(.42,.42);projectMaterial(this.groundMaterial,5.2);
     this.terrainTiles=new Map();this.tileKey='';this.streamTerrain({x:26,z:140});this.ground=this.terrainTiles.get('0,0');
@@ -84,7 +94,7 @@ export class SurfaceWorld {
     const scree=rocks.group();scree.name='surface-scree';this.root.add(scree);
     // The recognizable bare tree on the crater slope. Tapered branching mesh.
     const branch=(a,b,r1,r2)=>{const v=new THREE.Vector3(...b).sub(new THREE.Vector3(...a)),o=new THREE.Mesh(new THREE.CylinderGeometry(r2,r1,v.length(),9),m.darkConcrete);o.position.copy(new THREE.Vector3(...a).addScaledVector(v,.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());o.name='dead-tree';o.castShadow=true;this.root.add(o);};
-    const tx=49,tz=68,ty=groundY(tx,tz);branch([tx,ty,tz],[tx-1,ty+10,tz+1],.42,.17);
+    const tx=TREE.x,tz=TREE.z,ty=groundY(tx,tz);branch([tx,ty,tz],[tx-1,ty+10,tz+1],.42,.17);
     const branchTree=(x,y,z,angle,length,r,depth)=>{const end=[x+Math.cos(angle)*length*.72,y+length*.68,z+Math.sin(angle)*length*.52];branch([x,y,z],end,r,r*.48);if(depth>0){branchTree(...end,angle+.65,length*.61,r*.48,depth-1);branchTree(...end,angle-.8,length*.55,r*.45,depth-1);}};
     branchTree(tx-.6,ty+5,tz,2.3,6,.20,3);branchTree(tx-.9,ty+8,tz+1,-.5,5.9,.155,3);branchTree(tx-1,ty+9.8,tz+1,1.5,4.6,.12,2);
     this.solids.push({x:tx,z:tz,w:1.2,d:1.2,y0:ty,y1:ty+8});
@@ -105,8 +115,11 @@ export class SurfaceWorld {
     // what the throat looks like anyway, and it stops the sensor seeing all
     // the way down an eighty metre tube to nothing.
     {const throat=new THREE.Mesh(new THREE.PlaneGeometry(6.9,5.6),new THREE.MeshBasicMaterial({color:0x15181a}));throat.position.set(26,rampY(89.5)+2.5,89.5);throat.name='ramp-mouth';throat.userData.ownedGeometry=throat.userData.ownedMaterial=true;this.feedRoot.add(throat);}
-    this.feedDust=this.feedRoot.getObjectByName('wind-dust');this.feedScene.add(this.feedRoot,new THREE.HemisphereLight(0xdddcd0,0x79705c,2));const sun=new THREE.DirectionalLight(0xf3e6ce,2.2);sun.position.copy(topPoint(-20,100,200));this.feedScene.add(sun);
-    this.camera=new THREE.PerspectiveCamera(24,30/6.8,.02,2500);this.camera.position.copy(this.sensorPoint);this.camera.lookAt(topPoint(26,base+2.2,0));
+    this.feedDust=this.feedRoot.getObjectByName('wind-dust');this.feedAmbient=new THREE.HemisphereLight(0xdddcd0,0x79705c,2);this.feedSun=new THREE.DirectionalLight(0xf3e6ce,2.2);this.feedSun.position.copy(topPoint(-20,100,200));this.feedScene.add(this.feedRoot,this.feedAmbient,this.feedSun);
+    this.camera=new THREE.PerspectiveCamera(24,30/6.8,.02,2500);this.camera.position.copy(this.sensorPoint);
+    const eye=sensorLocal();this.camera.lookAt(topPoint(eye.x,eye.y+Math.tan(5*Math.PI/180)*180,eye.z+180));
+    this.sky=new ExteriorSky();this.sky.mesh.position.copy(eye);this.root.add(this.sky.mesh);this.sky.feed.position.copy(this.sensorPoint);this.feedScene.add(this.sky.feed);
+
   }
   terrainGeometry(ix,iz){
     const size=800,step=ix===0&&iz===0?4:16,cx=26+ix*size,cz=140+iz*size;
@@ -131,8 +144,9 @@ export class SurfaceWorld {
     if(inRampPassage(p.x,p.z)&&(inRampCutout(p.x,p.z)||maxHeight<terrain-.001)){const y=levelY(1)+rampY(p.z);return y<=maxHeight+.001?y:0;}
     return terrain<=maxHeight+.001?terrain:0;
   }
+  setTimeOfDay(mode){this.sky.setMode(mode);this.lastFeed=-100;}
   beginCleaning(){this.cleaning=true;this.cleanTime=(this.cleanliness-.28)/.72*4;}
-  update(dt){if(this.cleaning){this.cleanTime+=dt;this.cleanliness=Math.min(1,.28+this.cleanTime/4*.72);if(this.cleanTime>=4)this.cleaning=false;}this.lensDirt.opacity=(1-this.cleanliness)*.67;this.dust.position.x=(this.dust.position.x+dt*.6)%8;this.feedDust.position.x=this.dust.position.x;}
+  update(dt){this.sky.update(dt);this.feedAmbient.intensity=THREE.MathUtils.lerp(.16,2,this.sky.daylight);this.feedSun.intensity=THREE.MathUtils.lerp(.12,2.2,this.sky.daylight);this.feedScene.fog.color.copy(this.sky.fogColor);if(this.cleaning){this.cleanTime+=dt;this.cleanliness=Math.min(1,.28+this.cleanTime/4*.72);if(this.cleanTime>=4)this.cleaning=false;}this.lensDirt.opacity=(1-this.cleanliness)*.67;this.dust.position.x=(this.dust.position.x+dt*.6)%8;this.feedDust.position.x=this.dust.position.x;}
   get cleaningPoint(){return this.sensorPoint.clone();}
   initFeed(renderer){
     this.raw=new THREE.WebGLRenderTarget(1280,290,{type:renderer.extensions.has('EXT_color_buffer_float')?THREE.HalfFloatType:THREE.UnsignedByteType});this.target=new THREE.WebGLRenderTarget(1280,290);

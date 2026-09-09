@@ -1,3 +1,9 @@
+# Current reference pass — 8 September 2026
+
+The latest implementation is documented in [reference-update.md](docs/reference-update.md). Read it before the historical notes below: bridges now use three bearings and 240° flights, the sensor is behind the hatch, and the first 30 seconds of the opening follow the new route. All major audio beats from 30 seconds onward are preserved. Day/night sky is shared by the actual exterior and the feed. Uploaded reference images are saved in `docs/references/`.
+
+The original contributor notes below are retained for context; their former single-bearing stair and front-of-hatch camera coordinates are superseded.
+
 # Current stairwell rebuild — 8 September 2026
 
 Every guard in the central shaft is now one swept concrete section — a plumb

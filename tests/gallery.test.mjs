@@ -4,7 +4,7 @@ import * as THREE from '../dist/vendor/three.module.js';
 import { SiloWorld } from '../dist/src/world.js';
 import { CharacterBody } from '../dist/src/physics.js';
 import { sign, SIGN_DEPTH } from '../dist/src/kit.js';
-import { SILO, TAU } from '../dist/src/data.js';
+import { SILO, TAU, STAIR_SWEEP, landingAngle } from '../dist/src/data.js';
 globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>({fillRect(){},strokeRect(){},fillText(){}})})};
 
 const world=new SiloWorld(new THREE.Scene());
@@ -41,7 +41,7 @@ test('every wing sign is bolted flat to the gallery wall, none left hanging in t
 test('the bridge plate sits on the parapet rather than in mid air',()=>{
   const bridge=signs.filter(s=>Math.hypot(s.position.x,s.position.z)<20);
   assert.equal(bridge.length,1);
-  const s=bridge[0];
+  const s=bridge[0].clone();s.position.applyAxisAngle(new THREE.Vector3(0,1,0),landingAngle(LEVEL));
   assert.ok(Math.abs(Math.abs(s.position.z)-(SILO.landingHalf+.09+SIGN_DEPTH/2))<1e-6,`bridge plate at z=${s.position.z}`);
   assert.ok(s.position.x>SILO.stairRadius&&s.position.x<SILO.wellRadius,'the plate must be over the parapet run');
 });
@@ -49,7 +49,7 @@ test('the bridge plate sits on the parapet rather than in mid air',()=>{
 test('no gallery pylon stands in a doorway approach',()=>{
   const c=world.colliders,doorHalf=2.05;
   assert.ok(c.columns.length>=24,'the gallery pylons are missing their collision');
-  for(const column of c.columns){
+  for(const column of c.columns.filter(c=>Math.hypot(c.cx,c.cz)>SILO.wellRadius+1)){
     const angle=Math.atan2(column.cz,column.cx),radius=Math.hypot(column.cx,column.cz);
     // Shortest angle to any of the six wing centres, as an arc distance.
     let nearest=Infinity;
@@ -86,12 +86,15 @@ function freeFalls(level){
   world.setLevel(level);
   const y=world.loaded.get(level).root.position.y,dt=1/120,found=[];
   const starts=[];
-  for(let x=8;x<=17.5;x+=1.2)starts.push(new THREE.Vector3(x,y,0));
-  for(let j=0;j<10;j++){const a=j*TAU/SILO.stairSteps,r=(SILO.stairColumn+SILO.stairRadius)/2;
+  for(let x=8;x<=17.5;x+=1.2)starts.push(new THREE.Vector3(x,0,0).applyAxisAngle(new THREE.Vector3(0,1,0),-landingAngle(level)).setY(y));
+  for(let j=0;j<10;j++){const a=landingAngle(level)+j*STAIR_SWEEP/SILO.stairSteps,r=(SILO.stairColumn+SILO.stairRadius)/2;
     starts.push(new THREE.Vector3(Math.cos(a)*r,y,Math.sin(a)*r));}
   for(const p of starts){
     const floor=world.colliders.floorAt(p.x,p.z,.3,p.y+.8);
     if(!Number.isFinite(floor)||Math.abs(floor-p.y)>.9)continue;
+    // A capsule initially straddling the outside of the terminal barrier is
+    // already in the void. Exercise every valid standing start instead.
+    if(world.colliders.contains(p.x,p.z,.3,floor+.01,floor+1.78))continue;
     for(let d=0;d<24;d++){
       const a=d*TAU/24,dir=new THREE.Vector3(Math.cos(a),0,Math.sin(a)).multiplyScalar(3.8);
       const b=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3});

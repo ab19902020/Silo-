@@ -67,7 +67,7 @@ export class SkeletalMotion{
     leg.error=foot.getWorldPosition(new THREE.Vector3()).distanceTo(target);leg.target.copy(target);
   }
   pose({phase=this.phase,weight=this.weight,run=this.run,slope=this.slope,turn=0,air=0,impact=0,rise=0,ground=null,dt=0,lock=false}={}){
-    this.neutral();const h=this.height,L=this.legLength,p=phase*Math.PI*2,stance=STANCE(run),reach=REACH(run)*SHORTEN(slope)*L*weight;
+    this.neutral();const h=this.height,L=this.legLength,p=phase*Math.PI*2,stance=STANCE(run),reach=REACH(run)*SHORTEN(slope)*L*weight*(1-air);
     const hips=this.bones.Hips;hips.position.y-=L*lerp(.012,.036,run)*weight;   // residual knee flex; the drop below does the rest
     // The pelvis rises over the planted leg and falls through double support,
     // twice a stride. Without it the body glides along on moving legs, which
@@ -97,7 +97,7 @@ export class SkeletalMotion{
     for(const [i,leg] of this.legs.entries()){
       const t=cycle(phase+i*.5),on=t<stance,u=on?t/stance:(t-stance)/(1-stance);
       let z=on?reach*(1-2*u):reach*(-1+2*ease(u));
-      const lift=on?0:Math.sin(Math.PI*u)**1.5*h*lerp(.044,.10,run)*weight;
+      const lift=on?0:Math.sin(Math.PI*u)**1.5*h*lerp(.044,.10,run)*weight*(1-air);
       // A foot held flat through the whole cycle is what makes a walk read as
       // a shuffle. Heel lands first with the toe up, the sole rolls flat, then
       // the heel lifts and the step leaves off the toe. Positive pitch is
@@ -112,7 +112,7 @@ export class SkeletalMotion{
       const ankle=leg.ankle.clone();ankle.z+=z;ankle.y+=lift+toe+slopeLift;
       ankle.x+=Math.sin(p+i*Math.PI)*turn*.012*h*weight;
       // Going up, the legs trail and tuck; coming down they reach for the floor.
-      if(air){ankle.y+=h*(.08+.06*Math.max(0,rise))*air;ankle.z-=h*(.035+.05*Math.max(0,rise)-.05*Math.max(0,-rise))*air;}
+      if(air){const ascent=ease((rise+.75)/1.5);ankle.y+=h*lerp(.018,.15,ascent)*air;ankle.z+=h*lerp(.040,-.08,ascent)*air+(i===0?1:-1)*h*.018*air*weight;}
       this.model.updateWorldMatrix(true,true);const goal=ankle.applyMatrix4(this.model.matrixWorld);
       const canLock=lock&&weight>.45&&air<.10;
       if(ground&&air<.10){
@@ -145,7 +145,7 @@ export class SkeletalMotion{
       const {goal,q,swing,i}=leg.goal;this.solve(leg,goal,q);
       // Arms oppose the advancing leg. Elbows remain soft and wrists follow,
       // while a small inward adjustment removes the old spread-arm silhouette.
-      this.rotate('UpperArm'+leg.side,(.52+.46*run)*swing*weight-.16*air-.24*impact);
+      this.rotate('UpperArm'+leg.side,(.52+.46*run)*swing*weight-(.24+.44*Math.max(0,rise))*air-.24*impact);
       // Tuck the upper arms in as the pace rises. Left wide with the elbows
       // closed for a run, the hands end up parked in front of the chest.
       this.rotate('UpperArm'+leg.side,(i===0?-1:1)*(.16+.07*run+.14*air),forward);
@@ -160,7 +160,8 @@ export class SkeletalMotion{
     this.footContacts=this.legs.map(l=>({side:l.side,planted:l.stance,position:l.target.clone(),error:l.error}));
   }
   sample(name,time){
-    const phase=time/MOTION_CLIPS[name];this.time=phase*3.2;const run=name==='Run'?1:0,walking=['Walk','Run','StairUp','StairDown','TurnLeft','TurnRight'].includes(name);
+    const duration=name==='Jump'?.96:MOTION_CLIPS[name],phase=time/duration;this.time=phase*3.2;const run=name==='Run'?1:0,walking=['Walk','Run','StairUp','StairDown','TurnLeft','TurnRight'].includes(name);
+    if(name==='Jump'){const u=clamp(phase,0,1);this.pose({phase:0,weight:0,air:Math.sin(Math.PI*u)**.7,rise:Math.cos(Math.PI*u),impact:u>.74?Math.sin((u-.74)/.26*Math.PI)*.34:0});return;}
     this.pose({phase,weight:walking?(name.startsWith('Turn')?.35:1):0,run,slope:name==='StairUp'?.5:name==='StairDown'?-.5:0,turn:name==='TurnLeft'?-1:name==='TurnRight'?1:0,air:name==='Fall'?1:0});
   }
   climb({cycle=0,grip=1}){
@@ -200,8 +201,8 @@ export class SkeletalMotion{
     // the slow-motion residents were: they move below full weight all the time.
     const stride=2*REACH(this.run)*SHORTEN(this.slope)*this.legLength*Math.max(.55,this.weight)/STANCE(this.run);
     if(active&&!teleported)this.phase=cycle(this.phase+distance/stride);
-    this.unsupported=grounded?0:this.unsupported+dt;this.air=THREE.MathUtils.damp(this.air,this.unsupported>.14?1:0,12,dt);
-    this.state=this.air>.3?'Fall':this.weight<.08?'Idle':this.slope>.16?'StairUp':this.slope<-.16?'StairDown':this.run>.5?'Run':Math.abs(turn)>1.5?'Turn':'Walk';
+    this.unsupported=grounded?0:this.unsupported+dt;this.air=THREE.MathUtils.damp(this.air,this.unsupported>.035?1:0,12,dt);
+    this.state=this.air>.3?(this.rise>.08?'Jump':'Fall'):this.landing>.18?'Land':this.weight<.08?'Idle':this.slope>.16?'StairUp':this.slope<-.16?'StairDown':this.run>.5?'Run':Math.abs(turn)>1.5?'Turn':'Walk';
     this.pose({turn,air:this.air,impact:this.landing,rise:this.rise,ground,dt,lock:active});
     this.stepCount+=this.legs.filter(l=>l.justLanded).length;
     this.lastPosition.copy(position);this.lastHeading=heading;

@@ -30,8 +30,8 @@ test('every numbered level has residents and historical cleaners are not duplica
 test('new character rigs remain finite, grounded and bounded through walk, work, sit and climb',()=>{
   const p=new THREE.Vector3();for(const def of RESIDENT_CAST){const a=createResident(def);let mesh;a.model.traverse(o=>{if(o.isSkinnedMesh)mesh=o;});const weights=mesh.geometry.attributes.skinWeight;
     for(let i=0;i<weights.count;i+=19)assert.ok(Math.abs(weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i)-1)<1e-5);
-    for(const pose of ['idle','work','sit','walk','climb'])for(let f=0;f<4;f++){
-      if(pose==='climb')a.motion.climb({cycle:f/4,grip:1});else if(pose==='walk')a.motion.sample('Walk',f/4);else poseResident(a,pose,f*.3);a.root.updateMatrixWorld(true);mesh.skeleton.update();let min=Infinity,max=-Infinity;
+    for(const pose of ['idle','work','sit','walk','jump','climb'])for(let f=0;f<4;f++){
+      if(pose==='climb')a.motion.climb({cycle:f/4,grip:1});else if(pose==='walk'||pose==='jump')a.motion.sample(pose==='jump'?'Jump':'Walk',f/4);else poseResident(a,pose,f*.3);a.root.updateMatrixWorld(true);mesh.skeleton.update();let min=Infinity,max=-Infinity;
       for(let i=0;i<mesh.geometry.attributes.position.count;i+=31){mesh.getVertexPosition(i,p);assert.ok(p.toArray().every(Number.isFinite));assert.ok(Math.abs(p.x)<1&&Math.abs(p.z)<1.15,`${def.id} ${pose}: distorted limbs`);min=Math.min(min,p.y);max=Math.max(max,p.y);}
       assert.ok(min>-.15&&max<def.height*1.2,`${def.id} ${pose}: body outside human bounds (${min}, ${max})`);
     }
@@ -57,7 +57,7 @@ test('the opening starts at an accessible book, plays once, releases the directo
   const camera=world.surface.camera,corner=new THREE.Vector3();
   for(let i=0;i<OPENING_DURATION*30;i++){
     opening.update(1/30);const s=cleaningSample(opening.time);phases.add(s.phase);assert.ok(s.position.distanceTo(previous)<.08,'Holston teleported');assert.ok(Math.abs(s.position.y-surfaceY(s.position.x,s.position.z))<1e-6,'Holston left the ground');previous=s.position;
-    if(opening.time>14&&opening.time<24){
+    if(opening.time>19.2&&opening.time<25.8){
       // The wipe has to be a wipe: the hand stays within one stretched arm of
       // the sensor it is cleaning, and the rag it is holding has to cross the
       // lens close enough to fill the whole frame — that momentary blackout on
@@ -78,13 +78,13 @@ test('the opening starts at an accessible book, plays once, releases the directo
   assert.ok(reach<.62,`the wiping hand strayed ${reach.toFixed(2)} m from the sensor`);
   assert.ok(covered,'the rag never covers the lens, so the cafeteria screen never blanks during the clean');
   assert.ok(blanks>12&&blanks<150,`the screen is blanked on ${blanks} of 240 frames; it should flick out on each pass, not stay dark`);
-  assert.deepEqual([...phases],['emerge','clean','turn','walk','helmet','crawl','rest']);assert.equal(opening.state,'read-book');assert.equal(opening.surface.cleanliness,1);assert.equal(opening.surface.storyActive,false);assert.ok(opening.helmet.visible);assert.equal(opening.openBook(),true);assert.equal(opening.state,'explore');
+  assert.deepEqual([...phases],['emerge','approach','clean','turn','walk','helmet','crawl','rest']);assert.equal(opening.state,'read-book');assert.equal(opening.surface.cleanliness,1);assert.equal(opening.surface.storyActive,false);assert.ok(opening.helmet.visible);assert.equal(opening.openBook(),true);assert.equal(opening.state,'explore');
   for(const a of opening.cleaners){assert.ok(a.root.visible&&a.feed.visible);assert.ok(a.root.position.distanceTo(a.feed.position)<1e-6);assert.ok(a.model.quaternion.angleTo(a.feed.children[0].quaternion)<1e-6);}
   assert.ok(opening.cleaners[0].root.position.distanceTo(opening.cleaners[1].root.position)<1);opening.reset();opening.update(0);assert.equal(opening.state,'find-book');assert.equal(opening.hasBook,false);assert.equal(opening.cleaners[0].root.visible,false);assert.equal(opening.book.visible,true);assert.equal(opening.helmet.visible,false);
 });
 
-test('standalone model export reloads with a genuine glTF skeleton and six working clips',async()=>{
-  const raw=residentGLB(RESIDENT_CAST.find(d=>d.id==='walker'));const {json,bin}=await readGLB(raw),gltf=await geometryGLTF(json,bin);assert.equal(gltf.animations.length,6);let mesh;gltf.scene.traverse(o=>{if(o.isSkinnedMesh)mesh=o;});assert.ok(mesh);for(const name of ['Hips','Head','HandL','HandR','ThighL','ThighR','ShinL','ShinR','FootL','FootR'])assert.ok(mesh.skeleton.bones.some(b=>b.name===name),`Missing articulated joint ${name}`);const mixer=new THREE.AnimationMixer(gltf.scene);mixer.clipAction(gltf.animations.find(c=>c.name==='Walk')).play();mixer.setTime(.4);gltf.scene.updateMatrixWorld(true);mesh.skeleton.update();const p=new THREE.Vector3();mesh.getVertexPosition(100,p);assert.ok(p.toArray().every(Number.isFinite));
+test('standalone model export reloads with a genuine glTF skeleton and seven working clips',async()=>{
+  const raw=residentGLB(RESIDENT_CAST.find(d=>d.id==='walker'));const {json,bin}=await readGLB(raw),gltf=await geometryGLTF(json,bin);assert.equal(gltf.animations.length,7);let mesh;gltf.scene.traverse(o=>{if(o.isSkinnedMesh)mesh=o;});assert.ok(mesh);for(const name of ['Hips','Head','HandL','HandR','ThighL','ThighR','ShinL','ShinR','FootL','FootR'])assert.ok(mesh.skeleton.bones.some(b=>b.name===name),`Missing articulated joint ${name}`);const mixer=new THREE.AnimationMixer(gltf.scene);mixer.clipAction(gltf.animations.find(c=>c.name==='Walk')).play();mixer.setTime(.4);gltf.scene.updateMatrixWorld(true);mesh.skeleton.update();const p=new THREE.Vector3();mesh.getVertexPosition(100,p);assert.ok(p.toArray().every(Number.isFinite));
   for(const clip of gltf.animations)for(const track of clip.tracks){const n=track.getValueSize();for(let i=0;i<n;i++)assert.ok(Math.abs(track.values[i]-track.values[track.values.length-n+i])<1e-5,`${clip.name} jumps at its loop boundary`);}
 });
 

@@ -26,11 +26,11 @@ export function residentGLB(definition,suit=false){
   nodes.push({name:mesh.name,mesh:0,skin:0});
   const inverses=append(new Float32Array(mesh.skeleton.boneInverses.flatMap(m=>m.toArray())),'MAT4',5126);
   const animations=[];
-  for(const [name,duration] of [['Idle',3.2],['Walk',1.05],['Run',.72],['Sit',3],['Work',3],['Climb',2]]){
+  for(const [name,duration] of [['Idle',3.2],['Walk',1.05],['Run',.72],['Jump',.96],['Sit',3],['Work',3],['Climb',2]]){
     const frames=Math.ceil(duration*20)+1,times=new Float32Array(frames),tracks=bones.map(()=>({q:[],p:[]}));
     for(let i=0;i<frames;i++){
       const t=duration*i/(frames-1);times[i]=t;
-      if(['Idle','Walk','Run'].includes(name))actor.motion.sample(name,t);
+      if(['Idle','Walk','Run','Jump'].includes(name))actor.motion.sample(name,t);
       else if(name==='Climb')actor.motion.climb({cycle:t/2,grip:1});
       else poseResident(actor,name==='Sit'?'sit':'work',duration/Math.PI*Math.sin(Math.PI*t/duration)**2);
       bones.forEach((b,j)=>{tracks[j].q.push(...b.quaternion.toArray());tracks[j].p.push(...b.position.toArray());});

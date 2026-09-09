@@ -1,3 +1,5 @@
+> Historical guard-profile notes. The later [reference update](reference-update.md) adds rotating bridge bearings, 240° flights, matching gallery parapets and clipped flat treads. Its topology and validation details supersede the single-bearing geometry described below.
+
 # Stairwell guards rebuilt to the reference — 8 September 2026
 
 Adam supplied three frames of the great stairwell — two renders of the shaft

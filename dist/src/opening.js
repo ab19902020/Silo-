@@ -2,7 +2,7 @@ import * as THREE from '../vendor/three.module.js';
 import { clone } from '../vendor/SkeletonUtils.js';
 import { RESIDENT_CAST } from './resident-data.js';
 import { createResident, poseResident } from './resident-model.js';
-import { topPoint, groundY, surfaceY } from './surface.js';
+import { topPoint, groundY, surfaceY, sensorLocal } from './surface.js';
 import { Kit, addSign } from './kit.js';
 
 export const OPENING_DURATION=90;
@@ -23,7 +23,7 @@ function groundNormal(x,z,e=.6){
 // her, gets the helmet off, goes down, and drags himself the last four metres.
 // The beats are cut against the opening piece; the note below the cast list
 // gives the timings that decision rests on.
-export const ALLISON_REST=Object.freeze([48,69.6]);
+export const ALLISON_REST=Object.freeze([-4,153.4]);
 // The scene is cut against assets/audio/silo-18-opening.mp3, which starts on
 // the frame the book is picked up. Measured off that file: spoken word runs to
 // about 0:54, the score is established by 0:57, its loudest bar is 1:19 and a
@@ -33,14 +33,19 @@ export const ALLISON_REST=Object.freeze([48,69.6]);
 // metres to her; and the swell is on him going still. Retime one and you have
 // to retime the other.
 export function cleaningSample(time){
-  const t=clamp(time,0,OPENING_DURATION),entry=at(26,100),lens=at(26.3,117.61),slope=at(44.6,73.9),beside=at(47.4,70.2);
-  // He starts eight metres down the incline, so the sensor watches him climb
-  // out of the hatch rather than appear beside it.
-  if(t<12)return {phase:'emerge',position:followGround(entry.lerp(lens,t/12)),heading:0,speed:1.49};
-  if(t<26)return {phase:'clean',position:lens,heading:0,progress:(t-12)/14,speed:0};
+  const t=clamp(time,0,OPENING_DURATION),entry=at(26,100),lip=at(26,110.2),corner=at(20.2,110.2),lens=at(20.2,100.39),slope=at(-.6,149.1),beside=at(-3.4,152.8);
+  // The sensor is behind the hatch. He emerges away from it, turns, and walks
+  // around the curb before approaching the lens. No backwards walking or
+  // scripted shortcut across the hole in the ramp.
+  if(t<8)return {phase:'emerge',position:followGround(entry.lerp(lip,t/8)),heading:0,speed:1.275};
+  if(t<9)return {phase:'approach',position:lip,heading:-Math.PI/2*ease(t-8),speed:0};
+  if(t<12.5)return {phase:'approach',position:followGround(lip.lerp(corner,(t-9)/3.5)),heading:-Math.PI/2,speed:1.657};
+  if(t<13.5)return {phase:'approach',position:corner,heading:-Math.PI/2-Math.PI/2*ease(t-12.5),speed:0};
+  if(t<18)return {phase:'approach',position:followGround(corner.lerp(lens,(t-13.5)/4.5)),heading:-Math.PI,speed:2.18};
+  if(t<27)return {phase:'clean',position:lens,heading:-Math.PI,progress:(t-18)/9,speed:0};
   const heading=Math.atan2(slope.x-lens.x,slope.z-lens.z);
-  if(t<30)return {phase:'turn',position:lens,heading:heading*ease((t-26)/4),speed:0};
-  if(t<60)return {phase:'walk',position:followGround(lens.lerp(slope,(t-30)/30)),heading,speed:1.60};
+  if(t<30)return {phase:'turn',position:lens,heading:-Math.PI+(heading+Math.PI)*ease((t-27)/3),speed:0};
+  if(t<60)return {phase:'walk',position:followGround(lens.lerp(slope,(t-30)/30)),heading,speed:1.77};
   if(t<68)return {phase:'helmet',position:slope,heading,progress:(t-60)/8,speed:0};
   const finalHeading=Math.atan2(beside.x-slope.x,beside.z-slope.z);
   if(t<80)return {phase:'crawl',position:followGround(slope.lerp(beside,(t-68)/12)),heading:finalHeading,progress:(t-68)/12,speed:.39};
@@ -60,7 +65,7 @@ function posedCleaner(actor,sample,time,dt){
   const m=actor.motion;
   if(actor.lastPhase!==sample.phase&&actor.lastPhase){actor.blendFrom=Object.fromEntries(Object.entries(m.bones).map(([n,b])=>[n,{q:b.quaternion.clone(),p:b.position.clone()}]));actor.blendTime=0;}
   actor.lastPhase=sample.phase;actor.root.position.copy(sample.position);actor.root.rotation.y=sample.heading;actor.model.rotation.set(0,0,0);actor.model.position.set(0,0,0);
-  const walking=sample.phase==='emerge'||sample.phase==='walk';
+  const walking=sample.phase==='emerge'||sample.phase==='approach'||sample.phase==='walk';
   poseResident(actor,walking?'walk':'idle',time,dt,sample.speed);
   if(sample.phase==='clean'){
     const envelope=Math.min(ease(sample.progress/.1),ease((1-sample.progress)/.1));
@@ -102,7 +107,7 @@ function posedCleaner(actor,sample,time,dt){
     // The reach is deliberately at the limit of a 1.78 m man's arm — the lens
     // sits half a metre above his shoulder and he has to stretch for it.
     const stroke=time*1.35,across=Math.sin(stroke),press=Math.max(0,1-Math.abs(across)*2.4);
-    const target=topPoint(26+across*.19,groundY(26,119)+1.79+press*.05,117.855-(1-press)*.16),goal=wrist.clone().lerp(target,envelope),delta=goal.clone().sub(shoulder),distance=clamp(delta.length(),.04,a+b-.001),direction=delta.normalize();
+    const eye=sensorLocal(),target=topPoint(eye.x-across*.19,eye.y-.06+press*.05,eye.z+.195+(1-press)*.16),goal=wrist.clone().lerp(target,envelope),delta=goal.clone().sub(shoulder),distance=clamp(delta.length(),.04,a+b-.001),direction=delta.normalize();
     const bend=new THREE.Vector3(-1,-.5,0).applyQuaternion(actor.model.getWorldQuaternion(new THREE.Quaternion()));bend.addScaledVector(direction,-bend.dot(direction)).normalize();
     const along=(a*a-b*b+distance*distance)/(2*distance),lift=Math.sqrt(Math.max(0,a*a-along*along));
     m.aim(upper,fore,shoulder.clone().addScaledVector(direction,along).addScaledVector(bend,lift));m.aim(fore,hand,shoulder.clone().addScaledVector(direction,distance));m.setWorldQuaternion(hand,actor.model.getWorldQuaternion(new THREE.Quaternion()));
@@ -136,8 +141,8 @@ export class CafeteriaOpening{
     const [holston,allison]=this.cleaners,sample=cleaningSample(this.time);
     posedCleaner(holston,sample,this.time,dt);holston.root.visible=this.hasBook;
     posedCleaner(allison,{phase:'rest',position:at(...ALLISON_REST),heading:.36,progress:1,speed:0},0,0);allison.cloth.visible=false;
-    if(this.watching||this.directoryReady)this.surface.cleanliness=this.time<12?.28:this.time<26?lerp(.28,1,(this.time-12)/14):1;
-    this.helmet.visible=this.time>64&&this.hasBook;this.helmet.position.copy(at(45.2,74.4)).add(new THREE.Vector3(0,.18,0));this.helmet.rotation.set(.4,.8,1.3);this.helmetFeed.visible=this.helmet.visible;this.helmetFeed.position.copy(this.helmet.position);this.helmetFeed.quaternion.copy(this.helmet.quaternion);
+    if(this.watching||this.directoryReady)this.surface.cleanliness=this.time<18?.28:this.time<27?lerp(.28,1,(this.time-18)/9):1;
+    this.helmet.visible=this.time>64&&this.hasBook;this.helmet.position.copy(at(0,148.6)).add(new THREE.Vector3(0,.18,0));this.helmet.rotation.set(.4,.8,1.3);this.helmetFeed.visible=this.helmet.visible;this.helmetFeed.position.copy(this.helmet.position);this.helmetFeed.quaternion.copy(this.helmet.quaternion);
     for(const actor of this.cleaners){
       actor.feed.visible=actor.root.visible;actor.feed.position.copy(actor.root.position);actor.feed.quaternion.copy(actor.root.quaternion);
       const feedModel=actor.feed.children[0];feedModel.position.copy(actor.model.position);feedModel.quaternion.copy(actor.model.quaternion);

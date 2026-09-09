@@ -122,7 +122,10 @@ export class Population{
         if(speed<.035&&desired.length()>.2){r.blocked=(r.blocked||0)+step;if(r.blocked>2){r.wait=1.5;r.blocked=0;if(r.path){const candidates=r.path.map((p,i)=>({p,i})).filter(v=>v.p.distanceTo(r.position)>.6&&clearSegment(this.world,r.position,v.p));if(candidates.length)r.goal=candidates[(r.seed+r.goal)%candidates.length].i;}else r.sign*=-1;}}
         else r.blocked=0;
       }
+      if(a.pose!==pose){a.poseFrom=Object.fromEntries(Object.entries(a.motion.bones).map(([n,b])=>[n,{q:b.quaternion.clone(),p:b.position.clone()}]));a.pose=pose;a.poseMix=0;}
+      a.ground=(x,z)=>this.world.colliders.floorAt(x,z,.08,a.root.position.y+.3);
       poseResident(a,pose,this.time+r.seed*.37,step,speed);
+      if(a.poseFrom){a.poseMix=Math.min(1,a.poseMix+step/.28);const t=a.poseMix*a.poseMix*(3-2*a.poseMix);for(const [n,b] of Object.entries(a.motion.bones)){const old=a.poseFrom[n];b.quaternion.copy(old.q.clone().slerp(b.quaternion,t));b.position.copy(old.p.clone().lerp(b.position,t));}if(t>=1)a.poseFrom=null;a.model.updateWorldMatrix(true,true);}
       if(r.definition&&dist<5)this.world.residentInteractions.push({position:a.root.position.clone().add(new THREE.Vector3(0,1.25,0)),label:`${r.definition.name} · ${r.definition.role}`,action:`resident-${r.id}`});
     }
   }

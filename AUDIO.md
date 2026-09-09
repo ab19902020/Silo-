@@ -1,3 +1,5 @@
+> Reference update: audio files and playback behavior are unchanged. The cleaner now emerges for 0–8 s, circles the ramp for 8–18 s, cleans for 18–27 s and turns for 27–30 s. The hill walk, helmet removal, crawl and rest retain their 30/60/68/80/90 s boundaries. See [the current route notes](docs/reference-update.md).
+
 # Two music files now, and the opening is cut to one of them — 8 September 2026
 
 `dist/assets/audio/` holds two tracks and they have different jobs.

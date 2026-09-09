@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import * as THREE from '../dist/vendor/three.module.js';
 import { GLTFLoader } from '../dist/vendor/GLTFLoader.js';
 import { SiloWorld } from '../dist/src/world.js';
-import { SILO, LEVELS, LANDMARKS, SPECIALS, TAU, levelY, roomType, roomsForLevel } from '../dist/src/data.js';
+import { SILO, LEVELS, LANDMARKS, SPECIALS, TAU, levelY, roomType, roomsForLevel, STAIR_SWEEP, landingAngle, landingPoint } from '../dist/src/data.js';
 import { CharacterBody } from '../dist/src/physics.js';
 
 // Only a text-canvas adapter: no browser, DOM rendering or WebGL QA is implied.
@@ -34,7 +34,7 @@ test('all structural instances and generated rooms have finite geometry',()=>{
 test('all 144 gallery bridges have continuous support and no wall across the path',()=>{
   for(let n=1;n<=144;n++){
     world.activeLevel=n;world.special=null;world.rebuildCollision();const y=levelY(n);
-    for(let x=SILO.stairColumn+.4;x<24;x+=.17){assert.ok(world.colliders.floorAt(x,0,.24,y+.2)>=y-.02,`No floor on level ${n}, x ${x}`);const p=new THREE.Vector3(x,y,0);world.colliders.resolve(p,.24,y+.01,y+1.7,.3);assert.ok(Math.hypot(p.x-x,p.z)<.04,`Blocked landing on level ${n}, x ${x}`);}
+    for(let r=SILO.stairColumn+.4;r<24;r+=.17){const {cx:x,cz:z}=landingPoint(n,r);assert.ok(world.colliders.floorAt(x,z,.24,y+.2)>=y-.02,`No floor on level ${n}, r ${r}`);const p=new THREE.Vector3(x,y,z);world.colliders.resolve(p,.24,y+.01,y+1.7,.3);assert.ok(Math.hypot(p.x-x,p.z-z)<.04,`Blocked landing on level ${n}, r ${r}`);}
   }
 });
 
@@ -44,7 +44,7 @@ test('stair surface is continuous in both directions across 143 level intervals'
     world.activeLevel=n;world.special=null;world.rebuildCollision();const base=levelY(n);
     let previous=base;
     for(let i=0;i<432;i++){
-      const a=(i+.5)*TAU/432,x=Math.cos(a)*r,z=Math.sin(a)*r;
+      const a=landingAngle(n)+(i+.5)*STAIR_SWEEP/432,x=Math.cos(a)*r,z=Math.sin(a)*r;
       const floor=world.colliders.floorAt(x,z,.23,previous+.31);assert.ok(floor>=previous-.02&&floor<=previous+.31,`Stair gap ${n}:${i} (${floor-previous})`);previous=floor;
       const p=new THREE.Vector3(x,floor,z);world.colliders.resolve(p,.23,floor+.005,floor+1.7,.3);assert.ok(Math.hypot(p.x-x,p.z-z)<.045,`Stair obstructed ${n}:${i}`);
     }assert.ok(Math.abs(previous-base-SILO.levelHeight)<.02,`Stair ${n} never reached the next level`);
@@ -52,14 +52,14 @@ test('stair surface is continuous in both directions across 143 level intervals'
 });
 
 test('a walking body can ascend and descend a full stair flight',()=>{
-  const n=62,base=levelY(n),r=5.15,dt=1/120;world.setLevel(n);const c=world.colliders;
+  for(const n of [61,62,63]){const base=levelY(n),r=5.15,dt=1/120,offset=landingAngle(n);world.setLevel(n);const c=world.colliders;
   for(const sign of [1,-1]){
-    const b=new CharacterBody({radius:.28,stepHeight:.3});let a=sign>0?.01:TAU-.01;
-    const startY=c.floorAt(Math.cos(a)*r,Math.sin(a)*r,.28,base+a/TAU*10+.3);b.teleport(Math.cos(a)*r,startY,Math.sin(a)*r);
-    const travel=TAU-.05,steps=Math.ceil(travel*r/2.4/dt);
+    const b=new CharacterBody({radius:.28,stepHeight:.3});let a=offset+(sign>0?.01:STAIR_SWEEP-.01);
+    const startY=c.floorAt(Math.cos(a)*r,Math.sin(a)*r,.28,base+(a-offset)/STAIR_SWEEP*10+.3);b.teleport(Math.cos(a)*r,startY,Math.sin(a)*r);
+    const travel=STAIR_SWEEP-.05,steps=Math.ceil(travel*r/2.4/dt);
     for(let i=0;i<steps;i++){const current=Math.atan2(b.position.z,b.position.x),radial=new THREE.Vector3(b.position.x,0,b.position.z).normalize();const desired=new THREE.Vector3(-Math.sin(current)*sign,0,Math.cos(current)*sign).multiplyScalar(2.4);desired.addScaledVector(radial,(r-Math.hypot(b.position.x,b.position.z))*4);b.step(dt,desired,c);}
     assert.ok(Math.abs(b.position.y-(sign>0?base+10:base))<.65,`Walking ${sign>0?'up':'down'} ended at ${b.position.y-base}m`);
-  }
+  }}
 });
 
 test('doors collide when closed and all six rotated openings admit a player',()=>{
