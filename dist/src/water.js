@@ -50,20 +50,20 @@ export class VoidWater{
           vec2 offset=waterPoint.xz-ring.xy;
           float dist=length(offset);
           float front=age*1.55;                       // how far the crest has travelled
-          float band=exp(-pow((dist-front)*2.1,2.));  // only near the crest
+          float band=exp(-pow((dist-front)*1.35,2.));  // the crest, and the trough behind it
           float fade=ring.w*exp(-age*1.35)*band;
           if(fade<=0.0005)continue;
           float phase=(dist-front)*13.5;
-          wave+=normalize(offset+1e-5)*sin(phase)*fade*.085;
-          foam+=fade*.55;
+          wave+=normalize(offset+1e-5)*sin(phase)*fade*.135;
+          foam+=fade*.85;
         }
         // The churn around the player while they are actually moving through it.
         if(waterWade.z>0.){
           vec2 offset=waterPoint.xz-waterWade.xy;
           float dist=length(offset);
           float near=smoothstep(1.9,0.,dist)*waterWade.z;
-          wave+=normalize(offset+1e-5)*sin(dist*22.-waterTime*11.)*near*.055;
-          foam+=near*.5;
+          wave+=normalize(offset+1e-5)*sin(dist*22.-waterTime*11.)*near*.085;
+          foam+=near*.65;
         }
         waterFoamValue=clamp(foam,0.,1.);
         normal=normalize(mat3(viewMatrix)*vec3(-wave.x,1.,-wave.y));
@@ -80,11 +80,11 @@ export class VoidWater{
         // Disturbed water goes pale and loses its reflection: broken surface
         // scatters instead of mirroring. Without this the rings deform the
         // reflection but the water still reads as glass.
-        outgoingLight=mix(outgoingLight,vec3(.62,.68,.66),waterFoamValue*.5);
+        outgoingLight=mix(outgoingLight,vec3(.64,.70,.68),waterFoamValue*.6);
         #include <opaque_fragment>
       `);
     };
-    material.customProgramCacheKey=()=> 'silo-continuous-reflective-water-v2';this.material=mesh.material=material;
+    material.customProgramCacheKey=()=> 'silo-continuous-reflective-water-v3';this.material=mesh.material=material;
   }
   // A foot going in. World coordinates; strength is roughly how hard.
   ripple(x,z,strength=1){
