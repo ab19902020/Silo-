@@ -25,7 +25,7 @@
   <div id="fade" aria-hidden="true"></div>
   <aside id="chapterHud" hidden aria-label="Opening chapter">
     <span class="eyebrow">CHAPTER ONE · THE CLEANING</span><strong id="chapterTitle">A book on the table</strong><p id="chapterObjective">Find the directory book on the table ahead.</p>
-    <div class="chapter-actions"><button id="openBookButton" hidden>Open your book</button></div>
+    <div class="chapter-actions"><button id="openBookButton" hidden>Open your book</button><button id="satchelButton" hidden>What you are carrying</button></div>
   </aside>
 
   <div id="cinemaControls"><button id="focusScreenButton" hidden>Back to cafeteria</button><button id="skipOpening" hidden>Skip</button></div>
@@ -33,7 +33,7 @@
 
   <dialog id="welcome" class="welcome">
     <div class="welcome-top"><span class="eyebrow">AN UNDERGROUND WORLD</span><span class="edition">CHAPTER ONE · THE CLEANING</span></div>
-    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>A book waits on a cafeteria table.<br>Today, Holston is going outside.</p><div class="welcome-actions"><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="welcomeDirectory" class="secondary">Free exploration <span>↗</span></button><button id="replayOpening" class="secondary">Replay cafeteria opening</button></div><div class="welcome-meta"><span>20 PLAYABLE CHARACTERS</span><span>TOUCH & KEYBOARD</span><span>A LIVING SILO</span></div></div>
+    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>A book waits on a cafeteria table.<br>Today, Holston is going outside.</p><div class="welcome-actions"><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="exploreButton" class="secondary">Explore the silo <span>↗</span></button><button id="welcomeDirectory" class="secondary">Open the directory</button><button id="replayOpening" class="secondary">Replay cafeteria opening</button></div><p id="modeNote" class="help">New game runs the story: the cleaning, then the relics, then the way out. Explore opens every door and every character.</p><div class="welcome-meta"><span>20 PLAYABLE CHARACTERS</span><span>TOUCH & KEYBOARD</span><span>A LIVING SILO</span></div></div>
     <footer><span>A reconstruction of the television world.</span><button id="aboutButton">Research & accuracy</button></footer>
   </dialog>
 
@@ -57,6 +57,14 @@
     <div class="panel-head"><div><span class="eyebrow accent">A FORBIDDEN RELIC</span><h2>The hard drive</h2></div><button class="close" data-close aria-label="Close relic">×</button></div>
     <div class="about-content"><img src="./assets/characters/relic.jpg" class="relic-image" alt="The supplied hard-drive relic"><p>The hard-drive relic rests on the repair bench in Walker’s workshop. Its secrets connect George’s discoveries with Juliette’s search for the truth.</p><p class="help">This is the object you supplied, preserved as a three-dimensional prop.</p></div>
   </dialog>
+
+  <dialog id="satchel" class="panel compact">
+    <div class="panel-head"><div><span class="eyebrow accent" id="satchelCount">NOTHING YET</span><h2>What you are carrying</h2></div><button class="close" data-close aria-label="Close">×</button></div>
+    <div class="about-content" id="satchelList"></div>
+  </dialog>
+
+  <div id="crosshair" hidden aria-hidden="true"></div>
+  <button id="fireButton" hidden>FIRE</button>
 
   <dialog id="settings" class="panel compact">
     <div class="panel-head"><div><span class="eyebrow accent">EXPLORATION</span><h2>Settings</h2></div><button class="close" data-close aria-label="Close settings">×</button></div>

@@ -32,7 +32,7 @@ import { VOID, voidLedgeGaps, tunnelPoint } from './void-access.js';
 
 export class SiloWorld {
   constructor(scene) {
-    this.scene=scene;this.m=createMaterials();this.assets={};this.loaded=new Map();this.activeLevel=1;this.doors=[];this.interactions=[];this.colliders=new ColliderSet();this.animated=[];this.screens=[];this.special=null;this.quality='balanced';
+    this.scene=scene;this.m=createMaterials();this.assets={};this.loaded=new Map();this.activeLevel=1;this.doors=[];this.interactions=[];this.colliders=new ColliderSet();this.animated=[];this.screens=[];this.special=null;this.quality='balanced';this.story=null;
     scene.background=new THREE.Color(0x121c19);scene.fog=new THREE.FogExp2(0x18221e,.0065);
     this.ambient=new THREE.HemisphereLight(0xb5c4c0,0x36332b,.42);scene.add(this.ambient);
     this.sun=new THREE.DirectionalLight(0xd7d9bc,2);this.sun.position.set(15,levelY(1)+20,-8);this.sun.target.position.set(0,levelY(1),0);scene.add(this.sun,this.sun.target);
@@ -293,7 +293,9 @@ export class SiloWorld {
     return {level:Number(id),position:this.spawn(Number(id)),yaw:Math.PI/2-landingAngle(Number(id))};
   }
   nearestInteraction(position,direction){
-    const pool=this.special?(this.special==='generator'?this.generator:this.underground).interactions.map(v=>({...v,position:new THREE.Vector3(...v.position)})):[...this.doors.map(d=>({position:d.position,label:`${d.open?'Close':'Open'} ${TYPE_NAMES[d.type].toLowerCase()} door`,door:d})),...this.interactions];
+    const pool=this.special?(this.special==='generator'?this.generator:this.underground).interactions.map(v=>({...v,position:new THREE.Vector3(...v.position)})):[...this.doors.map(d=>{const seal=this.story?.sealed(d.level,d.wing,d.type);
+      return seal?{position:d.position,label:`${seal.label} — sealed`,sealed:seal}
+                 :{position:d.position,label:`${d.open?'Close':'Open'} ${TYPE_NAMES[d.type].toLowerCase()} door`,door:d};}),...this.interactions];
     if(this.actorInteractions)pool.push(...this.actorInteractions);
     if(this.residentInteractions)pool.push(...this.residentInteractions);
     if(this.storyInteractions)pool.push(...this.storyInteractions);

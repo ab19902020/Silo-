@@ -4,18 +4,21 @@ import { CharacterBody } from './physics.js';
 import { LEVELS, LANDMARKS, SPECIALS, SOURCES, SILO, TAU, TYPE_NAMES, levelY, roomType, roomsForLevel, zoneFor } from './data.js';
 import { SiloAudio } from './audio.js';
 import { Rendering, makeEnvironment } from './rendering.js';
-import { topLocal, topPoint } from './surface.js';
+import { topLocal, topPoint, groundY } from './surface.js';
 import { CharacterCast, PLAYABLE_CHARACTERS } from './characters.js';
 import { LadderClimb } from './climbing.js';
 import { Population } from './population.js';
 import { CafeteriaOpening, CAFETERIA_START } from './opening.js';
 import { conversationFor, ALGORITHM } from './conversations.js';
 import { RESIDENT_CAST } from './resident-data.js';
+import { Story, COLLECTABLES, RELICS } from './story.js';
+import { StoryProps, Drone } from './relics.js';
 
-const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation');
-const dialogs=[welcome,directory,settings,about,characters,relic,conversation],coarse=matchMedia('(pointer:coarse)').matches;
+const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel');
+const dialogs=[welcome,directory,settings,about,characters,relic,conversation,satchel],coarse=matchMedia('(pointer:coarse)').matches;
 let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
 let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null;
+let story=null,props=null,drone=null,wasOutside=false,lastChapter=null;
 let yaw=Math.PI/2,pitch=0,lookSensitivity=1,running=false,torchOn=false,quality='balanced';
 const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3}),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,2300),audio=new SiloAudio();
 const keys=new Set(),stick={x:0,y:0},desired=new THREE.Vector3(),direction=new THREE.Vector3(),clock=new THREE.Clock();
@@ -23,6 +26,8 @@ camera.rotation.order='YXZ';
 const torch=new THREE.SpotLight(0xffe7b4,65,40,.5,.7,1.6);torch.visible=false;scene.add(torch,torch.target);
 const saved=(()=>{try{return JSON.parse(localStorage.getItem('silo18-settings')||'{}');}catch{return {};}})();
 const openingComplete=(()=>{try{return localStorage.getItem('silo18-opening-complete')==='1';}catch{return false;}})();
+const savedStory=(()=>{try{return JSON.parse(localStorage.getItem('silo18-story')||'null');}catch{return null;}})();
+function saveStory(){try{localStorage.setItem('silo18-story',JSON.stringify(story.save()));}catch{}}
 const paused=()=>dialogs.some(d=>d.open)||!started||traveling;
 function notify(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4600);}
 function revealControls(){touchUntil=performance.now()+3500;}
@@ -70,6 +75,49 @@ function syncMusicGate(){
   if(opening.state==='find-book'){audio.holdMusic();audio.stopMusic?.();audio.stopOpeningTheme?.();}
   else audio.releaseMusic?.();
 }
+// The objective panel belongs to the story once the opening has handed over.
+function showObjective(title,text,linger=7000){
+  $('chapterTitle').textContent=title;$('chapterObjective').textContent=text;
+  chapterUntil=performance.now()+linger;$('chapterHud').hidden=false;
+}
+function syncStoryHud(force=false){
+  if(!story)return;
+  $('satchelButton').hidden=!story.story||story.held.size===0;
+  document.body.classList.toggle('armed',!!(story.armed&&drone?.active));
+  $('fireButton').hidden=!(story.armed&&drone?.active&&coarse);
+  $('crosshair').hidden=!(story.armed&&drone?.active);
+  if(!story.story)return;
+  if(force||lastChapter!==story.chapter){
+    lastChapter=story.chapter;
+    showObjective(story.chapterInfo.title,story.objective,force?7000:9000);
+    saveStory();
+  }
+}
+function renderSatchel(){
+  const held=COLLECTABLES.filter(c=>story.has(c.id));
+  $('satchelCount').textContent=held.length?`${held.length} OF ${COLLECTABLES.length} · ${RELICS.filter(r=>story.has(r.id)).length} RELICS`:'NOTHING YET';
+  const list=$('satchelList');list.replaceChildren();
+  for(const item of COLLECTABLES){
+    const has=story.has(item.id),row=document.createElement('div');row.className='satchel-item';
+    const tick=document.createElement('span');tick.className='tick';tick.textContent=has?'✓':'·';
+    const copy=document.createElement('div');
+    const h=document.createElement('h3');h.textContent=has?item.name:'—';
+    const p=document.createElement('p');p.textContent=has?item.blurb:'Not found yet.';
+    copy.append(h,p);
+    if(has){const src=document.createElement('p');src.className='src';src.textContent=item.source;copy.append(src);}
+    row.append(tick,copy);list.append(row);
+  }
+}
+function takeRelic(id){
+  const item=story.take(id);
+  if(!item)return;
+  audio.click();saveStory();
+  showObjective(item.name,item.blurb,9000);
+  notify(story.story?story.objective:`${item.name} — in your satchel.`);
+  if(id==='suit')notify('The suit is on. The airlock will let you through now.');
+  if(id==='shotgun')notify('Loaded. Whatever comes over the crest, do not let it get close.');
+  syncStoryHud(true);
+}
 function openingChanged(state){
   syncMusicGate();
   const watching=state==='watch',reading=state==='read-book';chapterUntil=performance.now()+(state==='find-book'?6500:reading?5000:0);if(watching&&lastOpeningState!=='watch'){opening.focus=true;hudOpen=false;document.body.classList.remove('hud-open');keys.clear();stick.x=stick.y=0;jumpQueued=false;}lastOpeningState=state;
@@ -81,6 +129,7 @@ function openingChanged(state){
   if(reading||state==='explore')try{localStorage.setItem('silo18-opening-complete','1');}catch{}
 }
 function requestDirectory(){
+  if(story?.story&&opening?.directoryReady)story.beginSearch();
   if(!opening?.directoryReady){notify(opening?.watching?'Holston is outside. The book opens after the cleaning.':'Find the book on the cafeteria table first.');return;}
   opening.openBook();renderDirectory();openDialog(directory);
 }
@@ -117,7 +166,54 @@ async function travel(id){
   $('fade').classList.remove('show');traveling=false;syncPause();updateHUD();
   const name=SPECIALS.find(s=>s.id===id)?.name||(typeof id==='string'&&id.startsWith('room:')?`${LEVELS[dest.level-1].name} · Wing ${String.fromCharCode(65+Number(id.split(':')[2]))}`:LEVELS[dest.level-1].name);notify(name);canvas.focus();
 }
-function begin(){if(!ready)return;started=true;welcome.close();syncPause();audio.start();syncMusicGate();canvas.focus();openingChanged(opening.state);notify(opening.state==='find-book'?'There’s a book on the table ahead. Approach it and press Use / E.':coarse?'Left stick to walk. Drag on the right to look.':'WASD to move. Drag to look, or click to capture the mouse.');}
+// Stepping out of the airlock. Without a suit you are stopped at the lip; with
+// one, something launches from over the crest and comes to look at you.
+function stepOutside(eye){
+  const outside=world.outside;
+  if(outside&&!wasOutside){
+    const verdict=story.steppedOutside();
+    if(verdict?.stop){
+      notify(verdict.message);
+      const back=world.destination('airlock');body.teleport(back.position.x,back.position.y,back.position.z);
+      wasOutside=false;return;
+    }
+    if(verdict?.drone){
+      const from=topPoint(60,groundY(60,40)+16,40);
+      drone.launch(from);audio.travel?.();
+      syncStoryHud(true);
+      notify(story.armed?'Something has come over the crest. Put it down.':'Something has come over the crest, and you have nothing to answer it with.');
+    }
+  }
+  if(!outside&&drone.active&&story.chapter==='drone'){drone.reset();story.killedByDrone();syncStoryHud(true);}
+  wasOutside=outside;
+}
+function droneKill(){
+  drone.reset();story.killedByDrone();saveStory();
+  const back=world.destination('airlock');
+  world.setLevel(back.level);body.teleport(back.position.x,back.position.y,back.position.z);yaw=back.yaw;
+  syncStoryHud(true);
+  notify('It fired. You woke on the airlock floor with the taste of blood in your mouth — go back out armed.');
+}
+function fire(){
+  if(!story?.armed||!drone?.active||paused())return;
+  audio.click();
+  const eye=body.position.clone();eye.y+=body.eyeHeight;camera.getWorldDirection(direction);
+  const floor=world.colliders.floorAt(drone.group.position.x,drone.group.position.z,.4,drone.group.position.y)||body.position.y;
+  if(drone.shoot(eye,direction.clone(),floor))notify('Hit. It is coming down.');
+  else notify('You are firing at the sky. Let it come closer.');
+}
+function begin(mode){
+  if(!ready)return;
+  if(mode){
+    story=new Story(mode);world.story=story;lastChapter=null;drone?.reset();
+    if(mode==='story'&&opening.state!=='find-book')opening.reset();
+    if(mode==='explore'&&opening.state==='find-book')opening.finish();
+    saveStory();
+  }
+  started=true;welcome.close();syncPause();audio.start();syncMusicGate();canvas.focus();openingChanged(opening.state);syncStoryHud(true);
+  notify(story.story&&opening.state==='find-book'?'There’s a book on the table ahead. Approach it and press Use / E.'
+    :coarse?'Left stick to walk. Drag on the right to look.':'WASD to move. Drag to look, or click to capture the mouse.');
+}
 function updateHUD(){
   if(!world)return;
   const n=world.activeLevel,data=LEVELS[n-1],r=Math.hypot(body.position.x,body.position.z),wing=Math.round(Math.atan2(body.position.z,body.position.x)/TAU*6+6)%6;
@@ -162,7 +258,9 @@ function use(){
     else notify('Move closer to the ladder.');
     return;
   }
-  if(interaction.action==='hard-drive'){audio.click();openDialog(relic);return;}
+  if(interaction.action==='hard-drive'){audio.click();if(story?.story&&!story.has('harddrive'))takeRelic('harddrive');else openDialog(relic);return;}
+  if(interaction.action?.startsWith('relic:')){takeRelic(interaction.action.slice(6));return;}
+  if(interaction.sealed){audio.click();notify(interaction.sealed.reason);return;}
   if(interaction.action==='clean-camera'){audio.click();world.surface.beginCleaning();notify('Cleaning the camera lens. The cafeteria feed clears as you wipe.');return;}
   if(interaction.action?.startsWith('airlock-')){audio.airlock();world.cycleAirlock(interaction.action.slice(8));return;}
   if(interaction.action==='breach'){
@@ -176,10 +274,12 @@ function use(){
 }
 function toggleTorch(){torchOn=!torchOn;audio.torch(torchOn);torch.visible=torchOn;$('torchButton').classList.toggle('active',torchOn);$('torchButton').setAttribute('aria-pressed',String(torchOn));}
 
-for(const d of dialogs){d.addEventListener('cancel',e=>{e.preventDefault();if(d===welcome&&ready){if(started){d.close();syncPause();}else begin();}else closeDialog(d);});d.querySelector('[data-close]')?.addEventListener('click',()=>closeDialog(d));}
+for(const d of dialogs){d.addEventListener('cancel',e=>{e.preventDefault();if(d===welcome&&ready){if(started){d.close();syncPause();}else begin(story?.mode||'story');}else closeDialog(d);});d.querySelector('[data-close]')?.addEventListener('click',()=>closeDialog(d));}
 $('controlsButton').addEventListener('click',toggleControls);$('leaveConversation').addEventListener('click',()=>closeDialog(conversation));
 addEventListener('pointerdown',revealControls,{passive:true});
-$('enterButton').addEventListener('click',begin);$('home').addEventListener('click',()=>{if(started){$('enterButton').textContent='Resume exploration';}openDialog(welcome);});
+$('enterButton').addEventListener('click',()=>begin('story'));
+$('exploreButton').addEventListener('click',()=>begin('explore'));
+$('satchelButton').addEventListener('click',()=>{renderSatchel();openDialog(satchel);});$('home').addEventListener('click',()=>{if(started){$('enterButton').textContent='Resume exploration';}openDialog(welcome);});
 $('directoryButton').addEventListener('click',requestDirectory);
 $('welcomeDirectory').addEventListener('click',()=>{if(!ready)return;opening.finish();opening.openBook();renderDirectory();openDialog(directory);});
 $('replayOpening').addEventListener('click',replayOpening);
@@ -189,6 +289,7 @@ $('characterButton').addEventListener('click',()=>{renderCharacters();openDialog
 $('settingsButton').addEventListener('click',()=>openDialog(settings));$('aboutButton').addEventListener('click',()=>openDialog(about));
 for(const button of document.querySelectorAll('[data-travel]'))button.addEventListener('click',()=>travel(button.dataset.travel));
 $('landmarksTab').addEventListener('click',()=>setDirectoryMode(false));$('allLevelsTab').addEventListener('click',()=>setDirectoryMode(true));$('search').addEventListener('input',renderDirectory);
+$('fireButton').addEventListener('click',fire);
 $('interaction').addEventListener('click',use);$('touchUse').addEventListener('click',use);$('jumpButton').addEventListener('click',()=>{jumpQueued=true;});$('runButton').addEventListener('click',()=>{running=!running;$('runButton').classList.toggle('active',running);});$('torchButton').addEventListener('click',toggleTorch);
 $('fullscreen').addEventListener('click',async()=>{
   try{
@@ -226,7 +327,7 @@ addEventListener('keydown',e=>{
   if(opening.focus&&e.code==='Space'){e.preventDefault();toggleControls();return;}
   revealControls();
   if(e.code==='KeyV'){toggleView();return;}
-  keys.add(e.code);if(e.code==='KeyE')use();if(e.code==='KeyF')toggleTorch();if(e.code==='Space')jumpQueued=true;
+  keys.add(e.code);if(e.code==='KeyE')use();if(e.code==='KeyF')toggleTorch();if(e.code==='Space')jumpQueued=true;if(e.code==='KeyG')fire();if(e.code==='KeyB'&&story?.story&&story.held.size){renderSatchel();openDialog(satchel);}
   if(e.code==='Escape')openDialog(welcome);
 });
 addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',()=>{keys.clear();stick.x=stick.y=0;});
@@ -241,7 +342,17 @@ canvas.addEventListener('pointermove',e=>{
   else if(e.pointerId===lookPointer&&lookStart){dx=e.clientX-lookStart.x;dy=e.clientY-lookStart.y;lookStart={x:e.clientX,y:e.clientY};lookTravel+=Math.abs(dx)+Math.abs(dy);}else return;
   yaw-=THREE.MathUtils.clamp(dx,-200,200)*.003*lookSensitivity;pitch-=THREE.MathUtils.clamp(dy,-200,200)*.0025*lookSensitivity;pitch=THREE.MathUtils.clamp(pitch,-1.48,1.48);
 });
-const finishLook=e=>{if(e.pointerId!==lookPointer)return;if(e.type==='pointerup'&&e.pointerType==='mouse'&&lookTravel<4&&!document.pointerLockElement&&!paused()){try{canvas.requestPointerLock()?.catch(()=>{});}catch{}}lookPointer=null;lookStart=null;};
+const finishLook=e=>{
+  if(e.pointerId!==lookPointer)return;
+  // A click captures the mouse, as it always did — unless you are standing on
+  // the hill with a loaded shotgun and something is circling you, in which case
+  // a click is a trigger.
+  if(e.type==='pointerup'&&e.pointerType==='mouse'&&lookTravel<4&&!paused()){
+    if(document.pointerLockElement===canvas){if(story?.armed&&drone?.active)fire();}
+    else try{canvas.requestPointerLock()?.catch(()=>{});}catch{}
+  }
+  lookPointer=null;lookStart=null;
+};
 canvas.addEventListener('pointerup',finishLook);canvas.addEventListener('pointercancel',finishLook);canvas.addEventListener('lostpointercapture',()=>{lookPointer=null;lookStart=null;});
 let movePointer=null;
 const joystick=$('joystick');
@@ -312,7 +423,19 @@ function frame(){
     if(wasAirborne&&body.grounded&&body.landingImpact>.05)audio.land(body.landingImpact);
     if(body.position.y<2&&!world.special){const p=world.spawn(world.activeLevel);body.teleport(p.x,p.y,p.z);notify('Returned to the nearest safe landing.');}
     const bob=$('reduceMotion').checked?0:Math.sin(body.distanceWalked*8)*.018*Math.min(1,body.horizontalSpeed);
-    world.update(dt,body.position);const passage=world.transitionAt(body.position);if(passage)travel(passage);opening.update(dt);population.update(dt,body,opening.watching,cast.selected);population.separatePlayer(body);cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;interaction=body.climbing||opening.focus?null:world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;if(interaction)$('interaction').lastElementChild.textContent=interaction.label;
+    world.update(dt,body.position);const passage=world.transitionAt(body.position);if(passage)travel(passage);opening.update(dt);population.update(dt,body,opening.watching,cast.selected);population.separatePlayer(body);cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;
+    props.update(dt,time,story,world.activeLevel,world.special);
+    // The supplied hard-drive model is placed by the character cast, so taking
+    // it in story mode has to clear it from the bench there.
+    if(cast?.relic&&story.story&&story.has('harddrive'))cast.relic.visible=false;
+    world.actorInteractions.push(...props.interactions(story,world.activeLevel,world.special));
+    stepOutside(eye);
+    if(drone.active){
+      const event=drone.update(dt,eye);
+      if(event==='fired')droneKill();
+      else if(event==='landed'){story.droneKilled();saveStory();syncStoryHud(true);notify('It is down. Nothing else is coming.');}
+    }
+    interaction=body.climbing||opening.focus?null:world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;if(interaction)$('interaction').lastElementChild.textContent=interaction.label;
     $('touchUse').style.opacity=interaction||opening.state==='read-book'?'1':'.4';audio.step(body.distanceWalked,body.horizontalSpeed,cast.active?.motion.stepCount);
     crowdSoundTime-=dt;if(crowdSoundTime<=0){crowdSoundTime=opening.watching?4:1.1+Math.random()*1.5;audio.residents?.(population.count,opening.watching);}
   }else if(!started){
@@ -338,12 +461,19 @@ async function boot(){
     await world.loadAssets(progress=>{$('enterButton').textContent=`Preparing the silo · ${Math.round(progress*45)}%`;});
     cast=new CharacterCast(scene,world);await cast.load(progress=>{$('enterButton').textContent=`Preparing characters · ${Math.round(45+progress*55)}%`;});cast.select(saved.character||'juliette');cast.thirdPerson=saved.thirdPerson!==false;body.standHeight=body.height=cast.active.definition.height;cast.active.heading=yaw+Math.PI;renderCharacters();
     world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;world.update(0,body.position);cast.update(0,body,false);
-    population=new Population(scene,world);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);openingChanged(opening.state);
+    population=new Population(scene,world);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);
+    story=Story.load(savedStory);world.story=story;props=new StoryProps(scene,world.m);drone=new Drone(scene,world.m);
+    openingChanged(opening.state);syncStoryHud(true);
     outsideTarget=world.surface.initFeed(renderer);renderer.compile(scene,camera);setDirectoryMode(true);
-    ready=true;$('enterButton').disabled=false;$('enterButton').textContent=openingComplete?'Continue exploring':'Begin in the cafeteria';
+    ready=true;$('enterButton').disabled=false;$('enterButton').textContent='New game · the story';
     if(world.materialFailures)notify('Some surface materials could not load. Refresh to retry.');
     if(world.assetFailures)notify('Some Lost Signal props could not load. The complete architectural reconstruction is still available.');
     frame();
   }catch(error){fatal(error);}
 }
+// One handle on the running game, for the headless smoke test that drives the
+// whole story through in a real browser. Nothing in the game reads it.
+window.__silo={begin,fire,takeRelic,stepOutside,
+  get story(){return story;},get world(){return world;},get body(){return body;},
+  get drone(){return drone;},get opening(){return opening;},get ready(){return ready;}};
 boot();
