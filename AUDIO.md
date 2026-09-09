@@ -1,5 +1,159 @@
 > Reference update: audio files and playback behavior are unchanged. The cleaner now emerges for 0–8 s, circles the ramp for 8–18 s, cleans for 18–27 s and turns for 27–30 s. The hill walk, helmet removal, crawl and rest retain their 30/60/68/80/90 s boundaries. See [the current route notes](docs/reference-update.md).
 
+> Sound-effects rewrite, 9 September 2026: the footsteps, impacts and shaft
+> reverb described below have been rebuilt from the ground up. **The soundtrack,
+> the opening piece and the opening scene are untouched.** See
+> [the rewrite notes](#the-tap-dancer--9-september-2026) at the top of this file.
+
+# The tap dancer — 9 September 2026
+
+Walking sounded like tap shoes. It was one wrong term in one line of arithmetic,
+and it had cost the silo every footstep in it.
+
+## What was actually wrong
+
+Measured through Chromium, a boot on concrete in the old build was:
+
+| | old build | a boot on concrete |
+| --- | --- | --- |
+| decay to -20 dB | **5 ms** | 60-120 ms |
+| spectral centroid | **10,364 Hz** | 400-900 Hz |
+| energy below 120 Hz | **1 %** | 20-35 % |
+| energy above 5 kHz | **83 %** | under 5 % |
+| crest factor | **41** | 10-15 |
+
+Five milliseconds of almost pure treble. That is not a footstep; that is a
+castanet.
+
+The cause was `b0 = Math.sin(w) * (1 - r)` in the resonator. `(1 - r)` is a
+mode's bandwidth: 4e-4 for a 95 Hz mode that rings for 48 ms against 4e-3 for a
+3.1 kHz mode that rings for 5. So every low mode came out three hundred times
+too quiet, and **every material in the game collapsed into its top two octaves
+regardless of what its table said.** The tables were right all along. They were
+never audible.
+
+Four more faults were underneath it:
+
+- **No sole and no body.** 46 % of the output was raw noise burst passed
+  through un-resonated. Nothing modelled the shoe, and nothing modelled the
+  eighty kilos arriving behind it.
+- **The second contact was a tap.** The forefoot landed 48-86 ms after the heel
+  at a third of full level and *pitched up*. A sole flattening is duller than
+  the edge that struck; pitching it up is literally a heel-toe tap figure.
+- **Variation was pitch only.** Four takes played at different playback rates
+  share one spectrum, and the ear hears the repeat.
+- **The stairs were concrete.** The great stairway is open steel and runs
+  through every level in the silo.
+
+## What it is now
+
+`b0 = sqrt(1 - r^2) / 2` with a `(1 - z^-2)` numerator, which is the fix and
+one more besides: the old resonator was an all-pole *lowpass*, so it passed DC.
+A 180 Hz mode damped over 28 ms has a DC gain of about 1.6, and the strike pulse
+is full of DC, so a broad sub-300 Hz lump sat under every impact — cloth
+measured 56 % of its energy below 120 Hz with no mode anywhere near there. The
+zeros at DC and Nyquist are what a real mode has, and they take the lump away.
+The `sqrt(1 - r^2)` term equalises **energy** rather than peak height, so a gain
+in the table means what it says whether the mode rings for 75 ms or 5.
+
+Each impact is now three things arriving together:
+
+| field | what it is |
+| --- | --- |
+| `bright`, `burst`, `shape` | **the sole.** A boot is a lossy spring, so the strike is a few ms of shaped push rather than a click. |
+| `body` | **the mass.** One low half-cycle with a fast attack — what you feel as much as hear, and what was missing entirely. |
+| `modes` | **the floor and the room.** `[frequency Hz, decay s, gain]`. |
+| `direct` | the contact patch radiating on its own, high-passed because a small radiator is poor at low frequencies. |
+| `grains` | loose material scattered off the surface, added *after* the sole so it keeps the top octaves the sole takes out of the strike. |
+| `send` | how much of it goes to the shaft reverb. Open grating throws far more into the well than a carpeted residential floor; a fixed send made every surface sound like the same room. |
+
+**The strike is a force pulse, not a noise burst.** A 3-8 ms burst of noise is a
+random comb filter: across six renders of concrete the share of energy between
+2 and 5 kHz swung from 7 % to 50 %, so one step landed dull and the next one
+ticked. A decaying exponential over the contact time is what actually happens
+when a heel meets a floor, its spectrum has no nulls, and jittering its length
+varies brightness smoothly. Worst-case take-to-take band spread went from 57
+points to 17.
+
+Six takes of each impact, and each hit also gets its own **tilt** — a low-pass
+corner that moves per hit. Pitching a sample keeps its spectral shape, so pitch
+variation alone still repeats audibly; moving the corner changes which modes
+survive.
+
+`level` in `FOOTFALL` now means **loudness, not peak height**. Every take is
+normalised to peak 1 for headroom, but a sharp transient with no tail (a rug)
+carries far less energy at that peak than something that rings (a steel deck) —
+measured, 6 dB at the same gain. Each bank carries a `trim` that brings it to a
+common RMS, clamped to [0.4, 2.2] so a peaky material (struck glass measures a
+crest factor of 76) cannot drive the limiter on one hit.
+
+## Measured, after
+
+A walk on concrete through the real graph:
+
+| | before | after |
+| --- | --- | --- |
+| decay to -20 dB | 5 ms | **110 ms** |
+| centroid | 10,364 Hz | **878 Hz** |
+| below 120 Hz | 1 % | **22 %** |
+| above 5 kHz | 83 % | **0 %** |
+| crest factor | 41 | **11** |
+
+Level is up about 5 dB on the old build; a run is 6 dB above a walk. Per-surface
+RMS runs from a covered floor at the quiet end to open grating at the loud, in
+that order, with grating ringing for 245 ms against concrete's 110.
+
+## The shaft reverb was a hiss
+
+The impulse response used a single one-pole at roughly 2.3 kHz and measured
+**60 % of its energy above 2 kHz**. That is tape hiss, not a hundred and forty
+levels of concrete, and against the new darker impacts it was most of what you
+heard. It is now two poles at about 800 Hz with the corner closing further as
+the tail decays, because air and concrete both absorb the top end faster than
+the bottom. Level is matched to the old tail by RMS, so the per-location `space`
+values still mean what they did.
+
+## New materials
+
+`grating` (steel stair treads), `soil`, `wet`, and for pickups `paper`, `cloth`,
+`glass`, `plastic`, `timber`.
+
+## Picking things up
+
+The old build played **one interface click for every relic in the silo**.
+`audio.pickup(kind)` is now four things close together: fingers finding the
+edge, the object answering with its own material, the sleeve moving behind
+both, and — for anything with weight — it settling into the hand. `audio.drop`
+is the same object without the sleeve, plus a rock and settle.
+
+Each collectable in `story.js` carries a `sound` field naming its material, so
+adding a relic means adding one word. Unknown kinds fall back to `relic`.
+
+## The stairs
+
+`audio.setSurface('grating')` overrides the room's floor while the player is on
+the central staircase; `setSurface(null)` hands it back. One line in
+`updateHUD`, keyed off the radius that already decides the location name.
+
+## What I did not touch
+
+- `silo-18-theme.mp3`, `silo-18-opening.mp3`, and every function that handles
+  them.
+- `opening.js` and the opening scene.
+- The directory-book pickup in `main.js` still calls `audio.click()`. It is the
+  one pickup in the game that is part of the opening, so I left it alone —
+  changing it to `audio.pickup('book')` is a one-line edit if you want it.
+
+## Tools
+
+The tuning harness lives outside the repo (it was scratch), but the method is
+worth repeating if you touch the tables: render each material offline, measure
+band energy with a **full-length FFT** — a log-spaced probe sweep cannot see a
+high-Q mode, and two sweeps with different step sizes disagreed by a factor of
+twenty on the same buffer — then fit the mode gains to a target band balance,
+correcting the target against what the real renderer produces, because the modes
+share one excitation and interfere rather than summing as independent powers.
+
 # Two music files now, and the opening is cut to one of them — 8 September 2026
 
 `dist/assets/audio/` holds two tracks and they have different jobs.
@@ -167,6 +321,11 @@ No other audio file is bundled. `audio.js` generates, at runtime:
 
 ### Impacts are modelled, not drawn with oscillators
 
+> **Superseded 9 September 2026.** The resonator arithmetic, the excitation, the
+> take count, the material list and the measured figures in this section were
+> all replaced by the rewrite at the top of this file. The description of *why*
+> modal synthesis rather than oscillators still holds.
+
 The first pass built every impact from oscillators: a sine with a falling
 pitch for the body, one band-passed noise burst on top, a triangle for the ring
 on steel. That is a kick drum, a hi-hat and a cowbell, and it sounded like one.
@@ -253,6 +412,10 @@ Nothing clips; the limiter catches the rest.
   so it does not need a browser.
 
 ## The six edits in `main.js`
+
+> Two more since, in the 9 September rewrite: `updateHUD()` calls
+> `audio.setSurface()` for the staircase, and `takeRelic()` calls
+> `audio.pickup()` instead of `audio.click()`.
 
 1. `saveSettings()` — persists `music`.
 2. `updateSettings()` — applies the slider and updates its readout.

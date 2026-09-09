@@ -47,7 +47,19 @@ export const surfaceY=(x,z)=>inRampCutout(x,z)?rampY(z):groundY(x,z);
 
 // The lens is behind and alongside the sunken exit, looking outwards. A
 // cleaner climbs away from it and must turn back around the curb to clean.
-export const SENSOR=Object.freeze({x:20.5,z:99,eye:1.85});
+// The sensor stands beside the mouth of the ramp, looking out across the crater
+// at the hill.
+//
+// It was on the left of the exit at x=20.5, which is what put the silo off to
+// one side of the exterior view. It is on the right now, mirrored across the
+// ramp's centreline so the walk out to it is the same length it always was.
+//
+// It cannot go on the centreline itself. The centreline over the exit is the
+// open cutting, so the only spot on it is past the lip — and that is in the
+// cleaner's path. From there they walk towards the lens from the moment they
+// emerge, which inverts the walk this build already fixed once: they come up
+// with their back to the camera and turn to face it. There is a test on that.
+export const SENSOR=Object.freeze({x:31.5,z:99,eye:1.85});
 export const TREE=Object.freeze({x:-5,z:155});
 export const sensorLocal=()=>new THREE.Vector3(SENSOR.x,groundY(SENSOR.x,SENSOR.z)+SENSOR.eye,SENSOR.z+.95);
 

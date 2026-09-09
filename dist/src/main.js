@@ -12,6 +12,9 @@ import { CafeteriaOpening, CAFETERIA_START } from './opening.js';
 import { conversationFor, ALGORITHM } from './conversations.js';
 import { RESIDENT_CAST } from './resident-data.js';
 import { Story, COLLECTABLES, RELICS } from './story.js';
+import { Firearms } from './firearms.js';
+import { WEAPONS } from './weapons.js';
+import { updateRangeTargets } from './gun-range.js';
 import { StoryProps, Drone } from './relics.js';
 
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel');
@@ -24,6 +27,7 @@ let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null,talking=null
 let story=null,props=null,drone=null,wasOutside=false,lastChapter=null;
 let yaw=Math.PI/2,pitch=0,lookSensitivity=1,running=false,torchOn=false,quality='balanced';
 const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3}),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,2300),audio=new SiloAudio();
+const firearms=new Firearms(scene,audio);
 const keys=new Set(),stick={x:0,y:0},desired=new THREE.Vector3(),direction=new THREE.Vector3(),clock=new THREE.Clock();
 camera.rotation.order='YXZ';
 const torch=new THREE.SpotLight(0xffe7b4,65,40,.5,.7,1.6);torch.visible=false;scene.add(torch,torch.target);
@@ -137,7 +141,7 @@ function renderSatchel(){
 function takeRelic(id){
   const item=story.take(id);
   if(!item)return;
-  audio.click();saveStory();
+  audio.pickup(item.sound||'relic');saveStory();
   showObjective(item.name,item.blurb,9000);
   notify(story.story?story.objective:`${item.name} — in your satchel.`);
   if(id==='suit')notify('The suit is on. The airlock will let you through now.');
@@ -224,12 +228,84 @@ function droneKill(){
   notify('It fired. You woke on the airlock floor with the taste of blood in your mouth — go back out armed.');
 }
 function fire(){
-  if(!story?.armed||!drone?.active||paused())return;
+  if(paused())return;
+  // A weapon in hand is fired at whatever is in front of it. The drone still
+  // has its own path below, because that shot is scripted and the story turns
+  // on it — it is not a round going downrange at a steel plate.
+  if(firearms.held){
+    const hit=firearms.fire(performance.now()/1000,camera);
+    const state=firearms.status();
+    if(state?.empty&&!state.reloading)notify('Empty. Press R to reload.');
+    if(hit?.target)rangeHits++;
+    return;
+  }
+  if(!story?.armed||!drone?.active)return;
   audio.click();
   const eye=body.position.clone();eye.y+=body.eyeHeight;camera.getWorldDirection(direction);
   const floor=world.colliders.floorAt(drone.group.position.x,drone.group.position.z,.4,drone.group.position.y)||body.position.y;
   if(drone.shoot(eye,direction.clone(),floor))notify('Hit. It is coming down.');
   else notify('You are firing at the sky. Let it come closer.');
+}
+let rangeHits=0,hudTick=-1,wading=false,wadeStep=0;
+// Standing in the water at the bottom of the void.
+//
+// The basin is only 65 cm deep, so this is wading rather than swimming: the
+// player walks in off the ladder and the sheet has to answer for it. Entering
+// throws a ring and a splash; moving keeps a patch of churn under them and a
+// loop under that; each footfall drops its own ring, which is what makes the
+// surface look like it is being walked through rather than merely disturbed.
+const WATER=Object.freeze({surfaceY:5,bedY:4.35,radius:79});
+function updateWading(dt){
+  const water=world?.underground?.waterSurface;
+  if(!water||!started){if(wading)leaveWater();return;}
+  const inVoid=world.special==='excavator'||world.special==='tunnel';
+  let inside=false,speed=0;
+  if(inVoid){
+    // Test in the sheet's own space, so any transform on the void root is
+    // accounted for rather than assumed away.
+    const local=water.mesh.worldToLocal(body.position.clone());
+    inside=local.y<WATER.surfaceY-.04&&local.y>WATER.bedY-1.2&&Math.hypot(local.x,local.z)<WATER.radius;
+    speed=body.horizontalSpeed||0;
+    if(inside){
+      water.setWade(body.position.x,body.position.z,Math.min(1,speed/2.6));
+      if(speed>.35){
+        wadeStep-=dt*speed*1.15;
+        if(wadeStep<=0){wadeStep=1;water.ripple(body.position.x,body.position.z,.55+Math.random()*.5);}
+      }
+      audio.setWadeLevel?.(Math.min(1,speed/2.4));
+    }
+  }
+  if(inside&&!wading){
+    wading=true;
+    audio.waterEnter?.(.7+Math.min(1,speed/2.2)*.7);
+    audio.wadeStart?.();
+    audio.setSurface('wet');
+    water.ripple(body.position.x,body.position.z,1.6);
+  }else if(!inside&&wading)leaveWater();
+}
+function leaveWater(){
+  wading=false;
+  audio.wadeStop?.();
+  audio.setSurface(null);
+  world?.underground?.waterSurface?.setWade(0,0,0);
+}
+async function takeWeapon(key){
+  const spec=WEAPONS[key];if(!spec)return;
+  audio.pickup(spec.family==='blade'?'metal':'metal');
+  await firearms.equip(key);
+  updateWeaponHud();
+  notify(`${spec.name}. Fire with ${coarse?'the FIRE button':'left mouse or G'}, reload with R.`);
+}
+// The ammunition line under the crosshair. Hidden entirely when empty-handed,
+// because a counter reading nothing is worse than no counter.
+function updateWeaponHud(){
+  const state=firearms.status(),hud=$('weaponHud');
+  if(!hud)return;
+  hud.hidden=!state;
+  if(!state)return;
+  $('weaponName').textContent=state.name;
+  $('weaponAmmo').textContent=state.reloading?'RELOADING':state.text;
+  hud.classList.toggle('empty',!!state.empty&&!state.reloading);
 }
 function begin(mode){
   if(!ready)return;
@@ -258,6 +334,11 @@ function updateHUD(){
   $('zone').textContent=world.outside?'THE SURFACE':world.special?'LOWER ACCESS':data.zone;$('levelLabel').textContent=world.outside?'OUTSIDE':world.special?'BELOW MECHANICAL':`LEVEL ${String(n).padStart(3,'0')}`;$('locationName').textContent=name;
   $('depthLabel').textContent=`${Math.max(0,Math.round(levelY(1)-body.position.y)).toLocaleString()} m below the upper landing`;$('depthMarker').style.top=`${(n-1)/143*94}%`;
   $('modeLabel').textContent=`${cast?.active?.definition.short||'ON FOOT'}${body.climbing?' · CLIMBING':running?' · RUNNING':''}`;audio.setLocation(world.outside?'surface':world.special||roomType(n,wing));
+  // The great stairway is open steel and runs through every level, so the floor
+  // underfoot there is not the floor of the room the level counter is reporting.
+  // Wading owns the surface while it lasts, or this would clear it four times
+  // a second and put concrete footsteps under a player standing in water.
+  audio.setSurface(wading?'wet':!world.outside&&!world.special&&r<SILO.stairRadius+.6?'grating':null);
 }
 const inspectionText={
   generator:'Six removable panels protect the turbine. The rear panel is held open for inspection; the rotor, gantry and crane can be seen around the housing.',
@@ -288,8 +369,20 @@ function use(){
     else notify('Move closer to the ladder.');
     return;
   }
-  if(interaction.action==='hard-drive'){audio.click();if(story?.story&&!story.has('harddrive'))takeRelic('harddrive');else openDialog(relic);return;}
+  if(interaction.action==='hard-drive'){if(story?.story&&!story.has('harddrive'))takeRelic('harddrive');else{audio.click();openDialog(relic);}return;}
   if(interaction.action?.startsWith('relic:')){takeRelic(interaction.action.slice(6));return;}
+  if(interaction.action?.startsWith('rack:')){takeWeapon(interaction.action.slice(5));return;}
+  if(interaction.action==='range-resupply'){
+    audio.pickup('metal');firearms.resupply();
+    notify(firearms.held?`${firearms.held.name} resupplied.`:'Take a weapon off the rack first.');
+    return;
+  }
+  if(interaction.action==='range-rack'){
+    if(!firearms.held){audio.click();notify('You are not carrying anything.');return;}
+    const name=firearms.held.name;firearms.holster();audio.drop('metal');
+    updateWeaponHud();notify(`${name} racked.`);
+    return;
+  }
   if(interaction.sealed){audio.click();notify(interaction.sealed.reason);return;}
   if(interaction.action==='clean-camera'){audio.click();world.surface.beginCleaning();notify('Cleaning the camera lens. The cafeteria feed clears as you wipe.');return;}
   if(interaction.action?.startsWith('airlock-')){audio.airlock();world.cycleAirlock(interaction.action.slice(8));return;}
@@ -364,7 +457,9 @@ addEventListener('keydown',e=>{
   if(opening.focus&&e.code==='Space'){e.preventDefault();toggleControls();return;}
   revealControls();
   if(e.code==='KeyV'){toggleView();return;}
-  keys.add(e.code);if(e.code==='KeyE')use();if(e.code==='KeyF')toggleTorch();if(e.code==='Space')jumpQueued=true;if(e.code==='KeyG')fire();if(e.code==='KeyB'&&story?.story&&story.held.size){renderSatchel();openDialog(satchel);}
+  keys.add(e.code);if(e.code==='KeyE')use();if(e.code==='KeyF')toggleTorch();if(e.code==='Space')jumpQueued=true;if(e.code==='KeyG')fire();
+  if(e.code==='KeyR'&&firearms.held){if(firearms.reload())updateWeaponHud();}
+  if(e.code==='KeyH'&&firearms.held){const name=firearms.held.name;firearms.holster();updateWeaponHud();notify(`${name} slung.`);}if(e.code==='KeyB'&&story?.story&&story.held.size){renderSatchel();openDialog(satchel);}
   if(e.code==='Escape')openDialog(welcome);
 });
 addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',()=>{keys.clear();stick.x=stick.y=0;});
@@ -385,7 +480,7 @@ const finishLook=e=>{
   // the hill with a loaded shotgun and something is circling you, in which case
   // a click is a trigger.
   if(e.type==='pointerup'&&e.pointerType==='mouse'&&lookTravel<4&&!paused()){
-    if(document.pointerLockElement===canvas){if(story?.armed&&drone?.active)fire();}
+    if(document.pointerLockElement===canvas){if(firearms.held||(story?.armed&&drone?.active))fire();}
     else try{canvas.requestPointerLock()?.catch(()=>{});}catch{}
   }
   lookPointer=null;lookStart=null;
@@ -485,6 +580,23 @@ function frame(){
       if(event==='fired')droneKill();
       else if(event==='landed'){story.droneKilled();saveStory();syncStoryHud(true);notify('It is down. Nothing else is coming.');}
     }
+    // The range's steel plates only exist on the top floor; the weapon keeps
+    // working anywhere, but there is nothing to hit outside the room.
+    if(world.activeLevel!==1||world.special||world.outside)firearms.targets=[];
+    else if(!firearms.targets.length){
+      const top=world.loaded.get(1)?.rooms?.[0],found=top?.userData?.rangeTargets;
+      if(found){firearms.targets=found;firearms.dressRacks(top);}
+    }
+    if(firearms.targets.length)updateRangeTargets(firearms.targets,dt);
+    if(firearms.held){
+      firearms.aiming=keys.has('ShiftLeft')||keys.has('ShiftRight');
+      const kick=firearms.update(dt,time);
+      // Recoil is added to the player's own aim rather than replacing it, so it
+      // can be pulled back down the way a real one has to be.
+      yaw+=kick.yaw;pitch=THREE.MathUtils.clamp(pitch+kick.pitch,-1.48,1.48);
+      firearms.place(camera);
+      if(hudTick!==Math.floor(time*8)){hudTick=Math.floor(time*8);updateWeaponHud();}
+    }
     interaction=body.climbing||opening.focus||talking?null:world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;
     if(interaction){$('interactionLabel').textContent=interaction.label;$('interactionHint').textContent=interaction.hint||'';}
     $('touchUse').style.opacity=interaction||opening.state==='read-book'?'1':'.4';audio.step(body.distanceWalked,body.horizontalSpeed,cast.active?.motion.stepCount);
@@ -497,6 +609,7 @@ function frame(){
   if(time-lastHUD>.25){updateHUD();lastHUD=time;}
   world.surface.renderFeed(renderer,time);
   if(world.special&&!opening?.focus)world.underground.waterSurface.update(renderer,scene,camera,time);
+  updateWading(dt);
   if(cleanWasRunning!==world.surface.cleaning){if(world.surface.cleaning)audio.scrubStart();else{audio.scrubStop();notify('Camera lens clean. The outside view is clear on the cafeteria screens.');}}cleanWasRunning=world.surface.cleaning;
   if(outsideTarget&&lastScreen!==world.screens[0]){for(const screen of world.screens){screen.material.map=outsideTarget.texture;screen.material.color.setHex(0xffffff);screen.material.needsUpdate=true;}lastScreen=world.screens[0];}
   torch.position.copy(camera.position);camera.getWorldDirection(direction);torch.target.position.copy(camera.position).addScaledVector(direction,15);torch.visible=torchOn&&started;
@@ -524,7 +637,8 @@ async function boot(){
 }
 // One handle on the running game, for the headless smoke test that drives the
 // whole story through in a real browser. Nothing in the game reads it.
-window.__silo={begin,fire,takeRelic,stepOutside,
+window.__silo={begin,fire,takeRelic,stepOutside,firearms,takeWeapon,camera,
+  look(y,p=0){yaw=y;pitch=p;},
   get story(){return story;},get world(){return world;},get body(){return body;},
   get drone(){return drone;},get opening(){return opening;},get ready(){return ready;}};
 boot();

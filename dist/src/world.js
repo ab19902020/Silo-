@@ -337,9 +337,13 @@ export class SiloWorld {
   lampCandidates(position,top){
     const out=[],level=this.activeLevel,y=levelY(level);
     if(this.special)return out;
-    if(level===1&&top.z>10){
-      const fittings=[[-10,6.7,17],[10,6.7,17],[-10,6.7,31],[10,6.7,31],[26,3.7,29],[26,3.7,40],[26,3.7,50],[26,3.7,59]];
-      for(let i=0;i<fittings.length;i++)out.push({key:`top:${i}`,position:topPoint(...fittings[i]),color:i<4?0xf1e9d9:0xc8d6d4,intensity:i<4?145:75,distance:28,cone:32});
+    if(level===1){
+      // The cafeteria, the station and the rooms behind it. The last six are the
+      // range: without them the lanes were lit by whatever spilled through the
+      // doorway, which on a twenty-two metre room is nothing.
+      const fittings=[[-10,6.7,17],[10,6.7,17],[-10,6.7,31],[10,6.7,31],[26,3.7,29],[26,3.7,40],[26,3.7,50],[26,3.7,59],
+                      [21,4.4,8.5],[31,4.4,8.5],[21,4.4,15],[31,4.4,15],[21,4.4,21],[31,4.4,21]];
+      for(let i=0;i<fittings.length;i++)out.push({key:`top:${i}`,position:topPoint(...fittings[i]),color:i<4?0xf1e9d9:0xc8d6d4,intensity:i<4?145:i<8?75:95,distance:i<8?28:24,cone:i<8?32:38});
       return out;
     }
     for(let i=0;i<6;i++){const a=i*TAU/6;out.push({key:`g${level}:${i}`,position:new THREE.Vector3(Math.cos(a)*21,y+4.8,Math.sin(a)*21),color:i%3?0xf0e2c9:0xc0d4d3,intensity:105,distance:38,cone:48});}

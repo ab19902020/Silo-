@@ -17,10 +17,12 @@ function stubContext(){
     exponentialRampToValueAtTime:v=>{assert.notEqual(v,0,`${name}: exponential ramp to zero is invalid`);log.push([name,'exp',v]);},
     setTargetAtTime:v=>log.push([name,'target',v]),cancelScheduledValues:()=>{}});
   const created={};
-  const node=kind=>{created[kind]=(created[kind]||0)+1;const n={kind,connect:t=>t,disconnect(){},start(){this.started=true;},stop(){}};
+  const nodes=[];
+  const node=kind=>{created[kind]=(created[kind]||0)+1;
+    const n={kind,connect:t=>t,disconnect(){},start(t){this.started=true;this.startedAt=t;},stop(){}};
     for(const p of ['gain','frequency','Q','pan','detune','playbackRate','threshold','knee','ratio','attack','release'])n[p]=param(`${kind}.${p}`);
-    return n;};
-  return {log,created,state:'running',currentTime:0,sampleRate:44100,destination:node('destination'),
+    nodes.push(n);return n;};
+  return {log,created,nodes,state:'running',currentTime:0,sampleRate:44100,destination:node('destination'),
     createGain:()=>node('gain'),createOscillator:()=>node('oscillator'),createBiquadFilter:()=>node('filter'),
     createBufferSource:()=>node('source'),createStereoPanner:()=>node('panner'),createConvolver:()=>node('convolver'),
     createDynamicsCompressor:()=>node('compressor'),
@@ -162,10 +164,15 @@ test('the loop trim removes codec padding and refuses to cut real material',()=>
 
 test('every impact is modelled into a usable sample bank',()=>{
   const {audio}=silo();
-  const names=['concrete','metal','rock','grit','soft','latch','thunk','clunk','clank','click','switch'];
+  const names=['concrete','grating','metal','rock','grit','soil','soft','wet','latch','thunk','clunk',
+               'clank','click','switch','paper','cloth','glass','plastic','timber'];
   for(const name of names){
-    const takes=audio.bank[name];
-    assert.ok(Array.isArray(takes)&&takes.length===4,`${name} needs four takes; one retriggered sample is the machine-gun footstep`);
+    const {takes,trim}=audio.bank[name];
+    assert.ok(Array.isArray(takes)&&takes.length===6,`${name} needs six takes; one retriggered sample is the machine-gun footstep`);
+    // Every take peaks at 1, so the trim is what makes a level mean loudness
+    // rather than peak height. It is clamped so a peaky material cannot drive
+    // the limiter on a single hit.
+    assert.ok(trim>=.4&&trim<=2.2,`${name} trim ${trim} is outside the clamp`);
     const peaks=[];
     for(const take of takes){
       const data=take.getChannelData(0);
@@ -181,7 +188,7 @@ test('every impact is modelled into a usable sample bank',()=>{
       assert.ok(tail<head*.05,`${name} does not decay: ${(tail/head).toFixed(3)} of its energy is still there at the end`);
       peaks.push(data.reduce((a,v)=>a+v*v,0));
     }
-    assert.equal(new Set(peaks.map(p=>p.toFixed(6))).size,4,`${name}: the four takes are identical, so they will sound identical`);
+    assert.equal(new Set(peaks.map(p=>p.toFixed(6))).size,6,`${name}: the six takes are identical, so they will sound identical`);
   }
 });
 
@@ -192,27 +199,104 @@ test('floors are told apart by how long they ring, not just how loud they are',(
   // scores zero there — which is the physical answer, not an artefact: a
   // covered floor really has stopped by then.
   const sustain=name=>{
-    const data=audio.bank[name][0].getChannelData(0),rate=44100;
+    const data=audio.bank[name].takes[0].getChannelData(0),rate=44100;
     const band=(from,to)=>{let sum=0;for(let i=Math.round(rate*from);i<Math.round(rate*to)&&i<data.length;i++)sum+=data[i]*data[i];return sum;};
     return band(.1,.25)/Math.max(1e-12,band(0,.025));
   };
-  const metal=sustain('metal'),concrete=sustain('concrete'),soft=sustain('soft'),grit=sustain('grit');
-  assert.ok(metal>concrete*2,`grating sustains ${metal.toExponential(2)}, concrete ${concrete.toExponential(2)} — steel must ring longer`);
+  const grating=sustain('grating'),concrete=sustain('concrete'),soft=sustain('soft'),grit=sustain('grit');
+  assert.ok(grating>concrete*2,`grating sustains ${grating.toExponential(2)}, concrete ${concrete.toExponential(2)} — steel must ring longer`);
   assert.ok(concrete>soft,`concrete ${concrete.toExponential(2)} must outlast a covered floor ${soft.toExponential(2)}`);
   assert.ok(grit>soft,`loose grit ${grit.toExponential(2)} should still be crunching past a covered floor ${soft.toExponential(2)}`);
 });
 
-test('a walking step lands heel then toe; a run lands once, harder',()=>{
+test('a walking step lands heel then toe, the toe duller; a run lands flat',()=>{
   const {audio,context}=silo();
   audio.setLocation('cafeteria');
-  const sources=()=>context.created.source||0;
-  const before=sources();
+  // Impacts are the buffer sources that were given a playback rate; the scuff
+  // is a filtered noise burst and is excluded by looking only at the two
+  // earliest, which are the two contacts.
+  const contacts=()=>context.nodes.filter(n=>n.kind==='source'&&n.started&&n.startedAt>0)
+    .map(n=>({at:n.startedAt,rate:n.playbackRate.value})).sort((a,b)=>a.at-b.at);
+  context.nodes.length=0;
   audio.step(4,1.45,null);
-  const walking=sources()-before;
-  audio.lastStep=0;
-  const mid=sources();
+  const walk=contacts();
+  assert.ok(walk.length>=2,'a walk should place a heel and a toe');
+  const gap=walk[1].at-walk[0].at;
+  assert.ok(gap>=.08&&gap<=.15,`the forefoot followed the heel by ${(gap*1000).toFixed(0)} ms; a walk rolls over about a tenth of a second`);
+  assert.ok(walk[1].rate<walk[0].rate,
+    `the second contact was pitched up (${walk[1].rate.toFixed(2)} against ${walk[0].rate.toFixed(2)}); a sole flattening is duller than the heel that struck, and pitching it up is what made this sound like tap shoes`);
+
+  audio.lastStep=0;context.nodes.length=0;
   audio.step(4,3.8,null);
-  const running=sources()-mid;
-  assert.equal(walking,2,'a walk should place a heel and a toe');
-  assert.equal(running,1,'a run should land flat, once');
+  const run=contacts();
+  assert.ok(run.length>=2,'a run still places both contacts');
+  const flat=run[1].at-run[0].at;
+  assert.ok(flat<=.04,`a run landed ${(flat*1000).toFixed(0)} ms apart; it should land flat`);
+});
+
+test('the staircase overrides the floor of the room it passes through',()=>{
+  const {audio}=silo();
+  audio.setLocation('residential');
+  assert.equal(audio.material(),'soft');
+  audio.setSurface('grating');
+  assert.equal(audio.material(),'grating','the great stairway is open steel wherever it runs');
+  audio.setLocation('farm');
+  assert.equal(audio.material(),'grating','the override must survive a change of level');
+  audio.setSurface(null);
+  assert.equal(audio.material(),'grass','a growing bed is not a carpeted floor');
+  audio.setLocation('residential');
+  assert.equal(audio.material(),'soft');
+  audio.setSurface('nonsense');
+  assert.equal(audio.material(),'soft','an unknown surface falls back rather than going silent');
+});
+
+test('picking something up is the object, not one interface click',()=>{
+  const {audio,context}=silo();
+  const before=context.created.source||0;
+  audio.pickup('book');
+  assert.ok((context.created.source||0)-before>=3,
+    'a pickup is the hand finding it, the object answering, and the sleeve behind both');
+  // Every collectable names a material, or it falls back to a generic relic.
+  audio.pickup('nothing-like-this');
+  audio.drop('glass');
+});
+
+test('every walking surface has recordings behind it, and they are real files',()=>{
+  const manifest=JSON.parse(fs.readFileSync('dist/assets/audio/footsteps/manifest.json','utf8'));
+  const source=fs.readFileSync('dist/src/audio.js','utf8');
+  const floors=source.match(/const FLOORS=\[([^\]]+)\]/)[1].split(',').map(s=>s.replace(/['"\s]/g,''));
+  for(const floor of floors){
+    const entry=manifest.materials[floor];
+    assert.ok(entry,`${floor} is a walking surface with no recording behind it`);
+    assert.ok(entry.takes.length>=2,`${floor} has ${entry.takes.length} recording(s); one retriggered is the machine-gun footstep`);
+    for(const take of entry.takes){
+      const file=`dist/assets/audio/footsteps/${take.file}`;
+      assert.ok(fs.existsSync(file),`${take.file} is in the manifest but not on disk`);
+      assert.equal(fs.statSync(file).size,take.bytes,`${take.file} is not the size the manifest records`);
+      // A step that runs longer than the walking cadence stacks on the next one.
+      assert.ok(take.seconds<=.8,`${take.file} runs ${take.seconds}s; that is longer than a step`);
+      assert.equal(fs.readFileSync(file).subarray(0,4).toString('latin1'),'RIFF');
+    }
+    // Every floor needs a level for the recording, not just for the fallback.
+    assert.match(source,new RegExp(`${floor}\\s*:\\s*\\{level:[\\d.]+,sample:`),`${floor} has no sample level`);
+  }
+  // The recordings are CC BY-SA 3.0. Shipping them without the licence and the
+  // record of what was changed is the one thing that is not allowed.
+  for(const file of ['LICENSE.txt','README.txt'])
+    assert.ok(fs.existsSync(`dist/assets/audio/footsteps/${file}`),`footsteps/${file} is missing`);
+  assert.match(fs.readFileSync('dist/assets/audio/footsteps/README.txt','utf8'),/CC BY-SA 3\.0/);
+  assert.ok(manifest.source?.url&&manifest.changes,'the manifest must record where they came from and what was changed');
+});
+
+test('the raw contact never overwhelms the floor it lands on',()=>{
+  // `direct` is how much of the bare contact patch is heard on top of the modal
+  // bank in the synthesised fallback. Left unbounded, a fitting pass pushed it
+  // to 2.9 on ten materials because raising the click was a cheaper way to hit
+  // a band target than balancing the modes, and every one of those played as a
+  // click with the floor buried underneath it.
+  const source=fs.readFileSync('dist/src/audio.js','utf8');
+  for(const match of source.matchAll(/(\w+)\s*:\s*\{duration:[^}]*?direct:([\d.]+)/gs)){
+    const value=Number(match[2]);
+    assert.ok(value<=.3,`${match[1]} has direct:${value}; above about .3 it is a click, not a surface`);
+  }
 });

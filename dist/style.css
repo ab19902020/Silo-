@@ -54,3 +54,12 @@ body.talking #crosshair,body.talking #bottomHud,body.talking #interaction{opacit
 .satchel-item p{margin:0;font-size:.78rem;line-height:1.5;opacity:.78}
 .satchel-item .src{margin-top:.35rem;font-size:.71rem;opacity:.55;font-style:italic}
 body.armed #crosshair{display:block}
+
+/* The ammunition readout, low and to the right of the crosshair where a
+   shooter's eye already is. Hidden entirely when empty-handed. */
+#weaponHud{position:fixed;right:calc(env(safe-area-inset-right,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 92px);
+  display:flex;flex-direction:column;align-items:flex-end;gap:2px;pointer-events:none;z-index:6;
+  font:600 12px/1.15 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.09em;
+  color:#cfd6cc;text-shadow:0 1px 3px rgba(0,0,0,.85)}
+#weaponHud b{font-size:23px;letter-spacing:.05em;color:#eef2ea}
+#weaponHud.empty b{color:#e2725b}

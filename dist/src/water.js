@@ -16,7 +16,13 @@ export class VoidWater{
   constructor(mesh){
     this.mesh=mesh;this.camera=new THREE.PerspectiveCamera();this.last=-Infinity;this.quality='balanced';
     this.target=new THREE.WebGLRenderTarget(512,256,{depthBuffer:true});
-    this.uniforms={waterTime:{value:0},waterReflection:{value:this.target.texture},waterProjection:{value:new THREE.Matrix4()},waterReflectionReady:{value:0}};
+    // Six ripple rings, oldest overwritten. Each is [world x, world z, the time
+    // it started, how hard]. Six is enough for a walking pace: a ring is spent
+    // in about two and a half seconds and a step lands every half second.
+    this.rippleSlots=6;this.nextRipple=0;
+    this.ripples=new Float32Array(this.rippleSlots*4);
+    this.uniforms={waterTime:{value:0},waterReflection:{value:this.target.texture},waterProjection:{value:new THREE.Matrix4()},waterReflectionReady:{value:0},
+      waterRipples:{value:this.ripples},waterWade:{value:new THREE.Vector3(0,0,0)}};
     const material=mesh.material.clone();material.color.setHex(0x182d2b);material.roughness=.25;material.metalness=.08;material.opacity=.90;material.depthWrite=false;material.envMapIntensity=.65;
     material.onBeforeCompile=shader=>{
       Object.assign(shader.uniforms,this.uniforms);
@@ -24,10 +30,42 @@ export class VoidWater{
       shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>',`#include <worldpos_vertex>
         vec4 waterWorld=modelMatrix*vec4(transformed,1.);waterPoint=waterWorld.xyz;waterCoord=waterProjection*waterWorld;
       `);
-      shader.fragmentShader='uniform float waterTime,waterReflectionReady; uniform sampler2D waterReflection; varying vec3 waterPoint; varying vec4 waterCoord;\n'+shader.fragmentShader;
+      shader.fragmentShader='uniform float waterTime,waterReflectionReady; uniform sampler2D waterReflection; uniform vec4 waterRipples['+this.rippleSlots+']; uniform vec3 waterWade; varying vec3 waterPoint; varying vec4 waterCoord;\n'+shader.fragmentShader;
+      shader.fragmentShader=shader.fragmentShader.replace('void main() {','void main() {\n  float waterFoamValue=0.;');
       shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
         vec2 wave=vec2(sin(waterPoint.x*1.1+waterPoint.z*.45+waterTime*.48),cos(waterPoint.z*1.4-waterPoint.x*.31-waterTime*.37))*.019;
         wave+=vec2(sin(waterPoint.z*3.2+waterTime*.7),cos(waterPoint.x*2.8-waterTime*.6))*.006;
+        // A third octave, small and fast. Two alone read as a slow swell; still
+        // water in a cistern has fine texture on top of that swell.
+        wave+=vec2(sin(waterPoint.x*7.9-waterTime*1.6),cos(waterPoint.z*8.7+waterTime*1.35))*.0022;
+        float foam=0.;
+        // Rings spreading from where a foot went in. Each ring is a travelling
+        // crest: the displacement follows the distance from the ring's front,
+        // so the wave moves outwards rather than the whole disc pulsing.
+        for(int i=0;i<${this.rippleSlots};i++){
+          vec4 ring=waterRipples[i];
+          if(ring.w<=0.)continue;
+          float age=waterTime-ring.z;
+          if(age<0.||age>2.6)continue;
+          vec2 offset=waterPoint.xz-ring.xy;
+          float dist=length(offset);
+          float front=age*1.55;                       // how far the crest has travelled
+          float band=exp(-pow((dist-front)*1.35,2.));  // the crest, and the trough behind it
+          float fade=ring.w*exp(-age*1.35)*band;
+          if(fade<=0.0005)continue;
+          float phase=(dist-front)*13.5;
+          wave+=normalize(offset+1e-5)*sin(phase)*fade*.135;
+          foam+=fade*.85;
+        }
+        // The churn around the player while they are actually moving through it.
+        if(waterWade.z>0.){
+          vec2 offset=waterPoint.xz-waterWade.xy;
+          float dist=length(offset);
+          float near=smoothstep(1.9,0.,dist)*waterWade.z;
+          wave+=normalize(offset+1e-5)*sin(dist*22.-waterTime*11.)*near*.085;
+          foam+=near*.65;
+        }
+        waterFoamValue=clamp(foam,0.,1.);
         normal=normalize(mat3(viewMatrix)*vec3(-wave.x,1.,-wave.y));
         #ifdef DOUBLE_SIDED
           normal*=faceDirection;
@@ -39,10 +77,26 @@ export class VoidWater{
         vec3 reflection=texture2D(waterReflection,clamp(reflectionUV,vec2(.002),vec2(.998))).rgb;
         float fresnel=.055+.82*pow(1.-clamp(abs(dot(normal,normalize(vViewPosition))),0.,1.),3.);
         outgoingLight=mix(outgoingLight,reflection,waterReflectionReady*onSheet*fresnel);
+        // Disturbed water goes pale and loses its reflection: broken surface
+        // scatters instead of mirroring. Without this the rings deform the
+        // reflection but the water still reads as glass.
+        outgoingLight=mix(outgoingLight,vec3(.64,.70,.68),waterFoamValue*.6);
         #include <opaque_fragment>
       `);
     };
-    material.customProgramCacheKey=()=> 'silo-continuous-reflective-water-v1';this.material=mesh.material=material;
+    material.customProgramCacheKey=()=> 'silo-continuous-reflective-water-v3';this.material=mesh.material=material;
+  }
+  // A foot going in. World coordinates; strength is roughly how hard.
+  ripple(x,z,strength=1){
+    const slot=this.nextRipple%this.rippleSlots,base=slot*4;
+    this.ripples[base]=x;this.ripples[base+1]=z;
+    this.ripples[base+2]=this.uniforms.waterTime.value;
+    this.ripples[base+3]=Math.max(.05,Math.min(2,strength));
+    this.nextRipple++;
+  }
+  // Standing in it and moving: a patch of churn that follows the player.
+  setWade(x,z,amount){
+    this.uniforms.waterWade.value.set(x,z,Math.max(0,Math.min(1,amount)));
   }
   setQuality(quality){if(this.quality===quality)return;this.quality=quality;this.target.setSize(quality==='high'?768:512,quality==='high'?384:256);this.last=-Infinity;if(quality==='low')this.uniforms.waterReflectionReady.value=0;}
   update(renderer,scene,camera,time){

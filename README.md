@@ -99,9 +99,25 @@ See [the animation and visual upgrade notes](docs/visual-upgrade.md) for referen
 ## Sound
 
 - The supplied **ten-minute soundtrack** plays continuously everywhere in the silo, from the moment you enter. It never restarts or ducks as you travel between levels, and its loop is gapless. Set its level with **Music** in settings; **Sound** silences everything.
-- **Footsteps** follow the floor you are on — concrete galleries, metal grating in Mechanical and the generator hall, rock in the mines, grit on the surface, soft floors in the residences — with per-step variation rather than one repeated sample.
+- **Footsteps are real recordings**, one set per surface: concrete galleries, steel grating on the great stairway, rock in the mines, grit on the surface, carpet in the residences, grass in the park and the farm, water down in the void. They were synthesised until they weren't good enough; the recordings are from Minetest Game under CC BY-SA 3.0, attributed and licensed in [`dist/assets/audio/footsteps/README.txt`](dist/assets/audio/footsteps/README.txt).
+- **Firearms** on the sheriff's range fire real recordings — 9 mm, .308 and 20-gauge reports, and magazine, bolt, shell and cylinder sounds scheduled across each reload the way that weapon actually loads.
 - Doors, the pressure-door airlock, the lens wipe, the torch and the interface each have their own sound; the mains hum, ventilation, wind and turbine throb change with the location, and a synthesised impulse response gives the shaft its concrete tail.
-- Only the soundtrack is a bundled file. Everything else is generated at runtime. See [the audio notes](AUDIO.md).
+- The soundtrack, the footsteps and the gunfire are bundled files. Everything else is generated at runtime. See [the audio notes](AUDIO.md).
+
+## The sheriff's range
+
+Behind the sheriff's station on Level 1: twenty-two metres, four lanes, and the
+complete weapon collection from **Lost Signal** racked along both walls — five
+rifles, five shotguns, four sniper rifles, two SMGs, five pistols, three
+revolvers and two blades, every one of them usable. Take one off the rack, and
+the bench beside it resupplies you.
+
+Steel plates swing and ring when you hit them; paper silhouettes take a hole
+where the round went through. Recoil is added to your aim rather than replacing
+it, so it has to be pulled back down. Weapon models load the first time one is
+picked up, so a player who never goes down there never pays for them.
+
+See [the range notes](docs/gun-range.md).
 
 ## Down in the void
 
@@ -126,6 +142,8 @@ See [research and reconstruction decisions](docs/reconstruction.md), [the full l
 | Directory | M | Directory button |
 | Torch | F | Torch button |
 | Character | C | Character button |
+| Fire | Left mouse (captured) or G | FIRE button |
+| Reload / aim / sling | R / hold Shift / H | — |
 | First / third person | V | View button |
 | Pause | Esc / Silo 18 mark | Silo 18 mark |
 
