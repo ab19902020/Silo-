@@ -16,8 +16,11 @@ import { StoryProps, Drone } from './relics.js';
 
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel');
 const dialogs=[welcome,directory,settings,about,characters,relic,conversation,satchel],coarse=matchMedia('(pointer:coarse)').matches;
+// Every other panel pauses the silo. A conversation does not: you are standing
+// in a gallery talking to somebody, and the floor should carry on around you.
+const pausingDialogs=dialogs.filter(d=>d!==conversation);
 let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
-let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null;
+let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null,talking=null;
 let story=null,props=null,drone=null,wasOutside=false,lastChapter=null;
 let yaw=Math.PI/2,pitch=0,lookSensitivity=1,running=false,torchOn=false,quality='balanced';
 const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3}),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,2300),audio=new SiloAudio();
@@ -28,7 +31,7 @@ const saved=(()=>{try{return JSON.parse(localStorage.getItem('silo18-settings')|
 const openingComplete=(()=>{try{return localStorage.getItem('silo18-opening-complete')==='1';}catch{return false;}})();
 const savedStory=(()=>{try{return JSON.parse(localStorage.getItem('silo18-story')||'null');}catch{return null;}})();
 function saveStory(){try{localStorage.setItem('silo18-story',JSON.stringify(story.save()));}catch{}}
-const paused=()=>dialogs.some(d=>d.open)||!started||traveling;
+const paused=()=>pausingDialogs.some(d=>d.open)||!started||traveling;
 function notify(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4600);}
 function revealControls(){touchUntil=performance.now()+3500;}
 function toggleControls(){hudOpen=!hudOpen;document.body.classList.toggle('hud-open',hudOpen);$('controlsButton').setAttribute('aria-expanded',String(hudOpen));revealControls();}
@@ -39,13 +42,36 @@ function updateInterface(time){
   $('controlsButton').hidden=!started||paused();
   document.body.classList.toggle('screen-focused',!!opening?.focus);
 }
-function startConversation(person){
-  const text=person===ALGORITHM?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name});$('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;$('dialogueChoices').replaceChildren();
-  for(const topic of text.topics){const b=document.createElement('button');b.textContent=topic.label;b.addEventListener('click',()=>{$('dialogueLine').textContent=topic.reply;for(const other of $('dialogueChoices').children)other.setAttribute('aria-pressed',String(other===b));});$('dialogueChoices').append(b);}
-  audio.click();openDialog(conversation);
+function askTopic(button){
+  if(!button)return;
+  $('dialogueLine').textContent=button.dataset.reply;
+  for(const other of $('dialogueChoices').children)other.setAttribute('aria-pressed',String(other===button));
+  audio.click();
+}
+function startConversation(person,actor=null){
+  const text=person===ALGORITHM?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name});
+  $('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;$('dialogueChoices').replaceChildren();
+  text.topics.forEach((topic,i)=>{
+    const b=document.createElement('button');b.dataset.reply=topic.reply;b.setAttribute('aria-pressed','false');
+    const key=document.createElement('kbd');key.textContent=String(i+1);
+    b.append(key,document.createTextNode(topic.label));
+    b.addEventListener('click',()=>askTopic(b));$('dialogueChoices').append(b);
+  });
+  // The panel is shown, not modalled: the silo keeps running behind it, the
+  // person turns to face you and the camera settles on them while you talk.
+  hudOpen=false;document.body.classList.remove('hud-open');
+  for(const d of pausingDialogs)if(d.open)d.close();
+  talking={actor,name:text.name};population.talkingTo=actor;
+  if(!conversation.open)conversation.show();
+  document.body.classList.add('talking');audio.click();syncPause();
+}
+function endConversation(){
+  if(!talking)return;
+  talking=null;population.talkingTo=null;conversation.close();
+  document.body.classList.remove('talking');syncPause();if(started)canvas.focus();
 }
 function syncPause(){document.body.classList.toggle('paused',paused());$('hud').classList.toggle('hidden',welcome.open);keys.clear();stick.x=stick.y=0;$('joystick').firstElementChild.style.transform='';if(paused()&&document.pointerLockElement)document.exitPointerLock();}
-function openDialog(d){hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');for(const x of dialogs)if(x.open)x.close();d.showModal();syncPause();}
+function openDialog(d){if(talking)endConversation();hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');for(const x of dialogs)if(x.open)x.close();d.showModal();syncPause();}
 function closeDialog(d){d.close();if(!started&&d!==welcome)welcome.showModal();syncPause();if(started)canvas.focus();}
 function saveSettings(){try{localStorage.setItem('silo18-settings',JSON.stringify({brightness:$('brightness').value,sensitivity:$('sensitivity').value,quality,timeOfDay:$('timeOfDay').value,sound:$('sound').checked,music:$('music').value,reduceMotion:$('reduceMotion').checked,character:cast?.selected||saved.character||'juliette',thirdPerson:cast?.thirdPerson??saved.thirdPerson??true}));}catch{}}
 function updateSettings(){
@@ -250,10 +276,11 @@ const inspectionText={
   relics:'Tins, bottles, books and wound cable carried down from the levels above and kept where a sweep would not find them. Possession of relics from before is an offence under the Pact.',
 };
 function use(){
+  if(talking){endConversation();return;}
   if(opening?.state==='read-book'&&!interaction&&!paused()){requestDirectory();return;}
   if(!interaction||paused()||body.climbing)return;
   if(interaction.action==='opening-book'){audio.click();audio.playOpeningTheme();opening.takeBook();return;}
-  if(interaction.resident){startConversation(interaction.resident);return;}
+  if(interaction.resident){startConversation(interaction.resident,interaction.actor||null);return;}
   if(interaction.action==='algorithm'){startConversation(ALGORITHM);return;}
   if(interaction.ladder){
     const ladder=world.underground.ladders.find(l=>l.id===interaction.ladder);
@@ -278,7 +305,7 @@ function use(){
 function toggleTorch(){torchOn=!torchOn;audio.torch(torchOn);torch.visible=torchOn;$('torchButton').classList.toggle('active',torchOn);$('torchButton').setAttribute('aria-pressed',String(torchOn));}
 
 for(const d of dialogs){d.addEventListener('cancel',e=>{e.preventDefault();if(d===welcome&&ready){if(started){d.close();syncPause();}else begin(story?.mode||'story');}else closeDialog(d);});d.querySelector('[data-close]')?.addEventListener('click',()=>closeDialog(d));}
-$('controlsButton').addEventListener('click',toggleControls);$('leaveConversation').addEventListener('click',()=>closeDialog(conversation));
+$('controlsButton').addEventListener('click',toggleControls);$('leaveConversation').addEventListener('click',endConversation);conversation.addEventListener('close',()=>{if(talking)endConversation();});
 addEventListener('pointerdown',revealControls,{passive:true});
 $('enterButton').addEventListener('click',()=>begin('story'));
 $('exploreButton').addEventListener('click',()=>begin('explore'));
@@ -320,12 +347,19 @@ if(saved.reduceMotion===undefined)$('reduceMotion').checked=matchMedia('(prefers
 for(const source of SOURCES){const a=document.createElement('a');a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=source.title;const small=document.createElement('small');small.textContent=source.note;$('sources').append(a,small);}
 
 addEventListener('keydown',e=>{
-  if(e.target.matches('input,select,textarea')||e.target.closest('dialog')||e.code==='Space'&&e.target.matches('button'))return;
+  // The conversation panel is not modal, so it holds focus while the silo runs.
+  // Bailing out on any dialog ancestor meant 1-4 and Esc died inside it.
+  const inPanel=e.target.closest('dialog');
+  if(e.target.matches('input,select,textarea')||inPanel&&inPanel!==conversation||e.code==='Space'&&e.target.matches('button'))return;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
   if(e.repeat){keys.add(e.code);return;}
   if(e.code==='KeyM'){if(directory.open)closeDialog(directory);else requestDirectory();return;}
   if(e.code==='KeyC'){if(characters.open)closeDialog(characters);else{renderCharacters();openDialog(characters);}return;}
   if(paused())return;
+  if(talking){
+    if(/^Digit[1-9]$/.test(e.code)){askTopic($('dialogueChoices').children[Number(e.code.slice(5))-1]);return;}
+    if(e.code==='Escape'||e.code==='KeyE'){endConversation();return;}
+  }
   if(e.code==='KeyH'){toggleControls();return;}
   if(opening.focus&&e.code==='Space'){e.preventDefault();toggleControls();return;}
   revealControls();
@@ -415,18 +449,31 @@ function frame(){
     const forward=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-stick.y-pad.move.y;
     const right=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0)+stick.x+pad.move.x;
     const speed=(running||pad.run||keys.has('ShiftLeft')||keys.has('ShiftRight'))?3.8:1.45;
-    desired.set(-Math.sin(yaw)*forward+Math.cos(yaw)*right,0,-Math.cos(yaw)*forward-Math.sin(yaw)*right);if(desired.length()>1)desired.normalize();desired.multiplyScalar(opening.focus?0:speed);
+    desired.set(-Math.sin(yaw)*forward+Math.cos(yaw)*right,0,-Math.cos(yaw)*forward-Math.sin(yaw)*right);if(desired.length()>1)desired.normalize();desired.multiplyScalar(opening.focus||talking?0:speed);
 
     // Bound movement substeps prevent thin rail/door tunneling after slow frames.
     // The jump impulse belongs to one substep only, or it is applied N times.
     const count=Math.max(1,Math.ceil(dt/(1/120))),wasAirborne=!body.grounded;
-    for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders,{jump:jumpQueued&&!opening.focus&&i===0});
+    for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders,{jump:jumpQueued&&!opening.focus&&!talking&&i===0});
     if(jumpQueued&&body.velocity.y>.5)audio.jump();
     jumpQueued=false;
     if(wasAirborne&&body.grounded&&body.landingImpact>.05)audio.land(body.landingImpact);
     if(body.position.y<2&&!world.special){const p=world.spawn(world.activeLevel);body.teleport(p.x,p.y,p.z);notify('Returned to the nearest safe landing.');}
     const bob=$('reduceMotion').checked?0:Math.sin(body.distanceWalked*8)*.018*Math.min(1,body.horizontalSpeed);
-    world.update(dt,body.position);const passage=world.transitionAt(body.position);if(passage)travel(passage);opening.update(dt);population.update(dt,body,opening.watching,cast.selected);population.separatePlayer(body);cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;
+    world.update(dt,body.position);const passage=world.transitionAt(body.position);if(passage)travel(passage);opening.update(dt);population.update(dt,body,opening.watching,cast.selected);population.separatePlayer(body);
+    // While you are talking the camera settles on whoever you are talking to,
+    // so the conversation has a face in it and it is obvious who heard you.
+    if(talking?.actor){
+      const at=population.actorPosition(talking.actor);
+      if(at){
+        at.y+=1.52;const to=at.sub(body.position);to.y-=body.eyeHeight;
+        const want=Math.atan2(-to.x,-to.z),lift=Math.atan2(to.y,Math.hypot(to.x,to.z));
+        yaw+=Math.atan2(Math.sin(want-yaw),Math.cos(want-yaw))*(1-Math.exp(-5*dt));
+        pitch+=(lift-pitch)*(1-Math.exp(-5*dt));
+      }else endConversation();
+    }
+    cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;
+    if(talking?.actor){const at=population.actorPosition(talking.actor);if(at&&at.distanceTo(body.position)>5.5)endConversation();}
     props.update(dt,time,story,world.activeLevel,world.special);
     // The supplied hard-drive model is placed by the character cast, so taking
     // it in story mode has to clear it from the bench there.
@@ -438,7 +485,8 @@ function frame(){
       if(event==='fired')droneKill();
       else if(event==='landed'){story.droneKilled();saveStory();syncStoryHud(true);notify('It is down. Nothing else is coming.');}
     }
-    interaction=body.climbing||opening.focus?null:world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;if(interaction)$('interaction').lastElementChild.textContent=interaction.label;
+    interaction=body.climbing||opening.focus||talking?null:world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;
+    if(interaction){$('interactionLabel').textContent=interaction.label;$('interactionHint').textContent=interaction.hint||'';}
     $('touchUse').style.opacity=interaction||opening.state==='read-book'?'1':'.4';audio.step(body.distanceWalked,body.horizontalSpeed,cast.active?.motion.stepCount);
     crowdSoundTime-=dt;if(crowdSoundTime<=0){crowdSoundTime=opening.watching?4:1.1+Math.random()*1.5;audio.residents?.(population.count,opening.watching);}
   }else if(!started){

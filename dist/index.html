@@ -17,7 +17,7 @@
     <nav aria-label="Exploration controls"><button id="directoryButton" class="nav-button"><span>☷</span> Directory</button><button id="characterButton" class="nav-button" aria-label="Choose character">Character</button><button id="settingsButton" class="icon-button" aria-label="Settings">⚙</button></nav>
   </header>
   <div id="crosshair" aria-hidden="true"></div>
-  <button id="interaction" hidden><kbd>E</kbd><span>Open door</span></button>
+  <button id="interaction" hidden><kbd>E</kbd><span id="interactionLabel">Open door</span><small id="interactionHint"></small></button>
   <aside id="levelRail" aria-hidden="true"><span>001</span><div><i id="depthMarker"></i></div><span>144</span></aside>
   <div class="bottom-hud" id="bottomHud"><div><span class="mode-dot"></span><span id="modeLabel">ON FOOT</span></div><p id="controlHint"><kbd>W A S D</kbd> Move <span>·</span> Drag to look <span>·</span> <kbd>E</kbd> Use <span>·</span> <kbd>M</kbd> Directory</p><button id="viewButton" aria-label="Switch first or third person">View: third person</button><button id="torchButton" aria-label="Toggle torch">☀ <span>Torch</span></button></div>
   <div id="touchControls"><div id="joystick" aria-label="Move"><i></i></div><div class="touch-actions"><button id="runButton" aria-label="Toggle running">Run</button><button id="jumpButton" aria-label="Jump">Jump</button><button id="touchUse" aria-label="Interact">Use</button></div><span id="lookHint">Drag the right side to look</span></div>
@@ -29,7 +29,7 @@
   </aside>
 
   <div id="cinemaControls"><button id="focusScreenButton" hidden>Back to cafeteria</button><button id="skipOpening" hidden>Skip</button></div>
-  <dialog id="conversation" class="panel conversation-panel" aria-labelledby="speakerName"><div class="panel-head"><div><span id="speakerRole" class="eyebrow accent"></span><h2 id="speakerName"></h2></div><button class="close" data-close aria-label="Leave conversation">×</button></div><p id="dialogueLine" aria-live="polite"></p><div id="dialogueChoices"></div><button id="leaveConversation" class="secondary wide">Leave conversation</button></dialog>
+  <dialog id="conversation" class="panel conversation-panel" aria-labelledby="speakerName"><div class="panel-head"><div><span id="speakerRole" class="eyebrow accent"></span><h2 id="speakerName"></h2></div><button class="close" data-close aria-label="Leave conversation">×</button></div><p id="dialogueLine" aria-live="polite"></p><div id="dialogueChoices"></div><p id="dialogueHint" class="help"><kbd>1</kbd>–<kbd>4</kbd> ask <span>·</span> <kbd>E</kbd> or <kbd>Esc</kbd> step away</p><button id="leaveConversation" class="secondary wide">Step away</button></dialog>
 
   <dialog id="welcome" class="welcome">
     <div class="welcome-top"><span class="eyebrow">AN UNDERGROUND WORLD</span><span class="edition">CHAPTER ONE · THE CLEANING</span></div>

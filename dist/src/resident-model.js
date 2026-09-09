@@ -283,16 +283,41 @@ export function buildResidentModel(definition,{suit=false}={}){
     if(fringe){const g=new THREE.SphereGeometry(1,26,14,0,TAU2,0,Math.PI*.42);g.scale(.086*fw,.052,.078);g.translate(0,CY+.038,.010);add(g,hair,'Head');}
   }
   if(suit){
-    const start=indices.length;
-    ell(0,1.62,0,.147,.186,.152,coat,'Head',24);
-    // A separately finished opaque visor reflects the light without the
-    // transparency/sorting failures of the original uploaded coats.
-    const visorStart=indices.length;ell(0,1.631,.108,.113,.128,.070,new THREE.Color(0x383e3c),'Head',32);visorRange=[visorStart,indices.length-visorStart];
-    torus(0,1.631,.117,.121,.009,dark,'Head',0,.94,1);
-    torus(0,1.473,0,.098,.030,dark,'Neck',Math.PI/2,1,.85);
+    // A cleaning helmet, not a dome. The old one was a bare pale ellipsoid with
+    // a black lens filling its whole front, which from any distance reads as a
+    // large bald head — which is what it looked like walking up to the sensor.
+    // This one is a shell with a hard brow, a horizontal faceplate set into a
+    // recessed band, a locking neck ring, side fittings and a lamp: none of it
+    // reads as a head, and the man inside is behind an opaque plate.
+    // Seen from the sensor, which stands above a cleaner's head, what you get
+    // is the crown. A pale sphere the size of a skull, in the same cream as the
+    // suit, reads from up there as a bare head — which is what it looked like
+    // walking up to the lens. So: a shell in its own harder grey, wider than a
+    // head and flattened on top, a dark faceplate carried up over the front of
+    // the crown where the camera can see it, and a ridge down the middle.
+    const start=indices.length,HY=1.628,hard=new THREE.Color(0xbcbdb0);
+    ell(0,HY,-.006,.164,.170,.166,hard,'Head',26);
+    ell(0,HY+.104,-.012,.146,.062,.146,hard.clone().multiplyScalar(.90),'Head',22);   // flattened crown
+    box(0,HY+.118,-.010,.036,.036,.230,hard.clone().multiplyScalar(.80),'Head');      // crest
+    box(0,HY+.070,.104,.250,.058,.082,dark,'Head');                                   // brow bar
+    // The faceplate sits in a recess and reaches up onto the crown, so it is in
+    // shot from above as well as head on.
+    ell(0,HY+.012,.108,.126,.104,.088,dark,'Head',26);
+    const visorStart=indices.length;ell(0,HY+.014,.122,.112,.086,.078,new THREE.Color(0x252b2d),'Head',30);visorRange=[visorStart,indices.length-visorStart];
+    for(const sign of [-1,1]){
+      ell(sign*.152,HY-.014,.026,.030,.056,.052,hard.clone().multiplyScalar(.86),'Head',12); // ear cups
+      ell(sign*.166,HY-.014,.026,.014,.028,.026,dark,'Head',10);
+      box(sign*.096,HY+.030,.104,.020,.130,.030,dark,'Head');                                 // plate clamps
+    }
+    ell(.106,HY+.096,.070,.028,.026,.036,new THREE.Color(0xd8d2b4),'Head',12);               // lamp
+    torus(0,HY-.148,.002,.126,.022,dark,'Head',Math.PI/2,1,.94);                             // neck ring
+    torus(0,1.470,0,.100,.028,dark,'Neck',Math.PI/2,1,.88);                                   // collar seal
     helmetRange=[start,indices.length-start];
     box(0,1.19,-.156,.26,.40,.15,dark,'Chest');box(0,1.20,-.238,.232,.32,.065,coat,'Chest');
     for(const sign of [-1,1]){box(sign*.115,1.19,.151,.04,.46,.023,dark,torso);box(sign*.092,1.085,.172,.065,.045,.016,new THREE.Color(0xb29b62),torso);}
+    // Air lines from the pack over each shoulder into the collar.
+    for(const sign of [-1,1])for(let j=0;j<7;j++){const t=j/6,a=Math.PI*t;
+      tube(V(sign*(.062+.052*Math.sin(a)),1.34+.10*Math.sin(a*.9),-.14+.28*t),V(sign*(.062+.052*Math.sin(a+.5)),1.34+.10*Math.sin((a+.5)*.9),-.14+.28*(t+1/6)),.016,.016,dark,'Chest',7);}
     torus(.18,1.22,-.03,.096,.019,dark,'Chest',0,.8,1);
   }else{
     if(a.outfit==='vest'){

@@ -208,6 +208,8 @@ export class SurfaceWorld {
     this.lensMaterial=new THREE.ShaderMaterial({uniforms:{source:{value:this.raw.texture},clean:{value:this.cleanliness},time:{value:0}},vertexShader:'varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:`
       uniform sampler2D source;uniform float clean,time;varying vec2 vUv;
       float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+        return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
       void main(){
         float grime=1.-clean;
         // Six taps on a widening ring: a cheap, stable blur whose radius is
@@ -215,12 +217,17 @@ export class SurfaceWorld {
         vec2 spread=vec2(.0085,.036)*grime;
         vec3 c=texture2D(source,vUv).rgb*.34;
         for(int i=0;i<6;i++){float a=float(i)*1.0471976;c+=texture2D(source,vUv+vec2(cos(a),sin(a))*spread).rgb*.11;}
-        float soil=smoothstep(.10,.92,hash(floor(vUv*vec2(70.,22.))));
-        float fine=smoothstep(.34,1.,hash(floor(vUv*vec2(230.,66.))+31.));
+        // Grime is not a mosaic. Hashing whole cells drew a 70 x 22 chequer over
+        // the whole picture; these are interpolated so the dirt has shape.
+        vec2 g0=vUv*vec2(46.,15.),g1=vUv*vec2(155.,44.)+31.;
+        float soil=smoothstep(.16,.90,noise(g0)*.68+noise(g0*2.7+7.)*.32);
+        float fine=smoothstep(.30,.95,noise(g1));
+        float streak=smoothstep(.35,.95,noise(vec2(vUv.x*9.,vUv.y*130.)));
         float edge=smoothstep(.10,.62,length((vUv-.5)*vec2(.65,1.)));
-        // The clean sweeps left to right across the glass as the count rises.
-        float wipe=smoothstep(clean-.10,clean+.05,vUv.x);
-        float dirt=grime*(.16+soil*.30+fine*.14+edge*.40)*(.55+wipe*.45);
+        // The clean sweeps left to right across the glass as the count rises,
+        // with a ragged edge where the cloth has and has not reached.
+        float wipe=smoothstep(clean-.16,clean+.09,vUv.x+(noise(vec2(vUv.y*26.,3.))-.5)*.05);
+        float dirt=grime*(.14+soil*.30+fine*.11+streak*.09+edge*.38)*(.50+wipe*.50);
         c=mix(c,vec3(.27,.23,.16),clamp(dirt,0.,.90));
         c*=1.-grime*.42*(.55+edge*.45);
         c=mix(vec3(dot(c,vec3(.2126,.7152,.0722))),c,1.-grime*.55);
