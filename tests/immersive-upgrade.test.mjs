@@ -4,7 +4,8 @@ import * as T from '../dist/vendor/three.module.js';
 import { conversationFor } from '../dist/src/conversations.js';
 import { PLAYABLE_CHARACTERS } from '../dist/src/characters.js';
 import { SiloWorld } from '../dist/src/world.js';
-import { levelY,TAU } from '../dist/src/data.js';
+import { levelY,TAU,roomType } from '../dist/src/data.js';
+import { updateLivestock } from '../dist/src/livestock.js';
 import { CharacterBody } from '../dist/src/physics.js';
 import { Population } from '../dist/src/population.js';
 import { CafeteriaOpening,CAFETERIA_START } from '../dist/src/opening.js';
@@ -93,4 +94,36 @@ test('every light in the silo belongs to a fixture, and none of them follow the 
   assert.ok(keyHops<40,`the shadow caster moved on ${keyHops} of 900 frames; it must sit on a fitting, not on the player`);
   assert.equal(keyHotHops,0,'the shadow caster moved while still lit, which swings every shadow in the room');
   assert.ok(world.localLights.some(l=>l.intensity>1),'the walk lit nothing at all');
+});
+
+// --- the farms -------------------------------------------------------------
+test('every agricultural wing keeps animals as well as crops, and they stay in their pens',()=>{
+  const world=new SiloWorld(new T.Scene());
+  const farms=[];
+  for(let level=1;level<=144;level++)for(let wing=0;wing<6;wing++)if(roomType(level,wing)==='farm')farms.push([level,wing]);
+  assert.ok(farms.length>=6,`only ${farms.length} agricultural wings`);
+  for(const [level,wing] of farms){
+    world.setLevel(level);
+    const room=world.loaded.get(level).rooms[wing],stock=room.userData.livestock;
+    assert.ok(stock?.length,`level ${level} wing ${wing} grows crops but keeps nothing`);
+    const kinds=new Set(stock.map(a=>a.species));
+    for(const kind of ['chicken','rabbit','pig','cow'])assert.ok(kinds.has(kind),`no ${kind} on level ${level}`);
+  }
+  // Half an hour of them milling about: nothing may wander out of its pen, or
+  // out of the room, and nothing may end up standing inside anything else.
+  world.setLevel(farms[0][0]);
+  const stock=world.loaded.get(farms[0][0]).rooms[farms[0][1]].userData.livestock;
+  const start=stock.map(a=>a.group.position.clone());
+  for(let i=0;i<8000;i++)updateLivestock(stock,1/8,i/8);
+  for(const a of stock){
+    const p=a.group.position;
+    assert.ok(Math.abs(p.x-a.pen.x)<a.pen.w/2+1.2&&Math.abs(p.z-a.pen.z)<a.pen.d/2+1.2,
+      `a ${a.species} left its pen: ${p.x.toFixed(1)},${p.z.toFixed(1)} vs ${a.pen.x},${a.pen.z}`);
+    assert.ok(Math.abs(p.x)<10&&p.z>0&&p.z<24,`a ${a.species} left the room at ${p.x.toFixed(1)},${p.z.toFixed(1)}`);
+  }
+  for(let i=0;i<stock.length;i++)for(let j=i+1;j<stock.length;j++){
+    if(stock[i].pen!==stock[j].pen)continue;
+    assert.ok(stock[i].group.position.distanceTo(stock[j].group.position)>.25,'two animals ended up inside each other');
+  }
+  assert.ok(stock.some((a,i)=>a.group.position.distanceTo(start[i])>.5),'nothing moved at all in half an hour');
 });

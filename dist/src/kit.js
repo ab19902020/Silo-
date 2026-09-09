@@ -67,6 +67,12 @@ export function createMaterials() {
     linen: standard(0xb1b6a5,{map:clothMap,roughness:1}),
     wood: standard(0x82704b,{map:woodMap,roughness:.8}),
     soil: standard(0x3d3022,{map:rockMap}),
+    // Livestock. Hides and skin need their own entries: reusing wood for a cow
+    // gives you a wooden cow, and the roughness is wrong in both directions.
+    hide: standard(0x6b4b34,{roughness:.95}),
+    hidePale: standard(0xd6cdb8,{roughness:.93}),
+    pigSkin: standard(0xc0908a,{roughness:.9}),
+    comb: standard(0x9c3b32,{roughness:.7}),
     leaf: standard(0x477646,{side:THREE.DoubleSide,roughness:.95}),
     leafLight: standard(0x7a9352,{side:THREE.DoubleSide,roughness:.95}),
     rock: standard(0x656a64,{map:rockMap,bumpMap:rockMap,bumpScale:.35,roughness:1}),

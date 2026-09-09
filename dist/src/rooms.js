@@ -5,10 +5,12 @@ import { SILO, TYPE_NAMES, RESIDENCES } from './data.js';
 import { hasRearPassage } from './passages.js';
 import { dressWorkshop } from './workshop-details.js';
 import { dressRoom } from './environment-details.js';
+import { buildLivestock } from './livestock.js';
 
 const TAU=Math.PI*2;
 export function buildRoom(materials,type,level,wing,assets) {
   const root=new THREE.Group(),k=new Kit(materials), solids=[],interactions=[],animated=[];
+  let livestock=null;
   const rng=random(level*107+wing*7919), H=SILO.roomHeight, W=SILO.roomHalf, D=SILO.roomDepth;
   const box=(mat,x,y,z,w,h,d,solid=true,ry=0)=>{(Math.min(w,h,d)>.22&&Math.max(w,h,d)<6?k.bevel.bind(k):k.box.bind(k))(mat,x,y,z,w,h,d,ry);if(solid)solids.push({x,z,w,d,y0:y-h/2,y1:y+h/2,ry});};
   const label=(text,x,y,z,w=3,h=.5,ry=Math.PI)=>addSign(root,text,[x,y,z],w,h,ry);
@@ -137,14 +139,24 @@ export function buildRoom(materials,type,level,wing,assets) {
       label('WATER FILTRATION · 55',0,4.6,1,6,.6);interactions.push({position:[0,1.3,20.5],label:'Read filtration gauges',action:'water'});
     },
     farm(){
+      // Half the agricultural wings grow, half of them keep animals. The books
+      // are clear the farms do both — the levels smell of manure and there is
+      // pork and rabbit on the plates — and a hall of hydroponic troughs on
+      // its own is only half of what a silo has to feed itself with.
+      // Beds at the front, animals at the back. Every agricultural wing does
+      // both: a hall of hydroponic troughs on its own is half of what a silo
+      // has to feed itself with, and the books are plain that the farm levels
+      // smell of manure and put pork and rabbit on the plates.
       for(const x of [-7.4,-2.6,2.6,7.4]){
-        box('darkConcrete',x,.26,13,3.5,.52,17);k.box('soil',x,.54,13,3.2,.06,16.7);
-        for(let z=5.2;z<21.5;z+=.75)for(let dx=-1.1;dx<1.3;dx+=.72){const p=x+dx+(rng()-.5)*.18;k.cylinder('leaf',p,.88,z,.035,.65);for(let j=0;j<3;j++)k.leaf(j%2?'leafLight':'leaf',p+(rng()-.5)*.25,.8+j*.17,z,.24,.07,.48,rng()*TAU);}
-        fixture(k,x,4.7,12,14,false,true);
-        pipe(k,x,13,.8,18,.04,'blue');
+        box('darkConcrete',x,.26,8.6,3.5,.52,10.2);k.box('soil',x,.54,8.6,3.2,.06,9.9);
+        for(let z=4.2;z<13.2;z+=.75)for(let dx=-1.1;dx<1.3;dx+=.72){const p=x+dx+(rng()-.5)*.18;k.cylinder('leaf',p,.88,z,.035,.65);for(let j=0;j<3;j++)k.leaf(j%2?'leafLight':'leaf',p+(rng()-.5)*.25,.8+j*.17,z,.24,.07,.48,rng()*TAU);}
+        fixture(k,x,4.7,8.6,9,false,true);
+        pipe(k,x,8.6,.8,11,.04,'blue');
       }
       prop('hydroponics',-8,1.7,.72);
-      label('AGRICULTURE · GROWING HALL',0,4.6,1,6,.6);
+      livestock=buildLivestock(materials,k,rng,{solids,fixtureAt:(x,y,z,len)=>fixture(k,x,y,z,len,false,true)});
+      label('AGRICULTURE · GROWING HALL AND STOCK',0,4.6,1,7,.6);
+      interactions.push({position:[0,1.2,15.6],label:'Look over the pens',action:'livestock'});
     },
     supply(){
       for(const x of [-7.6,-3.7,3.7,7.6])for(const z of [6,11,16,21]){
@@ -235,6 +247,7 @@ export function buildRoom(materials,type,level,wing,assets) {
   for(const x of [-7,-3.5,3.5,7]){k.box('metal',x,H-.13,D/2,.055,.05,D-.4);}
   for(const x of [-1.96,1.96]){k.bevel('metal',x,1.62,.05,.15,3.26,.27);for(const y of [.3,1.4,2.8])k.cylinder('brass',x,y,-.12,.035,.06,Math.PI/2);}
   dressRoom(k,root,type,level,wing);root.add(k.group());
-  root.userData={...root.userData,solids,interactions,animated,type};
+  if(livestock)for(const a of livestock)root.add(a.group);
+  root.userData={...root.userData,solids,interactions,animated,type,livestock};
   return root;
 }

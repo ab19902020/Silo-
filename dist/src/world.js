@@ -15,6 +15,7 @@ const PYLON_ANGLES=Array.from({length:24},(_,i)=>(Math.floor(i/4)+(i%4+1)/5)*TAU
 const SIGN_WALL=SILO.deckOuter-.2-SIGN_DEPTH/2;
 const SIGN_WALL_HIGH=SILO.deckOuter-.3-SIGN_DEPTH/2;
 import { buildRoom } from './rooms.js';
+import { updateLivestock } from './livestock.js';
 import { buildBazaar } from './bazaar.js';
 import { buildPassages, PASSAGE, hasRearPassage, SPUR, breach } from './passages.js';
 import { loadPhotographicMaterials } from './materials.js';
@@ -173,7 +174,7 @@ export class SiloWorld {
     for(const n of [level-1,level,level+1])if(n>=1&&n<=144)this.loadLevel(n);
     for(const [n,e]of this.loaded)if(Math.abs(n-level)>2){disposeGroup(e.root);this.loaded.delete(n);}
     this.doors=[...this.loaded.values()].flatMap(e=>e.doors);this.interactions=[...this.loaded.values()].flatMap(e=>e.interactions);
-    this.animated=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>r.userData.animated));this.screens=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>[r.userData.outsideScreen,...(r.userData.extraScreens||[])])).filter(Boolean);
+    this.animated=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>r.userData.animated));this.livestock=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>r.userData.livestock||[]));this.screens=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>[r.userData.outsideScreen,...(r.userData.extraScreens||[])])).filter(Boolean);
     this.underground.root.visible=!!special&&special!=='generator';this.generator.root.visible=special==='generator';this.surface.root.visible=!special;
     if(special==='generator')this.animated=this.generator.animated;
     this.rebuildCollision();
@@ -407,6 +408,7 @@ export class SiloWorld {
     if(!this.special){const level=levelAt(position.y);if(level!==this.activeLevel)this.setLevel(level);}
     for(const door of this.doors){door.amount=THREE.MathUtils.damp(door.amount,door.open?1:0,6,dt);for(const leaf of door.leaves)leaf.pivot.rotation.y=-leaf.side*door.amount*Math.PI*.52;if(door.collider)door.collider.enabled=door.amount<.8;}
     for(const a of this.animated)a.object.rotation[a.axis]+=dt*a.speed;
+    this.clock=(this.clock||0)+dt;if(this.livestock?.length&&!this.special)updateLivestock(this.livestock,dt,this.clock);
     for(const [level,e]of this.loaded){e.root.visible=!this.special&&Math.abs(level-this.activeLevel)<=1;for(let i=0;i<e.rooms.length;i++){const room=e.rooms[i],center=new THREE.Vector3(0,1.5,10).applyMatrix4(room.matrixWorld);room.visible=level===this.activeLevel||center.distanceTo(position)<38;}}
     const y=levelY(this.activeLevel);
     this.lightRig(position,top,dt);

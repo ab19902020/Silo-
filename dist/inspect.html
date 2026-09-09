@@ -27,16 +27,16 @@ const level=N('level')||50;
 const special=q.get('special')||null;
 world.setLevel(level,special);
 const cam=new THREE.PerspectiveCamera(N('fov')||68,W/H,.1,2300);
-let pos;
-if(q.get('top')==='1'){pos=topPoint(N('x'),N('y')||1.7,N('z'));}
-else pos=new THREE.Vector3(N('x'),levelY(level)+(N('y')||1.7),N('z'));
+// Room-local coordinates when a wing is named: x across, z outward.
+const room=q.get('wing')!==null?world.loaded.get(level)?.rooms[N('wing')]:null;
+if(room)room.updateWorldMatrix(true,false);
+const place=(x,y,z)=>room?new THREE.Vector3(x,y,z).applyMatrix4(room.matrixWorld)
+  :q.get('top')==='1'?topPoint(x,y,z):new THREE.Vector3(x,levelY(level)+y,z);
+let pos=place(N('x'),N('y')||1.7,N('z'));
 // settle the light rig the way a walk would
 for(let i=0;i<200;i++)world.update(1/60,pos);
 cam.position.copy(pos);
-let look;
-if(q.get('top')==='1')look=topPoint(N('lx'),N('ly')||1.6,N('lz'));
-else look=new THREE.Vector3(N('lx'),levelY(level)+(N('ly')||1.6),N('lz'));
-cam.lookAt(look);
+cam.lookAt(place(N('lx'),N('ly')||1.6,N('lz')));
 if(q.get('pop')==='1'){const p=new Population(scene,world);p.update(0,{position:pos,horizontalSpeed:0},false,'juliette');}
 rendering.resize();
 if(q.get('post')==='0')renderer.render(scene,cam);else rendering.render(scene,cam);
