@@ -111,7 +111,7 @@ function renderSatchel(){
 function takeRelic(id){
   const item=story.take(id);
   if(!item)return;
-  audio.click();saveStory();
+  audio.pickup(item.sound||'relic');saveStory();
   showObjective(item.name,item.blurb,9000);
   notify(story.story?story.objective:`${item.name} — in your satchel.`);
   if(id==='suit')notify('The suit is on. The airlock will let you through now.');
@@ -229,6 +229,9 @@ function updateHUD(){
   $('zone').textContent=world.outside?'THE SURFACE':world.special?'LOWER ACCESS':data.zone;$('levelLabel').textContent=world.outside?'OUTSIDE':world.special?'BELOW MECHANICAL':`LEVEL ${String(n).padStart(3,'0')}`;$('locationName').textContent=name;
   $('depthLabel').textContent=`${Math.max(0,Math.round(levelY(1)-body.position.y)).toLocaleString()} m below the upper landing`;$('depthMarker').style.top=`${(n-1)/143*94}%`;
   $('modeLabel').textContent=`${cast?.active?.definition.short||'ON FOOT'}${body.climbing?' · CLIMBING':running?' · RUNNING':''}`;audio.setLocation(world.outside?'surface':world.special||roomType(n,wing));
+  // The great stairway is open steel and runs through every level, so the floor
+  // underfoot there is not the floor of the room the level counter is reporting.
+  audio.setSurface(!world.outside&&!world.special&&r<SILO.stairRadius+.6?'grating':null);
 }
 const inspectionText={
   generator:'Six removable panels protect the turbine. The rear panel is held open for inspection; the rotor, gantry and crane can be seen around the housing.',
@@ -258,7 +261,7 @@ function use(){
     else notify('Move closer to the ladder.');
     return;
   }
-  if(interaction.action==='hard-drive'){audio.click();if(story?.story&&!story.has('harddrive'))takeRelic('harddrive');else openDialog(relic);return;}
+  if(interaction.action==='hard-drive'){if(story?.story&&!story.has('harddrive'))takeRelic('harddrive');else{audio.click();openDialog(relic);}return;}
   if(interaction.action?.startsWith('relic:')){takeRelic(interaction.action.slice(6));return;}
   if(interaction.sealed){audio.click();notify(interaction.sealed.reason);return;}
   if(interaction.action==='clean-camera'){audio.click();world.surface.beginCleaning();notify('Cleaning the camera lens. The cafeteria feed clears as you wipe.');return;}

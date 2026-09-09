@@ -17,23 +17,23 @@ export const MODES=Object.freeze(['story','explore']);
 // id, what it is, where it is, and whether the show says so or this build put
 // it there. `at` is room-local: x across the wing, z outward from the gallery.
 export const RELICS=Object.freeze([
-  {id:'pez',name:'A duck-headed PEZ dispenser',eyebrow:'RELIC · UNAUTHORISED',
+  {id:'pez',sound:'plastic',name:'A duck-headed PEZ dispenser',eyebrow:'RELIC · UNAUTHORISED',
    level:26,wing:0,at:[-4.9,1.45,9.6],float:true,
    blurb:'A yellow plastic duck on a spring, and a sleeve of chalky sweets that went stale before anyone in this silo was born. George Wilkins gave it to Juliette Nichols. It is the least valuable thing in this list and the hardest to explain away.',
    source:'Named in the television series: George gives Juliette the duck PEZ dispenser.'},
-  {id:'watch',name:'George Wilkins’ wristwatch',eyebrow:'RELIC · AUTHORISED',
+  {id:'watch',sound:'metal',name:'George Wilkins’ wristwatch',eyebrow:'RELIC · AUTHORISED',
    level:100,wing:0,at:[4.6,1.02,9.4],float:true,
    blurb:'Still running. Judicial authorises watches — a relic can be made legal if enough of them are in circulation to be useless as evidence — so this one is carried openly, and that is exactly why nobody looks twice at the man carrying it.',
    source:'Named in the television series: George’s watch, passed to Juliette, and legal because watches can be authorised.'},
-  {id:'georgia',name:'Amazing Adventures in Georgia',eyebrow:'RELIC · RED',
+  {id:'georgia',sound:'book',name:'Amazing Adventures in Georgia',eyebrow:'RELIC · RED',
    level:62,wing:0,at:[6.9,1.06,17.4],float:true,
    blurb:'A children’s travel guide from before, full of photographs of beaches and roads and open water. It came down through the Flamekeepers, hand to hand, and reached George from his aunt. Every page of it is a thing the Pact says does not exist.',
    source:'Named in the television series: the picture book kept by the Flamekeepers and traded away for the hard drive.'},
-  {id:'ledger',name:'A relic buyer’s ledger',eyebrow:'SEIZED EVIDENCE',
+  {id:'ledger',sound:'book',name:'A relic buyer’s ledger',eyebrow:'SEIZED EVIDENCE',
    level:14,wing:0,at:[-5.6,1.0,12.6],float:true,needs:'judicial',
    blurb:'Ruled columns in a careful hand: what came up out of the ground, who brought it, what it was traded for. Two thirds of the entries have been struck through in a different ink. The last legible line is a hard drive, traded for a book.',
    source:'A placement, not a claim. The show establishes a relic buyer and a trade of the book for the hard drive; the ledger itself is this build’s invention.'},
-  {id:'harddrive',name:'George’s hard drive',eyebrow:'RELIC · RED',
+  {id:'harddrive',sound:'plastic',name:'George’s hard drive',eyebrow:'RELIC · RED',
    level:144,wing:1,at:[-5.28,.863,5.48],prop:true,
    blurb:'A red-level relic: possession alone is a cleaning, and reading it takes an access level three people in this silo have. George died for it. It has been sitting on a repair bench in Mechanical ever since, because the safest place for it is the one nobody thinks to search.',
    source:'Named in the television series: George’s hard drive, classified red and requiring sysop access.'},
@@ -42,11 +42,11 @@ export const RELICS=Object.freeze([
 // The two things that are not relics: they are equipment, and the run does not
 // end without both of them.
 export const EQUIPMENT=Object.freeze([
-  {id:'suit',name:'A cleaning suit',eyebrow:'SUPPLY · NOT ON THE MANIFEST',
+  {id:'suit',sound:'cloth',name:'A cleaning suit',eyebrow:'SUPPLY · NOT ON THE MANIFEST',
    level:144,wing:3,at:[5.6,.4,18.5],needs:'supply',
    blurb:'Heat tape, seals and a helmet, folded into a crate that is not on any manifest. Supply makes the suits that go out of the airlock. Supply also knows exactly which of them are made to last, and this is one of the ones that is.',
    source:'Supply builds the cleaning suits; a better-made suit put aside by Mechanical’s friends in Supply is from the books.'},
-  {id:'shotgun',name:'A shotgun',eyebrow:'MECHANICAL · CONCEALED',
+  {id:'shotgun',sound:'metal',name:'A shotgun',eyebrow:'MECHANICAL · CONCEALED',
    level:144,wing:0,at:[1.9,.95,11.7],needs:'shotgun',
    blurb:'Broken down into three parts and taped inside the housing of a pump that has been out of service for a decade, in the aisle where nobody stops. Mechanical does not advertise what it keeps. You will want this on the hill.',
    source:'A placement. Mechanical arms itself in the books; the specific weapon and its hiding place are this build’s invention.'},

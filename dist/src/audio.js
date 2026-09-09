@@ -24,83 +24,228 @@ const OPENING_URL = new URL('../assets/audio/silo-18-opening.mp3', import.meta.u
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,rand=(a,b)=>a+Math.random()*(b-a);
 const LEVEL=2.2;   // output trim ahead of the limiter; the sub-bus balance is set below
 
-// Impacts are modelled, not drawn with oscillators. A short excitation — a
-// noise burst, plus scattered grains where the surface is loose — is fed
-// through a bank of damped two-pole resonators. The frequencies and decay
-// times of those modes are what make concrete sound like concrete and grating
-// sound like steel; an oscillator stack can only ever sound like a drum
-// machine. Every impact in the silo is rendered this way once at start-up and
-// then played back as a sample with per-hit variation.
+// Impacts are modelled, not drawn with oscillators. A short excitation is fed
+// through a bank of damped two-pole resonators; the frequencies and decay times
+// of those modes are what make concrete sound like concrete and grating sound
+// like steel.
 //
-//   modes    [frequency Hz, decay seconds, relative gain]
-//   direct   how much raw excitation survives, for attack bite
-//   burst    excitation length in seconds; shape is its decay curve
+// The first version of this got one line of arithmetic wrong and it cost the
+// whole silo its footsteps. Feeding a two-pole resonator an impulse gives
+// b0·r^n·sin((n+1)w)/sin(w), so a mode's peak is b0/sin(w) and the gain that
+// makes the table's numbers mean what they say is b0 = sin(w). It was written
+// as sin(w)·(1-r), and (1-r) is 4e-4 for a 95 Hz mode that rings for 48 ms
+// against 4e-3 for a 3.1 kHz mode that rings for 5 — so every low mode came out
+// three hundred times too quiet and every material in the game, whatever its
+// table said, was reduced to its top two octaves. Measured on the old build, a
+// boot on concrete had *zero* per cent of its energy below 120 Hz, 62 per cent
+// above 2 kHz, and was over in ten milliseconds. That is not a footstep. That
+// is a tap shoe.
+//
+// A real footstep is three things arriving together, and the table below now
+// carries all three:
+//
+//   sole     the shoe. A boot is a lossy spring: it turns the strike into a
+//            few milliseconds of shaped push rather than a click. `bright` is
+//            its low-pass corner in Hz, `burst` its length, `shape` its decay.
+//   body     the mass behind it. Eighty kilos arriving on a floor puts a
+//            short, low half-cycle into the room; this is what you feel as
+//            much as hear, and what was missing entirely.
+//   modes    the floor and the room. [frequency Hz, decay seconds, gain]
+//
+//   direct   how much raw excitation survives on top, for bite
 //   grains   loose material scattered after the strike
+//   send     how much of it goes to the room reverb
 const IMPACTS={
-  // Floors, in the order a boot meets them.
-  concrete:{duration:.26,burst:.0035,shape:2.4,direct:.46,grains:3, grainLevel:.12,grainSpread:.030,
-    modes:[[95,.048,.85],[168,.030,1],[395,.024,.62],[880,.014,.45],[1650,.009,.34],[3100,.005,.20]]},
-  metal:   {duration:.48,burst:.0024,shape:3.0,direct:.32,grains:7, grainLevel:.20,grainSpread:.120,
-    modes:[[118,.060,.55],[210,.045,.70],[760,.20,.55],[1390,.17,.50],[2340,.12,.40],[3720,.08,.26],[5200,.05,.16]]},
-  rock:    {duration:.34,burst:.0048,shape:2.0,direct:.42,grains:12,grainLevel:.30,grainSpread:.070,
-    modes:[[78,.052,.70],[132,.038,1],[310,.026,.50],[640,.014,.30]]},
-  grit:    {duration:.36,burst:.0065,shape:1.5,direct:.56,grains:22,grainLevel:.42,grainSpread:.110,
-    modes:[[80,.042,.50],[115,.030,.55],[260,.018,.25]]},
+  // Floors, in the order a boot meets them. The mode tables are unchanged from
+  // the first pass — they were always right; they were simply never audible.
+  concrete:{duration:.42,burst:.0075,shape:1.5,bright:3400,direct:0.019,body:[62,0.055,0.06],
+    grains:3, grainLevel:.07,grainSpread:.030,send:.9,
+    modes:[[95,0.075,0.06],[168,0.052,0.09],[395,0.03,0.16],[880,0.016,0.32],[1650,0.01,0.32],[3100,0.006,1],[5600,0.004,0.77]]},
+  // Steel stair treads: a plate on a frame. It rings, and the frame rattles.
+  grating: {duration:.85,burst:.0042,shape:2.2,bright:3800,direct:0.02,body:[74,0.04,0.03],
+    grains:9, grainLevel:.16,grainSpread:.140,send:1.15,
+    modes:[[104,0.07,0.06],[196,0.058,0.08],[430,0.1,0.14],[915,0.085,0.3],[1780,0.065,0.3],[2960,0.045,0.84],[6200,0.028,1]]},
+  metal:   {duration:.62,burst:.0038,shape:2.4,bright:3200,direct:0.019,body:[70,0.045,0.03],
+    grains:6, grainLevel:.13,grainSpread:.110,send:1.0,
+    modes:[[118,0.07,0.03],[210,0.055,0.05],[760,0.055,0.13],[1390,0.045,0.21],[2340,0.032,0.32],[3720,0.022,0.32],[5800,0.014,1]]},
+  rock:    {duration:.40,burst:.0090,shape:1.3,bright:2200,direct:0.022,body:[58,0.06,0.07],
+    grains:12,grainLevel:.20,grainSpread:.070,send:.85,
+    modes:[[78,0.07,0.07],[132,0.05,0.08],[310,0.028,0.15],[640,0.015,0.15],[1400,0.009,0.53],[2900,0.005,1],[5400,0.003,0.75]]},
+  grit:    {duration:.40,burst:.0130,shape:1.0,bright:1600, direct:0.021,body:[54,0.055,0.04],
+    grains:24,grainLevel:.30,grainSpread:.110,send:.6,
+    modes:[[80,0.055,0.04],[115,0.038,0.04],[260,0.02,0.1],[620,0.012,0.25],[1500,0.008,1],[3600,0.005,0.77],[6400,0.003,0.39]]},
+  // Soil under a growing bed: almost no ring at all, just a soft compression.
+  soil:    {duration:.30,burst:.0160,shape:.9, bright:1200, direct:2.71,body:[48,0.06,0.07],
+    grains:16,grainLevel:.20,grainSpread:.090,send:.35,
+    modes:[[70,0.035,0.07],[104,0.024,0.07],[210,0.012,0.16],[480,0.008,0.21],[1200,0.005,0.68],[2800,0.003,1]]},
   // A covered floor damps its own low mode faster than bare concrete does; the
   // first pass gave it a longer decay, which made a rug ring like a slab.
-  soft:    {duration:.18,burst:.0055,shape:2.6,direct:.26,grains:2, grainLevel:.06,grainSpread:.030,
-    modes:[[92,.028,.80],[142,.020,1],[330,.010,.35],[720,.006,.16]]},
-  // Fittings.
-  latch:   {duration:.09,burst:.0012,shape:3.4,direct:.70,grains:0, grainLevel:0,grainSpread:0,
-    modes:[[1800,.012,1],[3400,.008,.60],[5200,.005,.30]]},
-  thunk:   {duration:.55,burst:.0040,shape:2.2,direct:.35,grains:2, grainLevel:.10,grainSpread:.040,
-    modes:[[62,.090,1],[128,.070,.60],[255,.045,.35],[520,.020,.20]]},
-  clunk:   {duration:.95,burst:.0060,shape:2.0,direct:.30,grains:3, grainLevel:.12,grainSpread:.060,
-    modes:[[48,.160,1],[96,.130,.55],[190,.080,.30],[410,.040,.18]]},
+  soft:    {duration:.26,burst:.0110,shape:1.2,bright:1500, direct:1.052,body:[52,0.048,0.03],
+    grains:2, grainLevel:.04,grainSpread:.030,send:.3,
+    modes:[[92,0.04,0.03],[142,0.026,0.05],[330,0.012,0.02],[720,0.007,0.02],[1600,0.005,0.54],[3400,0.003,1]]},
+  // Standing water on concrete. The slap is bright and the splash is short.
+  wet:     {duration:.44,burst:.0060,shape:1.8,bright:2600,direct:0.099,body:[60,0.05,0.09],
+    grains:20,grainLevel:.26,grainSpread:.055,send:1.0,
+    modes:[[92,0.07,0.09],[165,0.048,0.13],[420,0.026,0.25],[1250,0.014,0.56],[2600,0.008,0.95],[5200,0.004,1]]},
+  // Fittings. These are struck objects rather than floors: no body, no sole.
+  latch:   {duration:.12,burst:.0014,shape:3.4,bright:9000,direct:2.71,body:null,
+    grains:0, grainLevel:0,grainSpread:0,send:.8,
+    modes:[[560,0.02,0.01],[1800,0.014,0.02],[3400,0.009,0.8],[5200,0.005,1],[7600,0.003,1]]},
+  thunk:   {duration:.70,burst:.0060,shape:1.8,bright:1400,direct:1.674,body:[46,0.075,0.1],
+    grains:2, grainLevel:.08,grainSpread:.040,send:1.0,
+    modes:[[62,0.11,0.1],[128,0.085,0.08],[255,0.05,0.08],[520,0.022,0.03],[1200,0.012,0.28],[2600,0.007,1]]},
+  clunk:   {duration:1.10,burst:.0090,shape:1.6,bright:1000,direct:1.032,body:[38,0.095,0.04],
+    grains:3, grainLevel:.10,grainSpread:.060,send:1.05,
+    modes:[[48,0.19,0.04],[96,0.15,0.04],[190,0.09,0.07],[410,0.045,0.02],[980,0.02,0.29],[2200,0.01,1]]},
   // Something large and steel giving, a long way off down the shaft.
-  clank:   {duration:1.6,burst:.0030,shape:2.6,direct:.22,grains:4, grainLevel:.14,grainSpread:.090,
-    modes:[[128,.42,.55],[287,.38,.80],[604,.30,.65],[1130,.22,.40],[1980,.14,.22]]},
-  click:   {duration:.05,burst:.0008,shape:3.6,direct:.80,grains:0, grainLevel:0,grainSpread:0,
-    modes:[[2400,.006,1],[4100,.004,.50]]},
-  switch:  {duration:.06,burst:.0010,shape:3.2,direct:.75,grains:0, grainLevel:0,grainSpread:0,
-    modes:[[1400,.007,1],[3000,.005,.55],[5400,.003,.25]]},
+  clank:   {duration:1.8,burst:.0034,shape:2.6,bright:5200,direct:0.034,body:[64,0.07,0.02],
+    grains:4, grainLevel:.12,grainSpread:.090,send:1.3,
+    modes:[[128,0.46,0.04],[287,0.4,0.04],[604,0.32,0.1],[1130,0.24,0.16],[1980,0.15,0.16],[3600,0.1,0.46],[6100,0.06,1]]},
+  click:   {duration:.06,burst:.0009,shape:3.6,bright:11000,direct:1.467,body:null,
+    grains:0, grainLevel:0,grainSpread:0,send:.5,
+    modes:[[720,0.01,0.01],[2400,0.007,0.34],[4100,0.004,0.34],[7200,0.002,1]]},
+  switch:  {duration:.08,burst:.0011,shape:3.2,bright:9000,direct:2.927,body:null,
+    grains:0, grainLevel:0,grainSpread:0,send:.5,
+    modes:[[620,0.012,0.01],[1400,0.008,0.02],[3000,0.005,0.49],[5400,0.003,1],[8200,0.002,1]]},
+  // --- things you pick up and put down ------------------------------------
+  paper:   {duration:.34,burst:.0220,shape:.7, bright:5200,direct:0.02,body:null,
+    grains:14,grainLevel:.22,grainSpread:.170,send:.5,
+    modes:[[420,0.022,0.12],[1150,0.016,0.54],[2600,0.011,1],[4900,0.007,0.41],[7800,0.004,0.98]]},
+  cloth:   {duration:.30,burst:.0260,shape:.6, bright:2400,direct:0.022,body:null,
+    grains:9, grainLevel:.16,grainSpread:.150,send:.4,
+    modes:[[180,0.028,0.04],[240,0.024,0.04],[680,0.017,0.24],[1600,0.011,1],[3200,0.006,0.77],[6000,0.003,0.66]]},
+  glass:   {duration:.75,burst:.0016,shape:3.0,bright:12000,direct:0.976,body:null,
+    grains:2, grainLevel:.06,grainSpread:.040,send:1.0,
+    modes:[[1180,0.3,0.02],[2450,0.26,0.31],[3900,0.2,0.31],[6200,0.13,1],[9200,0.08,1]]},
+  plastic: {duration:.22,burst:.0028,shape:2.4,bright:5200,direct:1.08,body:null,
+    grains:1, grainLevel:.05,grainSpread:.030,send:.6,
+    modes:[[240,0.034,0.01],[560,0.03,0.02],[1420,0.02,0.3],[2900,0.012,0.5],[5600,0.006,1]]},
+  timber:  {duration:.40,burst:.0055,shape:1.9,bright:2200,direct:1.259,body:[88,0.045,0.03],
+    grains:2, grainLevel:.07,grainSpread:.045,send:.8,
+    modes:[[105,0.06,0.03],[190,0.055,0.05],[420,0.04,0.02],[880,0.024,0.18],[1700,0.013,0.18],[3400,0.007,1]]},
 };
-const FLOORS=['concrete','metal','rock','grit','soft'];
-// How hard a foot lands, and whether the surface is hard enough for the toe of
-// the boot to make a second, quieter contact after the heel.
-const FOOTFALL={concrete:{level:.115,toe:.34},metal:{level:.105,toe:.30},rock:{level:.115,toe:.22},
-  grit:{level:.095,toe:0},soft:{level:.075,toe:.18}};
-
-// One footstep, rendered offline. Two-pole resonators are the whole trick: an
-// impulse into y[n] = b0*x[n] + a1*y[n-1] + a2*y[n-2] rings at `frequency` and
-// dies away over `decay`, which is exactly what a struck solid does.
+// One impact, rendered offline. Three things happen here that the old build
+// did not do. The excitation is filtered before it reaches the resonators, so
+// the strike carries a sole rather than a bare click; a low half-cycle is added
+// underneath for the mass behind the foot; and b0 is sin(w) alone. The old
+// b0 = sin(w)*(1-r) scaled every mode by its own bandwidth, which is 4.3e-4 for
+// a 95 Hz mode that rings 48 ms against 4.2e-3 for a 3.1 kHz mode that rings 5 ms
+// — a factor of three hundred against exactly the modes that carry the weight.
+// Every material collapsed into its top two octaves no matter what its table
+// said, which is why walking sounded like tap shoes on a hard floor.
+const TAKES=6;      // rendered variants of each impact
+const TEXTURE=.35;  // how much surface noise rides on the deterministic strike
+const REFERENCE_RMS=.09;   // common loudness every rendered bank is trimmed to
 function renderImpact(spec,rate,rng){
   const length=Math.max(64,Math.floor(rate*spec.duration)),excitation=new Float32Array(length),out=new Float32Array(length);
+  // The strike itself is a force pulse, not noise. Modelling it as a short
+  // random burst gave every take its own comb filter: measured across six
+  // renders of concrete, the share of energy between 2 and 5 kHz swung from 7
+  // to 50 per cent, so some steps landed dull and the next one ticked. A raised
+  // decaying force pulse is both what actually happens when a heel meets a
+  // floor and stable from take to take. Its spectrum is flat below 1/(2*pi*tau)
+  // and falls at 6 dB per octave above with no nulls, so unlike a raised cosine
+  // it colours nothing; jittering the contact time varies brightness smoothly
+  // instead of randomly, and TEXTURE keeps enough noise on top for the surface
+  // to sound like a surface.
   const burst=Math.max(2,Math.floor(rate*spec.burst));
-  for(let i=0;i<burst;i++)excitation[i]=(rng()*2-1)*Math.pow(1-i/burst,spec.shape);
-  // Loose surfaces keep crunching after the strike: chippings, scree, grit
-  // under the sole, the rattle of a grating panel settling back.
+  const contact=Math.max(2,burst*(.10+rng()*.06));
+  for(let i=0;i<burst;i++)excitation[i]=Math.exp(-i/contact)+(rng()*2-1)*Math.pow(1-i/burst,spec.shape)*TEXTURE;
+  // The sole: two one-pole passes = a gentle 12 dB slope that reads as rubber.
+  if(spec.bright&&spec.bright<rate*.45){
+    const k=Math.exp(-2*Math.PI*spec.bright/rate);
+    for(let pass=0;pass<2;pass++){let y=0;for(let i=0;i<length;i++){y=y*k+excitation[i]*(1-k);excitation[i]=y;}}
+    let peak=0;for(let i=0;i<burst*3&&i<length;i++)peak=Math.max(peak,Math.abs(excitation[i]));
+    if(peak>1e-9)for(let i=0;i<length;i++)excitation[i]/=peak;
+  }
+  // Grit and scatter go on *after* the sole, not through it: loose material is
+  // dragged straight off the floor by the edge of the shoe, so it keeps the top
+  // octaves that the sole takes out of the strike itself.
   const grainLength=Math.max(2,Math.floor(rate*.0016));
   for(let g=0;g<spec.grains;g++){
     const at=Math.floor(rng()*rate*spec.grainSpread),amplitude=spec.grainLevel*(.25+rng()*.9);
     for(let i=0;i<grainLength&&at+i<length;i++)excitation[at+i]+=(rng()*2-1)*amplitude*(1-i/grainLength);
   }
+  // Each mode is a bandpass, not a two-pole lowpass. Without the (1 - z^-2)
+  // numerator a resonator passes DC — a 180 Hz mode damped over 28 ms has a DC
+  // gain of about 1.6 — and the strike pulse is full of it, so a broad sub-300 Hz
+  // lump appeared under every impact. Cloth measured 56 per cent of its energy
+  // below 120 Hz while its lowest mode sat at 180. The zeros at DC and Nyquist
+  // are what a real mode has, and they take the lump with them.
+  //
+  // b0 = sqrt(1-r^2)/2 gives every mode the same *energy* for a given gain, so
+  // the table reads as a balance rather than as a set of peak heights: a mode
+  // that rings for 75 ms and one that rings for 5 ms both contribute what they
+  // say they do. The original b0 = sin(w)*(1-r) scaled each mode by its own
+  // bandwidth, which is 4e-4 for a 95 Hz mode against 4e-3 for a 3.1 kHz one —
+  // so every low mode came out three hundred times too quiet and every material
+  // in the game, whatever its table said, was reduced to its top two octaves.
   for(const [frequency,decay,gain] of spec.modes){
     const w=2*Math.PI*Math.min(frequency,rate*.45)/rate,r=Math.exp(-1/Math.max(1e-4,decay)/rate);
-    const a1=2*r*Math.cos(w),a2=-r*r,b0=Math.sin(w)*(1-r);
-    let y1=0,y2=0;
-    for(let i=0;i<length;i++){const y=b0*excitation[i]+a1*y1+a2*y2;y2=y1;y1=y;out[i]+=y*gain;}
+    const a1=2*r*Math.cos(w),a2=-r*r,b0=Math.sqrt(1-r*r)/2;
+    let y1=0,y2=0,x1=0,x2=0;
+    for(let i=0;i<length;i++){
+      const x=excitation[i],y=b0*(x-x2)+a1*y1+a2*y2;
+      x2=x1;x1=x;y2=y1;y1=y;out[i]+=y*gain;
+    }
+  }
+  // The mass behind the foot: one low half-cycle with a fast attack.
+  if(spec.body){
+    const [frequency,decay,gain]=spec.body,w=2*Math.PI*frequency/rate,attack=Math.max(2,Math.floor(rate*.0025));
+    for(let i=0;i<length;i++){
+      const envelope=Math.exp(-i/(decay*rate))*(i<attack?i/attack:1);
+      out[i]+=Math.sin(w*i)*envelope*gain;
+    }
+  }
+  // What survives on top of the modes is the contact patch radiating directly.
+  // A small radiator is poor at low frequencies, so the pulse is high-passed
+  // before it is added; adding it flat put the same DC lump back on top.
+  const bite=new Float32Array(burst),hp=Math.exp(-2*Math.PI*400/rate);
+  for(let i=0,prev=0,state=0;i<burst;i++){
+    const v=excitation[i];state=hp*(state+v-prev);prev=v;bite[i]=state;
   }
   let peak=0;
   for(let i=0;i<length;i++){
-    if(i<burst)out[i]+=excitation[i]*spec.direct;
-    // A short tail fade stops the sample clicking off before the mode has died.
+    if(i<burst)out[i]+=bite[i]*spec.direct;
     const t=i/length;if(t>.82)out[i]*=1-(t-.82)/.18;
     const magnitude=Math.abs(out[i]);if(magnitude>peak)peak=magnitude;
   }
   if(peak>0)for(let i=0;i<length;i++)out[i]/=peak;
   return out;
 }
+const FLOORS=['concrete','grating','metal','rock','grit','soil','soft','wet'];
+// How hard a foot lands, how much of it comes back off the forefoot, and how
+// much scuff the sole drags off the surface as it leaves. A walk is heel, then
+// forefoot about a tenth of a second later at a fraction of the level and
+// duller — the old build put the second contact at a third of full level and
+// *brighter*, fifty milliseconds behind the first, which is a heel-toe tap
+// figure and is most of why it sounded like dancing.
+const FOOTFALL={
+  concrete:{level:0.041,toe:.16,scuff:.10},
+  grating: {level:0.043,toe:.20,scuff:.16},
+  metal:   {level:0.04,toe:.18,scuff:.13},
+  rock:    {level:0.041,toe:.12,scuff:.26},
+  grit:    {level:0.035,toe:.09,scuff:.42},
+  soil:    {level:0.032,toe:.07,scuff:.34},
+  soft:    {level:0.025,toe:.10,scuff:.08},
+  wet:     {level:0.043,toe:.15,scuff:.30},
+};
+
+
+// What each kind of object sounds like coming off a shelf. A pickup is never
+// one sound: the hand meets the object, the object answers with its own
+// material, the sleeve moves behind both, and something heavy settles after.
+// The old build played a single interface click for every relic in the silo.
+const PICKUPS={
+  paper:  {material:'paper',  gain:.030,rustle:.030,tick:.010,tilt:6000,rustleHz:[2200,3400]},
+  book:   {material:'paper',  gain:.036,rustle:.026,tick:.014,tilt:4200,rustleHz:[1500,2400],settle:'timber'},
+  cloth:  {material:'cloth',  gain:.030,rustle:.042,tick:.006,tilt:3000,rustleHz:[700,1400]},
+  glass:  {material:'glass',  gain:.024,rustle:.014,tick:.014,tilt:9000,rustleHz:[1800,2800]},
+  plastic:{material:'plastic',gain:.032,rustle:.016,tick:.014,tilt:7000,rustleHz:[1600,2600]},
+  timber: {material:'timber', gain:.034,rustle:.014,tick:.015,tilt:5000,rustleHz:[1200,2000]},
+  metal:  {material:'metal',  gain:.024,rustle:.016,tick:.017,tilt:8000,rustleHz:[1400,2400]},
+  relic:  {material:'plastic',gain:.032,rustle:.022,tick:.015,tilt:6500,rustleHz:[1500,2500],settle:'timber'},
+};
 
 // Ambience mix, reverb return, footstep material and occasional-sound family
 // per location. Keys are the special-location ids and the room types from
@@ -132,7 +277,7 @@ export class SiloAudio {
   constructor(){
     this.context=null;this.enabled=true;this.musicVolume=.148;this.lastStep=0;this.foot=1;
     this.musicHeld=false;this.musicOffset=0;this.musicBuffer=null;this.musicCue=null;this.musicFade=5;this.openingPlaying=false;this.openingElement=null;
-    this.place=INTERIOR;this.stepSurface='concrete';this.musicRequested=false;this.musicPlaying=false;this.scrub=null;
+    this.place=INTERIOR;this.stepSurface='concrete';this.surfaceOverride=null;this.musicRequested=false;this.musicPlaying=false;this.scrub=null;
   }
 
   // Created on the first user gesture; browsers refuse an AudioContext before one.
@@ -158,7 +303,7 @@ export class SiloAudio {
 
     // A synthetic impulse response gives footsteps and doors the tail of a deep
     // concrete shaft without shipping a reverb sample.
-    this.spaceSend=c.createGain();this.spaceSend.gain.value=.55;
+    this.spaceSend=c.createGain();this.spaceSend.gain.value=.70;   // base feed; each voice scales it by its material's send
     this.spaceReturn=c.createGain();this.spaceReturn.gain.value=this.place.space;
     const convolver=c.createConvolver();convolver.buffer=this.makeImpulse(2.1,2.6);
     this.spaceSend.connect(convolver);convolver.connect(this.spaceReturn);this.spaceReturn.connect(this.master);
@@ -192,24 +337,50 @@ export class SiloAudio {
     source.connect(filter);filter.connect(gain);gain.connect(this.ambience);source.start();
     return gain;
   }
-  // Four takes of every impact. One sample retriggered is the machine-gun
-  // footstep everybody recognises; four, pitched and levelled per hit, is not.
+  // Six takes of every impact. One sample retriggered is the machine-gun
+  // footstep everybody recognises. Four was better; six, each one also pitched,
+  // levelled and tilted per hit, is enough that a corridor of thirty steps never
+  // repeats a recognisable pair.
   renderBank(){
     const c=this.context,bank={},rng=(()=>{let seed=0x5f18a3;return()=>((seed=seed*1664525+1013904223>>>0)/4294967296);})();
     for(const [name,spec] of Object.entries(IMPACTS)){
-      bank[name]=Array.from({length:4},()=>{
+      let energy=0,samples=0;
+      const takes=Array.from({length:TAKES},()=>{
         const data=renderImpact(spec,c.sampleRate,rng),buffer=c.createBuffer(1,data.length,c.sampleRate);
+        for(let i=0;i<data.length;i++)energy+=data[i]*data[i];
+        samples+=data.length;
         buffer.getChannelData(0).set?.(data);return buffer;
       });
+      // A level should mean loudness, not peak height. Every take is normalised
+      // to peak 1 for headroom, but a sharp transient with no tail (a rug) has
+      // far less energy at that peak than something that rings (a steel deck) —
+      // measured, the two differ by 6 dB at the same gain. Each bank carries the
+      // trim that brings it to a common RMS so the tables below can be read as
+      // how loud a thing is rather than how tall its first sample is.
+      // Clamped, because every take peaks at 1: an unclamped trim on something
+      // very peaky (struck glass measures a crest factor of 76) would multiply
+      // its peak by seven and drive the limiter on a single pickup.
+      const rms=Math.sqrt(energy/Math.max(1,samples));
+      bank[name]={takes,trim:clamp(rms>1e-6?REFERENCE_RMS/rms:1,.4,2.2)};
     }
     return bank;
   }
-  // Fire one rendered impact.
-  hit(out,name,t,{gain=1,rate=1}={}){
-    const takes=this.bank?.[name];if(!takes)return;
+  // Fire one rendered impact. `tilt` is a per-hit low-pass corner: pitching a
+  // take is not enough on its own, because every playback rate keeps the same
+  // spectral shape and the ear hears the repeat. Moving the corner as well
+  // changes which modes survive, so two hits of the same take differ in colour
+  // and not only in pitch.
+  hit(out,name,t,{gain=1,rate=1,tilt=0}={}){
+    const entry=this.bank?.[name];if(!entry)return;
+    const {takes,trim}=entry;
     const c=this.context,source=c.createBufferSource(),level=c.createGain();
-    source.buffer=takes[Math.floor(Math.random()*takes.length)];source.playbackRate.value=rate;level.gain.value=gain;
-    source.connect(level);level.connect(out);source.start(t);
+    source.buffer=takes[Math.floor(Math.random()*takes.length)];source.playbackRate.value=rate;level.gain.value=gain*trim;
+    let tail=source;
+    if(tilt>0&&tilt<c.sampleRate*.45){
+      const lowpass=c.createBiquadFilter();lowpass.type='lowpass';lowpass.frequency.value=tilt;lowpass.Q.value=.55;
+      tail.connect(lowpass);tail=lowpass;
+    }
+    tail.connect(level);level.connect(out);source.start(t);
   }
   makeNoise(seconds){
     const c=this.context,buffer=c.createBuffer(1,Math.floor(c.sampleRate*seconds),c.sampleRate),data=buffer.getChannelData(0);
@@ -224,14 +395,24 @@ export class SiloAudio {
     for(let i=0;i<fade;i++){const k=i/fade;data[i]*=k;data[data.length-1-i]*=k;}
     return buffer;
   }
+  // The shaft tail. The first version used a single one-pole at roughly 2.3 kHz
+  // and measured 60 per cent of its energy above 2 kHz — a hiss, not a hundred
+  // and forty levels of concrete. Two poles take it down to around 800 Hz, and
+  // the corner closes further as the tail decays, because air and concrete both
+  // absorb the top end faster than the bottom. Level is matched to the old tail
+  // by RMS so the per-location send values still mean what they did.
   makeImpulse(seconds,decay){
     const c=this.context,rate=c.sampleRate,length=Math.floor(rate*seconds),buffer=c.createBuffer(2,length,rate),gap=Math.floor(rate*.018);
     for(let channel=0;channel<2;channel++){
-      const data=buffer.getChannelData(channel);let low=0;
+      const data=buffer.getChannelData(channel);let a=0,b=0,sum=0;
       for(let i=0;i<length;i++){
-        low=low*.74+(Math.random()*2-1)*.26;                       // one-pole tilt keeps the tail concrete-dark
-        data[i]=i<gap?0:low*Math.pow(1-i/length,decay);            // a short gap reads as distance to the first wall
+        const t=i/length,k=.86+.11*t,white=Math.random()*2-1;
+        a=a*k+white*(1-k);b=b*k+a*(1-k);
+        data[i]=i<gap?0:b*Math.pow(1-t,decay);                     // a short gap reads as distance to the first wall
+        sum+=data[i]*data[i];
       }
+      const rms=Math.sqrt(sum/length);
+      if(rms>1e-9){const scale=.085/rms;for(let i=0;i<length;i++)data[i]*=scale;}
     }
     return buffer;
   }
@@ -375,6 +556,16 @@ export class SiloAudio {
     this.enabled=value;
     if(this.master)this.master.gain.setTargetAtTime(value?LEVEL:0,this.context.currentTime,.25);
   }
+  // The floor the player is standing on, which is not always the floor of the
+  // room they are in: the staircase runs through every level as open steel.
+  // Passing null clears the override and hands the surface back to the room.
+  setSurface(name){
+    this.surfaceOverride=FLOORS.includes(name)?name:null;
+  }
+  material(){
+    const name=this.surfaceOverride||this.stepSurface;
+    return FLOORS.includes(name)?name:'concrete';
+  }
   setLocation(type){
     const place=PLACES[type]||INTERIOR;
     this.place=place;this.stepSurface=place.step;
@@ -390,12 +581,16 @@ export class SiloAudio {
 
   // --- one-shot helpers ---------------------------------------------------
   // Sends dry to the effects bus and wet to the shaft reverb, optionally panned.
-  voice(pan=0,muffle=0){
+  // `send` scales the reverb feed per sound: a boot on open steel grating throws
+  // far more into the shaft than the same boot on a carpeted residential floor,
+  // and a fixed send made every surface sound like it was in the same room.
+  voice(pan=0,muffle=0,send=1){
     const c=this.context,out=c.createGain();out.gain.value=1;
     let tail=out;
     if(muffle){const lowpass=c.createBiquadFilter();lowpass.type='lowpass';lowpass.frequency.value=muffle;lowpass.Q.value=.6;tail.connect(lowpass);tail=lowpass;}
     if(pan&&c.createStereoPanner){const panner=c.createStereoPanner();panner.pan.value=clamp(pan,-1,1);tail.connect(panner);tail=panner;}
-    tail.connect(this.sfx);tail.connect(this.spaceSend);
+    tail.connect(this.sfx);
+    if(send>0){const feed=c.createGain();feed.gain.value=send;tail.connect(feed);feed.connect(this.spaceSend);}
     return out;
   }
   burst(out,t,{gain,decay,frequency,to=frequency,q=1,type='bandpass',attack=.004,rate=1}){
@@ -417,6 +612,12 @@ export class SiloAudio {
   live(){return this.context&&this.enabled&&this.master;}
 
   // --- footsteps ----------------------------------------------------------
+  // A walking step is not one event. The heel lands; the forefoot follows it
+  // down about a tenth of a second later, quieter and *duller*, because that
+  // second contact is a sole flattening rather than an edge striking; then the
+  // sole scuffs as it leaves. The first build fired two near-identical bright
+  // hits fifty milliseconds apart, the second of them pitched *up* — which is
+  // the rhythm and the tone of a tap step, and is what the whole silo walked on.
   step(distance,speed,contactCount=null){
     if(!this.live()||speed<.4)return;
     const running=speed>2.6,stride=running?1.05:.72;
@@ -426,51 +627,88 @@ export class SiloAudio {
       const landed=contactCount>0&&contactCount!==this.lastContact;this.lastContact=contactCount;if(!landed)return;
     }else if(distance-this.lastStep<stride)return;
     this.lastStep=distance;this.foot=-this.foot;
-    const material=FLOORS.includes(this.stepSurface)?this.stepSurface:'concrete';
-    const fall=FOOTFALL[material],t=this.context.currentTime+.005;
-    // A run lands harder and flatter; a walk rolls, so the toe follows the heel.
-    const force=(running?1:.66)*rand(.86,1.14),out=this.voice(this.foot*.18);
-    this.hit(out,material,t,{gain:fall.level*force,rate:rand(.92,1.09)});
-    if(!running&&fall.toe)this.hit(out,material,t+rand(.048,.086),{gain:fall.level*force*fall.toe*rand(.8,1.2),rate:rand(1.04,1.2)});
-    // Boots drag a little as they leave a loose floor.
-    if(material==='grit'||material==='rock')
-      this.burst(out,t+.03,{frequency:rand(1400,2600),to:rand(600,1000),q:.7,gain:.018*force,decay:.13,attack:.02,rate:rand(.7,1.1)});
+    const material=this.material(),fall=FOOTFALL[material],spec=IMPACTS[material];
+    const t=this.context.currentTime+.005,force=(running?1.15:.72)*rand(.86,1.14);
+    const out=this.voice(this.foot*.18,0,spec.send);
+    // One tilt per step, shared by both contacts so they read as one foot.
+    const tilt=spec.bright*rand(.72,1.35),heel=rand(.90,1.06);
+    this.hit(out,material,t,{gain:fall.level*force,rate:heel,tilt});
+    // The forefoot is pitched and tilted *relative to the heel of the same
+    // step*, never drawn independently: with two independent ranges they
+    // overlap, and a second contact that lands brighter than the first is the
+    // tap-shoe figure this rewrite exists to remove.
+    if(running)
+      // A run lands flat: the forefoot arrives with the heel, not behind it.
+      this.hit(out,material,t+rand(.012,.026),{gain:fall.level*force*.5,rate:heel*rand(.86,.95),tilt:tilt*.7});
+    else
+      this.hit(out,material,t+rand(.085,.140),{gain:fall.level*force*fall.toe*rand(.8,1.2),rate:heel*rand(.80,.92),tilt:tilt*.55});
+    // Toe-off: the sole dragging as it leaves. Loose floors give far more of it.
+    if(fall.scuff>.05)
+      this.burst(out,t+(running?.05:.16),{frequency:rand(1500,2800)*(.55+fall.scuff),to:rand(500,900),q:.7,
+        gain:.0085*fall.scuff*force,decay:running?.09:.15,attack:.02,rate:rand(.7,1.15)});
   }
 
   // Take-off is the scuff of a sole pushing away, not an impact.
   jump(){
     if(!this.live())return;
-    const t=this.context.currentTime+.005,out=this.voice(rand(-.1,.1));
-    this.burst(out,t,{frequency:rand(900,1400),to:rand(320,520),q:.8,gain:.05,decay:.16,attack:.012,rate:rand(.8,1.1)});
-    const material=FLOORS.includes(this.stepSurface)?this.stepSurface:'concrete';
-    this.hit(out,material,t,{gain:FOOTFALL[material].level*.55,rate:rand(1.05,1.2)});
+    const material=this.material(),spec=IMPACTS[material];
+    const t=this.context.currentTime+.005,out=this.voice(rand(-.1,.1),0,spec.send);
+    this.burst(out,t,{frequency:rand(900,1400),to:rand(320,520),q:.8,gain:.038,decay:.16,attack:.012,rate:rand(.8,1.1)});
+    this.hit(out,material,t,{gain:FOOTFALL[material].level*.55,rate:rand(1.02,1.16),tilt:spec.bright*rand(.9,1.3)});
   }
   // Landing is both feet at once and the whole body's weight behind them.
   land(strength=1){
     if(!this.live())return;
-    const material=FLOORS.includes(this.stepSurface)?this.stepSurface:'concrete';
-    const force=clamp(strength,0,1),t=this.context.currentTime+.005,out=this.voice(0);
-    this.hit(out,material,t,{gain:FOOTFALL[material].level*(1.5+1.6*force),rate:rand(.80,.90)});
-    this.hit(out,material,t+.018,{gain:FOOTFALL[material].level*(.9+1.0*force),rate:rand(.92,1.02)});
-    if(force>.35)this.hit(out,'thunk',t,{gain:.05*force,rate:rand(1.1,1.35)});
+    const material=this.material(),spec=IMPACTS[material],fall=FOOTFALL[material];
+    const force=clamp(strength,0,1),t=this.context.currentTime+.005,out=this.voice(0,0,spec.send*1.15);
+    this.hit(out,material,t,{gain:fall.level*(.95+.95*force),rate:rand(.80,.90),tilt:spec.bright*rand(.55,.85)});
+    this.hit(out,material,t+.022,{gain:fall.level*(.65+.7*force),rate:rand(.92,1.02),tilt:spec.bright*rand(.7,1.0)});
+    if(fall.scuff>.05)this.burst(out,t+.04,{frequency:rand(1200,2200),to:rand(400,700),q:.7,gain:.012*fall.scuff*(.4+force),decay:.18,attack:.02});
+    if(force>.35)this.hit(out,'thunk',t,{gain:.016*force,rate:rand(1.1,1.35)});
   }
 
   // --- interactions -------------------------------------------------------
+  // Picking something up. Four things, close together: fingers finding the edge,
+  // the object's own material answering, the sleeve moving behind it, and — for
+  // anything with weight — the object settling into the hand a moment later.
+  pickup(kind='relic'){
+    if(!this.live())return;
+    const spec=PICKUPS[kind]||PICKUPS.relic,t=this.context.currentTime+.005;
+    const out=this.voice(rand(-.12,.12),0,.55);
+    this.hit(out,'latch',t,{gain:spec.tick,rate:rand(1.3,1.7),tilt:spec.tilt});
+    this.hit(out,spec.material,t+rand(.012,.028),{gain:spec.gain,rate:rand(.94,1.08),tilt:spec.tilt*rand(.8,1.25)});
+    const [low,high]=spec.rustleHz;
+    this.burst(out,t+rand(.03,.06),{frequency:rand(low,high),to:rand(low*.4,low*.7),q:.6,
+      gain:spec.rustle,decay:rand(.16,.24),attack:.03,rate:rand(.8,1.2)});
+    if(spec.settle)this.hit(out,spec.settle,t+rand(.16,.26),{gain:spec.gain*.42,rate:rand(.88,1.06),tilt:spec.tilt*.7});
+  }
+  // Putting it down again, or dropping it. Same object, no sleeve, and a
+  // second contact where it rocks and settles.
+  drop(kind='relic'){
+    if(!this.live())return;
+    const spec=PICKUPS[kind]||PICKUPS.relic,t=this.context.currentTime+.005;
+    const out=this.voice(rand(-.12,.12),0,.7);
+    this.hit(out,spec.material,t,{gain:spec.gain*1.25,rate:rand(.88,1.02),tilt:spec.tilt*rand(.8,1.2)});
+    this.hit(out,spec.material,t+rand(.045,.085),{gain:spec.gain*.34,rate:rand(1.0,1.18),tilt:spec.tilt*.6});
+  }
   door(open){
     if(!this.live())return;
-    const t=this.context.currentTime+.005,out=this.voice(rand(-.25,.25));
-    this.hit(out,'latch',t,{gain:.085,rate:rand(.94,1.08)});                                                     // the handle throwing
-    this.hit(out,'thunk',t+.035,{gain:.10,rate:open?rand(1.02,1.1):rand(.92,.98)});                              // the leaf taking its weight
+    const t=this.context.currentTime+.005,out=this.voice(rand(-.25,.25),0,IMPACTS.thunk.send);
+    this.hit(out,'latch',t,{gain:.030,rate:rand(.94,1.08)});                                                     // the handle throwing
+    this.hit(out,'thunk',t+.035,{gain:.042,rate:open?rand(1.02,1.1):rand(.92,.98)});                              // the leaf taking its weight
     this.burst(out,t+.05,{frequency:open?430:820,to:open?880:380,q:.9,gain:.030,decay:.44,attack:.10,rate:.45}); // hinge drag
-    if(!open){this.hit(out,'thunk',t+.42,{gain:.13,rate:rand(.86,.94)});this.hit(out,'latch',t+.47,{gain:.055,rate:.8});}
+    if(!open){this.hit(out,'thunk',t+.42,{gain:.055,rate:rand(.86,.94)});this.hit(out,'latch',t+.47,{gain:.020,rate:.8});}
   }
   airlock(){
     if(!this.live())return;
-    const t=this.context.currentTime+.005,out=this.voice(0);
-    this.hit(out,'clunk',t,{gain:.14,rate:rand(.94,1.04)});                                                      // dogs releasing
-    this.burst(out,t+.05,{frequency:1900,to:3600,q:.5,type:'highpass',gain:.052,decay:1.6,attack:.3});           // pressure equalising
+    const t=this.context.currentTime+.005,out=this.voice(0,0,IMPACTS.clunk.send);
+    this.hit(out,'clunk',t,{gain:.055,rate:rand(.94,1.04)});                                                      // dogs releasing
+    // Pressure equalising. A high-pass on noise put 62 per cent of the airlock's
+    // energy above 5 kHz — tape hiss, not air moving through a gap under load.
+    this.burst(out,t+.05,{frequency:2400,to:800,q:.8,gain:.030,decay:1.7,attack:.3});                            // pressure equalising
+    this.burst(out,t+.05,{frequency:340,to:190,q:1.4,gain:.024,decay:1.9,attack:.45});                           // and the weight of it
     this.tone(out,t+.1,{frequency:96,gain:.020,decay:1.6,type:'sawtooth',attack:.35});                           // door motor
-    this.hit(out,'clunk',t+1.75,{gain:.10,rate:rand(.8,.9)});                                                    // and seating at the end of travel
+    this.hit(out,'clunk',t+1.75,{gain:.040,rate:rand(.8,.9)});                                                    // and seating at the end of travel
   }
   scrubStart(){
     if(!this.live()||this.scrub)return;
@@ -495,9 +733,9 @@ export class SiloAudio {
   }
   torch(on){
     if(!this.live())return;
-    const t=this.context.currentTime+.005,out=this.voice(.1);
-    this.hit(out,'switch',t,{gain:.075,rate:on?1.12:.9});
-    this.hit(out,'switch',t+.016,{gain:.032,rate:on?.86:1.06});      // the sprung return of a real toggle
+    const t=this.context.currentTime+.005,out=this.voice(.1,0,IMPACTS.switch.send);
+    this.hit(out,'switch',t,{gain:.030,rate:on?1.12:.9});
+    this.hit(out,'switch',t+.016,{gain:.013,rate:on?.86:1.06});      // the sprung return of a real toggle
   }
   travel(){
     if(!this.live())return;
@@ -507,13 +745,13 @@ export class SiloAudio {
   }
   click(){
     if(!this.live())return;
-    this.hit(this.sfx,'click',this.context.currentTime+.002,{gain:.055,rate:rand(.96,1.05)});   // interface stays dry
+    this.hit(this.sfx,'click',this.context.currentTime+.002,{gain:.024,rate:rand(.96,1.05)});   // interface stays dry
   }
   residents(count,watching=false){
     if(!this.live()||count<1)return;
     // Quiet clothing, chair movement and distant steps use the existing
     // ambience bus. No synthetic speech or cloned character dialogue.
-    const t=this.context.currentTime+.005,out=this.voice(rand(-.8,.8),1100),gain=(watching?.003:.016)*Math.min(1,count/18);
+    const t=this.context.currentTime+.005,out=this.voice(rand(-.8,.8),1100,.6),gain=(watching?.0012:.0055)*Math.min(1,count/18);
     this.hit(out,watching?'soft':'concrete',t,{gain,rate:rand(.82,1.12)});
     if(!watching&&this.stepSurface==='concrete'&&Math.random()<.4)this.hit(out,'latch',t+.17,{gain:.006,rate:rand(1.4,1.8)});
   }
@@ -533,7 +771,7 @@ export class SiloAudio {
       gain.setTargetAtTime(this.place.wind,t+rand(2.5,4.5),1.8);
       return;
     }
-    const out=this.voice(rand(-.75,.75),rand(1400,2600));
+    const out=this.voice(rand(-.75,.75),rand(1400,2600),1.2);
     if(family==='water'&&Math.random()<.62){
       // A falling drop rings the cavity it makes in the water, and that cavity
       // shrinks — so the pitch climbs. Sweeping it down is the usual mistake.
@@ -542,7 +780,7 @@ export class SiloAudio {
       return;
     }
     if(family==='metal'||Math.random()<.45){                       // plate steel taking up load
-      this.hit(out,'clank',t,{gain:.075,rate:rand(.72,1.3)});
+      this.hit(out,'clank',t,{gain:.030,rate:rand(.72,1.3)});
       return;
     }
     this.burst(out,t,{frequency:rand(170,260),to:rand(300,430),q:6,gain:.06,decay:rand(1.1,2.2),attack:.45,rate:.35}); // the shaft settling
