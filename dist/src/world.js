@@ -32,9 +32,9 @@ export class SiloWorld {
     scene.background=new THREE.Color(0x121c19);scene.fog=new THREE.FogExp2(0x18221e,.0065);
     this.ambient=new THREE.HemisphereLight(0xb5c4c0,0x36332b,.42);scene.add(this.ambient);
     this.sun=new THREE.DirectionalLight(0xd7d9bc,2);this.sun.position.set(15,levelY(1)+20,-8);this.sun.target.position.set(0,levelY(1),0);scene.add(this.sun,this.sun.target);
-    this.localLights=Array.from({length:8},()=>{const l=new THREE.PointLight(0xf3d6a0,140,38,1.7);scene.add(l);return l;});
+    this.localLights=Array.from({length:8},()=>{const l=new THREE.PointLight(0xf3d6a0,0,38,1.7);l.userData={key:null,goal:0};scene.add(l);return l;});
     this.buildStructure();this.surface=new SurfaceWorld(this.m);scene.add(this.surface.root);this.generator=buildGeneratorHall(this.m);scene.add(this.generator.root);this.generator.root.visible=false;
-    this.keyLight=new THREE.SpotLight(0xffd6a0,340,48,1.05,.8,1.65);this.keyLight.castShadow=true;this.keyLight.shadow.mapSize.set(1024,1024);this.keyLight.shadow.bias=-.00015;this.keyLight.shadow.normalBias=.045;this.keyLight.shadow.camera.near=.4;scene.add(this.keyLight,this.keyLight.target);
+    this.keyLight=new THREE.SpotLight(0xffd6a0,0,48,1.05,.8,1.65);this.keyLight.userData={key:null};this.keyLight.castShadow=true;this.keyLight.shadow.mapSize.set(1024,1024);this.keyLight.shadow.bias=-.00015;this.keyLight.shadow.normalBias=.045;this.keyLight.shadow.camera.near=.4;scene.add(this.keyLight,this.keyLight.target);
     this.sun.castShadow=false;
     this.underground=buildUnderground(this.m);scene.add(this.underground.root);this.underground.root.visible=false;
   }
@@ -306,6 +306,97 @@ export class SiloWorld {
     const a=SPUR.angle,r=position.x*Math.cos(a)+position.z*Math.sin(a),t=position.x*Math.sin(a)-position.z*Math.cos(a);
     return r>SPUR.outer+.65&&Math.abs(t)<SPUR.openingHalf&&Math.abs(position.y-levelY(144))<.4?'excavator':null;
   }
+  // --- lighting -----------------------------------------------------------
+  // Nothing in a silo moves. There is no sun down here and no lamp on a track:
+  // every light is bolted to a wall or a ceiling and stays where it was bolted.
+  // The first pass did the opposite — a directional "sun" and a shadow-casting
+  // spotlight both nailed to the player, two of the eight pooled lights orbiting
+  // the silo on the player's own bearing, and the room's fixtures re-sorted and
+  // re-assigned to the pool on every single frame. Walking therefore swung every
+  // shadow in the room, slid light along the gallery walls, and popped lamps from
+  // one fitting to another. All three are the same bug: the lights were following
+  // the camera instead of belonging to the building.
+  //
+  // Every fixture the level has, with a stable key so a light can be recognised
+  // as already being on it. Positions are fixed; only which ones are close
+  // enough to be worth spending a light on changes as you walk.
+  lampCandidates(position,top){
+    const out=[],level=this.activeLevel,y=levelY(level);
+    if(this.special)return out;
+    if(level===1&&top.z>10){
+      const fittings=[[-10,6.7,17],[10,6.7,17],[-10,6.7,31],[10,6.7,31],[26,3.7,29],[26,3.7,40],[26,3.7,50],[26,3.7,59]];
+      for(let i=0;i<fittings.length;i++)out.push({key:`top:${i}`,position:topPoint(...fittings[i]),color:i<4?0xf1e9d9:0xc8d6d4,intensity:i<4?145:75,distance:28,cone:32});
+      return out;
+    }
+    for(let i=0;i<6;i++){const a=i*TAU/6;out.push({key:`g${level}:${i}`,position:new THREE.Vector3(Math.cos(a)*21,y+4.8,Math.sin(a)*21),color:i%3?0xf0e2c9:0xc0d4d3,intensity:105,distance:38,cone:48});}
+    for(let w=0;w<6;w++){const a=w*TAU/6,color=roomType(level,w)==='medical'?0xc1dcd5:0xe6ddc9;
+      for(const r of [33,44])out.push({key:`c${level}:${w}:${r}`,position:new THREE.Vector3(Math.cos(a)*r,y+4.7,Math.sin(a)*r),color,intensity:150,distance:38,cone:48});}
+    // The wing you are in and its two neighbours; the rest are behind walls.
+    const here=(Math.round(Math.atan2(position.z,position.x)/TAU*6)+6)%6;
+    for(const w of [here,(here+1)%6,(here+5)%6]){
+      const room=this.loaded.get(level)?.rooms[w];
+      if(!room?.userData.lightPoints?.length)continue;
+      room.updateWorldMatrix(true,false);
+      const residential=room.userData.type==='residential';
+      room.userData.lightPoints.forEach((p,j)=>out.push({key:`r${level}:${w}:${j}`,position:new THREE.Vector3(...p.position).applyMatrix4(room.matrixWorld),
+        color:p.color,intensity:p.intensity,distance:11,cone:14,room:true,keyIntensity:residential?95:150}));
+    }
+    return out;
+  }
+  // Hand the pool out to fixtures. A light already on a wanted fixture is left
+  // strictly alone; one that has to move fades out first, relocates dark, and
+  // comes back up. Fixtures a light is already holding are ranked as if they
+  // were nearer than they are, so the pair either side of the cut-off cannot
+  // trade places every few steps and blink at each other.
+  placeLamps(candidates,position,dt){
+    const lamps=this.localLights;
+    if(!candidates.length){for(const l of lamps){l.intensity=0;l.visible=false;l.userData.key=null;l.userData.goal=0;}return;}
+    const held=new Set();
+    for(const l of lamps)if(l.userData.key&&l.intensity>.5)held.add(l.userData.key);
+    const wanted=new Map(candidates
+      .map(c=>[c,c.position.distanceToSquared(position)*(held.has(c.key)?.45:1)])
+      .sort((a,b)=>a[1]-b[1]).slice(0,lamps.length).map(([c])=>[c.key,c]));
+    const free=[];
+    for(const l of lamps){
+      const c=l.userData.key?wanted.get(l.userData.key):null;
+      if(c){l.userData.goal=c.intensity;wanted.delete(c.key);}else free.push(l);
+    }
+    const spare=[...wanted.values()];
+    for(const l of free){
+      // A light may only be moved once it is dark. Half a second off while it
+      // relocates is invisible; a lit one changing position is not.
+      if(!spare.length||l.intensity>.02){l.userData.goal=0;continue;}
+      const c=spare.shift();
+      l.userData.key=c.key;l.position.copy(c.position);l.color.setHex(c.color);l.distance=c.distance;l.userData.goal=c.intensity;
+    }
+    for(const l of lamps){l.intensity=THREE.MathUtils.damp(l.intensity,l.userData.goal,l.userData.goal?6:16,dt);l.visible=l.intensity>.4;}
+  }
+  lightRig(position,top,dt){
+    const candidates=this.lampCandidates(position,top);
+    if(this.special||this.outside||!candidates.length){
+      for(const l of this.localLights){l.intensity=0;l.visible=false;l.userData.key=null;l.userData.goal=0;}
+      this.keyLight.visible=false;this.keyLight.userData.key=null;return;
+    }
+    this.placeLamps(candidates,position,dt);
+    // The shadow caster is a fixture too, and it keeps the fixture it is on
+    // until a different one is clearly nearer — otherwise every shadow in the
+    // room swings as you cross it. Room fittings win over the gallery ring:
+    // they are the ones actually lighting what you are standing in.
+    const overhead=candidates.filter(c=>c.position.y>position.y+.5),pool=overhead.length?overhead:candidates;
+    const score=c=>c.position.distanceToSquared(position)*(c.room?.55:1);
+    const held=this.keyLight.userData.key&&pool.find(c=>c.key===this.keyLight.userData.key);
+    const best=pool.reduce((a,b)=>score(b)<score(a)?b:a);
+    const target=held&&score(held)<score(best)*2.6?held:best;
+    this.keyLight.visible=true;
+    if(this.keyLight.userData.key!==target.key&&this.keyLight.intensity>.02){this.keyLight.intensity=THREE.MathUtils.damp(this.keyLight.intensity,0,16,dt);return;}
+    if(this.keyLight.userData.key!==target.key){
+      this.keyLight.userData.key=target.key;this.keyLight.position.copy(target.position);
+      this.keyLight.target.position.copy(target.position).add(new THREE.Vector3(0,-3,0));
+      this.keyLight.color.setHex(target.color);this.keyLight.distance=target.cone;
+    }
+    this.keyLight.intensity=THREE.MathUtils.damp(this.keyLight.intensity,target.keyIntensity??Math.min(190,target.intensity*1.35),7,dt);
+  }
+
   update(dt,position){
     breach.amount=THREE.MathUtils.damp(breach.amount,breach.open?1:0,5,dt);
     const panel=this.loaded.get(SPUR.level)?.passages?.userData.breachPanel;if(panel)panel.rotation.y=Math.PI-breach.amount*Math.PI/2;
@@ -318,28 +409,8 @@ export class SiloWorld {
     for(const a of this.animated)a.object.rotation[a.axis]+=dt*a.speed;
     for(const [level,e]of this.loaded){e.root.visible=!this.special&&Math.abs(level-this.activeLevel)<=1;for(let i=0;i<e.rooms.length;i++){const room=e.rooms[i],center=new THREE.Vector3(0,1.5,10).applyMatrix4(room.matrixWorld);room.visible=level===this.activeLevel||center.distanceTo(position)<38;}}
     const y=levelY(this.activeLevel);
-    for(let i=0;i<this.localLights.length;i++){
-      const l=this.localLights[i];l.visible=!this.outside;l.distance=38;
-      if(this.special){l.visible=false;l.intensity=0;}
-      else if(i<6){const a=i*TAU/6;l.position.set(Math.cos(a)*21,y+4.8,Math.sin(a)*21);l.intensity=105;l.color.setHex(i%3?0xf0e2c9:0xc0d4d3);}
-      else {const angle=Math.atan2(position.z,position.x);l.position.set(Math.cos(angle)*(i===6?33:44),y+4.7,Math.sin(angle)*(i===6?33:44));l.intensity=150;l.color.setHex(roomType(this.activeLevel,Math.round(angle/TAU*6+6)%6)==='medical'?0xc1dcd5:0xe6ddc9);}
-    }
-    let roomKey=null;
-    if(!this.special&&!this.outside&&Math.hypot(position.x,position.z)>SILO.deckOuter){
-      const w=(Math.round(Math.atan2(position.z,position.x)/TAU*6)+6)%6,room=this.loaded.get(this.activeLevel)?.rooms[w];
-      if(room?.userData.lightPoints?.length){
-        room.updateWorldMatrix(true,false);
-        const points=room.userData.lightPoints.map(p=>({...p,world:new THREE.Vector3(...p.position).applyMatrix4(room.matrixWorld)})).sort((a,b)=>a.world.distanceToSquared(position)-b.world.distanceToSquared(position));
-        for(let j=0;j<6;j++){const p=points[j%points.length],l=this.localLights[j+2];l.position.copy(p.world);l.color.setHex(p.color);l.intensity=j<points.length?p.intensity:0;l.distance=11;}
-        roomKey={...points[0],residential:room.userData.type==='residential'};
-      }
-    }
-    // Below Mechanical the practical fixtures own the light. A shadow-casting
-    // spotlight following every footstep made wet floors visibly swim.
-    this.keyLight.visible=!this.outside&&!this.special;this.keyLight.position.set(position.x+3,position.y+4.2,position.z+1.5);this.keyLight.target.position.set(position.x,position.y,position.z);this.keyLight.intensity=260;
-    if(roomKey){this.keyLight.position.copy(roomKey.world);this.keyLight.target.position.copy(roomKey.world).add(new THREE.Vector3(0,-3,0));this.keyLight.color.setHex(roomKey.color);this.keyLight.intensity=roomKey.residential?95:150;this.keyLight.distance=14;}else{this.keyLight.color.setHex(0xf0e2cd);this.keyLight.distance=48;}
-    if(this.activeLevel===1&&top.z>10&&!this.special){for(let i=0;i<8;i++){const l=this.localLights[i];l.position.copy(topPoint(i<4?(i%2?10:-10):26,i<4?6.7:3.7,i<4?(i<2?17:31):[29,40,50,59][i-4]));l.intensity=i<4?145:75;l.color.setHex(i<4?0xf1e9d9:0xc8d6d4);l.distance=28;}this.keyLight.position.copy(topPoint(0,7.3,24));this.keyLight.target.position.copy(topPoint(0,0,24));this.keyLight.color.setHex(0xf1e9d9);this.keyLight.intensity=115;this.keyLight.distance=32;if(top.z>64){this.keyLight.position.copy(position).add(new THREE.Vector3(0,3.4,0));this.keyLight.intensity=170;}}
-    this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):.10;this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):.48;this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
+    this.lightRig(position,top,dt);
+    this.sun.visible=this.outside;this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):0;this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):.60;this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
     this.scene.fog.density=this.outside?.0029:this.special==='excavator'?.004:this.special?.007:.008;this.scene.fog.color.setHex(this.outside?0x929fa3:0x242d2b);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);if(this.outside)this.scene.fog.color.copy(this.surface.sky.fogColor);this.structure.visible=this.landings.visible=this.stairs.visible=this.distant.visible=this.distantLandings.visible=this.distantStairs.visible=this.topCore.visible=!this.special&&!this.outside;
   }
 }

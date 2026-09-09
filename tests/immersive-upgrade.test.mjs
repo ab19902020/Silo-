@@ -4,6 +4,7 @@ import * as T from '../dist/vendor/three.module.js';
 import { conversationFor } from '../dist/src/conversations.js';
 import { PLAYABLE_CHARACTERS } from '../dist/src/characters.js';
 import { SiloWorld } from '../dist/src/world.js';
+import { levelY,TAU } from '../dist/src/data.js';
 import { CharacterBody } from '../dist/src/physics.js';
 import { Population } from '../dist/src/population.js';
 import { CafeteriaOpening,CAFETERIA_START } from '../dist/src/opening.js';
@@ -59,4 +60,37 @@ test('exported cleaning suits preserve separate skin, cloth and visor materials 
   const {json}=await readGLB(residentGLB(RESIDENT_CAST.find(x=>x.id==='holston'),true));
   const materials=new Set();for(const mesh of json.meshes)for(const p of mesh.primitives){assert.ok(json.materials[p.material]);materials.add(p.material);assert.ok(p.attributes.JOINTS_0!==undefined&&p.attributes.WEIGHTS_0!==undefined);}
   for(const index of [0,1,2,3,4,5])assert.ok(materials.has(index));assert.ok(json.materials[2].pbrMetallicRoughness.metallicFactor>.5);assert.ok(json.materials[3].pbrMetallicRoughness.roughnessFactor<json.materials[0].pbrMetallicRoughness.roughnessFactor);
+});
+
+// --- lighting --------------------------------------------------------------
+// A silo is a windowless concrete tube. Every light in it is bolted to
+// something, so walking must not move a single one of them, and the pool must
+// not pop a light from one fitting to another in front of you.
+test('every light in the silo belongs to a fixture, and none of them follow the camera',()=>{
+  const world=new SiloWorld(new T.Scene());
+  world.setLevel(50);
+  const seen=new Map();
+  let jumped=0,keyHops=0,keyHotHops=0,sunLit=0;
+  let keyKey=null,keyPos=null;
+  for(let i=0;i<900;i++){
+    // A lap of the gallery that then walks out along a wing and back.
+    const a=i/900*TAU*2,r=14+Math.abs(((i/900)*4%2)-1)*30;
+    const p=new T.Vector3(Math.cos(a)*r,levelY(50)+1.7,Math.sin(a)*r);
+    world.update(1/60,p);
+    if(world.sun.visible||world.sun.intensity>0)sunLit++;
+    for(const l of world.localLights){
+      const was=seen.get(l);
+      if(was&&was.lit&&l.intensity>.5&&was.position.distanceTo(l.position)>1e-9)jumped++;
+      seen.set(l,{position:l.position.clone(),lit:l.intensity>.5});
+    }
+    const k=world.keyLight;
+    if(keyPos&&k.position.distanceTo(keyPos)>1e-9){keyHops++;if(k.userData.lastLit>1)keyHotHops++;}
+    if(keyKey!==k.userData.key)keyKey=k.userData.key;
+    keyPos=k.position.clone();k.userData.lastLit=k.intensity;
+  }
+  assert.equal(jumped,0,`a lit lamp teleported ${jumped} times; lights must dim out before they move`);
+  assert.equal(sunLit,0,'there is no sun inside a silo');
+  assert.ok(keyHops<40,`the shadow caster moved on ${keyHops} of 900 frames; it must sit on a fitting, not on the player`);
+  assert.equal(keyHotHops,0,'the shadow caster moved while still lit, which swings every shadow in the room');
+  assert.ok(world.localLights.some(l=>l.intensity>1),'the walk lit nothing at all');
 });
