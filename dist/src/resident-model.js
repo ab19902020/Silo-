@@ -75,6 +75,12 @@ export function buildResidentModel(definition,{suit=false}={}){
     if(a.outfit==='work'||suit){box(hip.x,.70,.085,.12,.18,.014,coat.clone().multiplyScalar(.78),'Thigh'+s);}
   }
   ell(0,1.49,0,.058,.107,.055,skin,'Neck');
+  // The neck used to rise out of the collar as a plain tube with a hard seam
+  // where the lathe stopped. This is the trapezius: it carries the line from
+  // the base of the skull out to each shoulder, which is most of what makes a
+  // clothed figure read as having a body under the cloth.
+  {const g=new THREE.SphereGeometry(1,26,14,0,Math.PI*2,0,Math.PI*.66);
+   g.scale(.176*wide,.088,.112);g.translate(0,1.386,-.004);add(g,coat,'Chest');}
   // The skull was 20.4 cm across on a 1.77 m frame. A real one is 15.5, and a
   // head a third too wide is most of what makes a figure read as a toy: every
   // feature on it is placed off the same half-width, so the whole block —
@@ -101,18 +107,22 @@ export function buildResidentModel(definition,{suit=false}={}){
   face.computeVertexNormals();add(face,skin,'Head');
   for(const sign of [-1,1]){
     ell(sign*.103*fw,1.631,-.005,.018,.032,.014,skin,'Head',10);
-    ell(sign*.049*fw,1.643,.079,.031,.018,.014,skinTone(.8),'Head',12);
-    ell(sign*.046*fw,1.646,.088,.0205,.0095,.007,new THREE.Color(0xb4b0a3),'Head',12);
-    ell(sign*.046*fw,1.646,.094,.007,.008,.004,new THREE.Color(0x454737),'Head',10);
-    ell(sign*.046*fw,1.646,.097,.0035,.005,.002,dark,'Head',8);
+    // A human eye opening is about 3 cm across with a 1.2 cm iris. These were
+    // 6 cm across with a 4 cm iris, which is the single thing that made every
+    // face in the silo read as a cartoon. Set back into the socket, too, so
+    // the white does not bulge out of the front of the head.
+    ell(sign*.049*fw,1.6435,.0745,.0205,.0125,.0125,skinTone(.8),'Head',14);
+    ell(sign*.047*fw,1.6455,.0815,.0088,.0088,.006,new THREE.Color(0xa9a598),'Head',12);
+    ell(sign*.047*fw,1.6455,.0855,.0062,.0062,.0035,new THREE.Color(0x454737),'Head',12);
+    ell(sign*.047*fw,1.6455,.0878,.0029,.0029,.0018,dark,'Head',8);
     box(sign*.045*fw,1.666,.088,.045,.008,.009,hair,'Head',-sign*.1);
     // Eyelid rims follow the eye socket; tiny catchlights and a recessed ear
     // concha give close conversations depth without oversized cartoon eyes.
-    for(let j=0;j<7;j++){const t=j/6*Math.PI,xx=sign*.046*fw+Math.cos(t)*.021;
-      ell(xx,1.646+Math.sin(t)*.010,.094,.005,.0025,.003,skin,'Head',8);
-      ell(xx,1.646-Math.sin(t)*.009,.092,.004,.002,.002,skinTone(.88),'Head',8);
+    for(let j=0;j<7;j++){const t=j/6*Math.PI,xx=sign*.047*fw+Math.cos(t)*.0155;
+      ell(xx,1.6455+Math.sin(t)*.0072,.0835,.0038,.0022,.0026,skin,'Head',8);
+      ell(xx,1.6455-Math.sin(t)*.0064,.0818,.0032,.0018,.0018,skinTone(.88),'Head',8);
     }
-    ell(sign*.046*fw-.002,1.649,.099,.0018,.0018,.001,new THREE.Color(0xe4dfd0),'Head',8);
+    ell(sign*.047*fw-.0016,1.6472,.0888,.0013,.0013,.0008,new THREE.Color(0xe4dfd0),'Head',8);
     ell(sign*.111*fw,1.633,.005,.005,.018,.006,skinTone(.63),'Head',10);
     ell(sign*.011,1.607,.120,.005,.003,.003,skinTone(.47),'Head',8);
     if(age>.3)for(let i=0;i<2;i++)box(sign*.055,1.626-i*.009,.089,.034,.002,.002,skinTone(.85),'Head',sign*.13);
@@ -120,9 +130,20 @@ export function buildResidentModel(definition,{suit=false}={}){
   ell(0,1.625,.091,.016,.033,.022,skin,'Head',12);ell(0,1.612,.111,.021,.011,.016,skin,'Head',12);
   ell(0,1.576,.087,.030,.009,.007,skinTone(.69),'Head',16);box(0,1.576,.094,.045,.0018,.002,skinTone(.48),'Head');
   ell(0,1.551,.070,.035,.018,.018,skin,'Head');
-  if(a.beard){const g=new THREE.SphereGeometry(1,20,10,0,Math.PI*2,Math.PI*.40,Math.PI*.57);g.scale(.092, .061,.082);g.translate(0,1.596,.016);add(g,hair,'Head');}
+  // The cast carries a beard *amount* and it was being thrown away, so a man
+  // written down as having four days' growth wore the same full black beard as
+  // a man with a proper one. Light growth is a thin shell close to the jaw,
+  // mixed most of the way back to his own skin; a full beard stands off it and
+  // keeps the hair colour.
+  if(a.beard){
+    const amount=clamp(typeof a.beard==='number'?a.beard:.7,.15,1),full=(amount-.15)/.85;
+    const g=new THREE.SphereGeometry(1,22,12,0,Math.PI*2,Math.PI*(.44-full*.07),Math.PI*(.44+full*.15));
+    const t=.0032+full*.0075;
+    g.scale(.0855+t,.0555+t*1.5,.0775+t);g.translate(0,1.5965,.0165);
+    add(g,hair.clone().lerp(skin,.62-full*.55),'Head');
+  }
   if(!a.bald){const g=new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,Math.PI*.46);g.scale(.106*fw,.137,.094);g.translate(0,1.637,-.006);add(g,hair,'Head');}
-  if(a.moustache)ell(0,1.592,.095,.032,.010,.009,hair,'Head');
+  if(a.moustache){ell(0,1.5905,.0935,.027,.0072,.0082,hair,'Head');for(const sign of [-1,1])ell(sign*.0225,1.5875,.0895,.011,.0058,.0068,hair,'Head',10);}
   if(['waves','curls','long','bun','braids','longCurls','fringe'].includes(a.hairStyle)){
     const curls=['curls','longCurls'].includes(a.hairStyle);
     // A continuous volume follows the scalp; fine strands supply the texture
@@ -167,7 +188,18 @@ export function buildResidentModel(definition,{suit=false}={}){
     for(const sign of [-1,1]){box(sign*.115,1.19,.151,.04,.46,.023,dark,torso);box(sign*.092,1.085,.172,.065,.045,.016,new THREE.Color(0xb29b62),torso);}
     torus(.18,1.22,-.03,.096,.019,dark,'Chest',0,.8,1);
   }else{
-    if(a.outfit==='vest')for(const sign of [-1,1])box(sign*.135,1.227,.141,.122,.33,.018,dark,torso);
+    if(a.outfit==='vest'){
+      // Two flat black slabs stuck on the chest read as holes cut in the shirt.
+      // A waistcoat is a garment: it follows the body, it is a shade of the
+      // coat rather than pure black, and it has a front edge and buttons.
+      const cloth=coat.clone().multiplyScalar(.52);
+      for(const sign of [-1,1]){
+        const g=new THREE.LatheGeometry(profile.filter(([y])=>y>=1.0&&y<=1.37).map(([y,r])=>new THREE.Vector2(r*wide*1.05,y)),18,sign>0?.13:-1.16,1.03);
+        g.scale(1,1,.72);add(g,cloth,torso,null,true);
+        box(sign*.083*wide,1.185,.152,.018,.30,.02,cloth.clone().multiplyScalar(.8),torso);
+      }
+      for(let i=0;i<4;i++)ell(0,1.08+i*.072,.152,.007,.007,.005,coat.clone().multiplyScalar(.34),torso,8);
+    }
     if(a.outfit==='knit')for(let row=0;row<6;row++)for(let j=0;j<11;j++)box((j-5)*.027,1.15+row*.039,.149,.02,.012,.006,new THREE.Color([0x414f53,0x867552,0x574638][(row+j)%3]),torso,(row+j)%2?.3:-.3);
     box(0,1.258,.143,.016,.34,.016,coat.clone().multiplyScalar(.65),torso);
     for(let i=0;i<5;i++)ell(0,1.12+i*.058,.155,.005,.005,.004,dark,torso,8);
