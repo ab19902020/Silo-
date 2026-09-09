@@ -120,9 +120,12 @@ function takeRelic(id){
 }
 function openingChanged(state){
   syncMusicGate();
-  const watching=state==='watch',reading=state==='read-book';chapterUntil=performance.now()+(state==='find-book'?6500:reading?5000:0);if(watching&&lastOpeningState!=='watch'){opening.focus=true;hudOpen=false;document.body.classList.remove('hud-open');keys.clear();stick.x=stick.y=0;jumpQueued=false;}lastOpeningState=state;
+  // Picking the book up used to snap the camera into the screen. You are in a
+  // room full of people watching a cleaning; you stay in it, free to look
+  // around and walk, and Focus on screen is there if you want the whole wall.
+  const watching=state==='watch',reading=state==='read-book';chapterUntil=performance.now()+(state==='find-book'?6500:reading?5000:0);if(watching&&lastOpeningState!=='watch'){hudOpen=false;document.body.classList.remove('hud-open');}lastOpeningState=state;
   $('chapterHud').hidden=state==='explore';$('chapterTitle').textContent=state==='find-book'?'A book on the table':watching?'Holston’s cleaning':'The room falls quiet';
-  $('chapterObjective').textContent=state==='find-book'?'Find the directory book on the table ahead.':watching?'Holston is outside.':'Your directory is ready.';
+  $('chapterObjective').textContent=state==='find-book'?'The directory book is on the table in front of you.':watching?'Holston is outside. Watch from the room, or focus on the screen.':'Your directory is ready.';
   $('focusScreenButton').hidden=!watching;$('skipOpening').hidden=!watching;$('openBookButton').hidden=!reading;
   $('focusScreenButton').textContent=opening?.focus?'Back to cafeteria':'Focus on screen';
   document.body.classList.toggle('screen-focused',!!opening?.focus);

@@ -6,8 +6,12 @@ import { topPoint, topLocal, groundY, surfaceY, sensorLocal } from './surface.js
 import { Kit, addSign } from './kit.js';
 
 export const OPENING_DURATION=90;
-export const BOOK_POSITION=Object.freeze([2,.855,22]);
-export const CAFETERIA_START=Object.freeze([2,0,19.8]);
+// The book is on a front table, one row back from the great screen, and you
+// start at that table. From here the whole 30 m display is in front of you, so
+// the cleaning can be watched from inside the room, standing where the rest of
+// the silo is standing, rather than from a camera bolted to the picture.
+export const BOOK_POSITION=Object.freeze([2,.855,32]);
+export const CAFETERIA_START=Object.freeze([2,0,29.7]);
 const clamp=THREE.MathUtils.clamp,lerp=THREE.MathUtils.lerp,ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
 const at=(x,z)=>new THREE.Vector3(x,surfaceY(x,z),z);
 const followGround=p=>{p.y=surfaceY(p.x,p.z);return p;};

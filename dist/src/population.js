@@ -48,7 +48,7 @@ export function populationRecords(level){
   if(level===1){
     for(const z of [12.8,17,22,27,32])for(const x of [-11,-5,2,9])for(const dx of [-1.05,1.05]){
       // Leave the book table and the adjacent player's approach unoccupied.
-      if(z===22&&x===2)continue;
+      if(z===32&&x===2)continue;
       add(topPoint(x+dx,0,z-1.15),{kind:'diner',activity:'sit',heading:Math.PI/2,seat:true});
     }
     const paths=[[-15,14.7],[-15,35.2],[-.8,35.2],[-.8,14.7],[14.5,14.7],[14.5,35.2],[5.6,35.2],[5.6,14.7]];
