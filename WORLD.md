@@ -1,3 +1,66 @@
+# Story mode — 9 September 2026
+
+**Note for Astra.** The game now has two modes and a progression. Nothing that
+existed has been taken away: **explore** is exactly the silo as it was, and
+every gate below is a no-op in it.
+
+| File | What it is |
+| --- | --- |
+| `dist/src/story.js` | **New.** The relic table, the chapters, the seals, the save. No THREE in it. |
+| `dist/src/relics.js` | **New.** Procedural props for the collectables, and the drone. |
+| `dist/src/main.js` | Mode buttons, the objective panel, the satchel, pickups, going outside, firing. |
+| `dist/src/world.js` | `world.story` — `nearestInteraction` asks it whether a wing door is sealed. |
+| `dist/index.html`, `style.css` | Mode buttons, the satchel dialog, a crosshair and a fire button. |
+| `tests/story.test.mjs` | **New.** Nine tests. |
+
+## The shape of it
+
+```
+cleaning → relics → ledger → suit → shotgun → airlock → drone → done
+```
+
+`Story` holds the whole thing and is the only place the rules live. Chapters
+advance in `take()`; `sealed(level,wing,type)` answers whether a door opens;
+`visible(id)` answers whether a collectable exists yet. `steppedOutside()`,
+`droneKilled()` and `killedByDrone()` are the three events at the end.
+
+**Everything is a no-op in explore mode.** `story.story` is false, `sealed()`
+returns null for everything, `visible()` returns true for everything, and
+`steppedOutside()` returns null so no drone launches. If you add a rule, keep
+that property or explore mode stops being explore mode.
+
+## Where things are
+
+Four of the five relics are named in the source material and are on the floors
+the people who owned them lived on. Every collectable carries a `source` line
+saying whether the show put it there or this build did, and **that line is shown
+to the player in the satchel** — so if you move something or add something,
+write an honest one.
+
+Two of my placements were buried inside furniture and one was behind a bar
+stool. `tests/story.test.mjs` now walks a `CharacterBody` from the middle of
+each wing to each collectable and fails if it cannot get within 1.6 m, so that
+class of mistake cannot land again. **If you move a collectable, that test is
+the one that will tell you.**
+
+## Things that will bite you
+
+- The hard drive is a supplied GLB placed by `characters.js`, not by
+  `StoryProps`. It is flagged `prop:true` in the relic table and the frame loop
+  hides it separately once taken.
+- `props.interactions()` results are pushed onto `world.actorInteractions`,
+  which `cast.update` clears each frame. Push after that, not before.
+- Going outside is checked in `stepOutside()` off `world.outside`, which is
+  only assigned inside `world.update`. Under software rendering the page runs
+  at well under a frame a second, so the browser smoke test drives that call
+  directly rather than waiting on the render loop.
+- `window.__silo` exists only for that smoke test. Nothing in the game reads it.
+
+## Verify
+
+`npm test` — 91. There is also a headless run of the whole story in a real
+browser under the scratch harness; the tests do not depend on it.
+
 # Lighting, doors, animals, IT and the walk — 9 September 2026
 
 **Note for Astra.** Six things, all measured before and after. `npm test` is 83
