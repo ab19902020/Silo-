@@ -2,7 +2,7 @@ import * as THREE from '../vendor/three.module.js';
 import { clone } from '../vendor/SkeletonUtils.js';
 import { RESIDENT_CAST } from './resident-data.js';
 import { createResident, poseResident } from './resident-model.js';
-import { topPoint, topLocal, groundY, surfaceY, sensorLocal } from './surface.js';
+import { topPoint, topLocal, groundY, surfaceY, sensorLocal, SENSOR } from './surface.js';
 import { Kit, addSign } from './kit.js';
 
 export const OPENING_DURATION=90;
@@ -34,20 +34,36 @@ export const HOLSTON_REST=Object.freeze([ALLISON_REST[0]+Math.cos(REST_HEADING)*
 // and the helmet comes off; the peak lands as he drags himself the last few
 // metres to her; and the swell is on him going still. Retime one and you have
 // to retime the other.
+// Which side of the ramp the sensor stands on, and the two points on the walk
+// that belong to it. Derived rather than written down: the route used to name
+// the lens by its coordinates, so moving the camera left the cleaner wiping a
+// patch of air ten metres from it.
+const CLEAN_SIDE=Math.sign(SENSOR.x-26)||-1;
+// He stands a little to one side of the lens so the wiping arm is across his
+// body rather than folded behind him. That offset belongs to the arm, not to
+// the side of the ramp the camera is on: mirroring it with the camera put the
+// lens on his other hand and the rag stopped covering it.
+const LENS_X=SENSOR.x-.3, LENS_Z=SENSOR.z+1.39;
 export function cleaningSample(time){
-  const t=clamp(time,0,OPENING_DURATION),entry=at(26,100),lip=at(26,110.2),corner=at(20.2,110.2),lens=at(20.2,100.39),slope=at(-.6,149.1),beside=at(...HOLSTON_REST);
-  // The sensor is behind the hatch. He emerges away from it, turns, and walks
+  const t=clamp(time,0,OPENING_DURATION),entry=at(26,100),lip=at(26,110.2),corner=at(LENS_X,110.2),lens=at(LENS_X,LENS_Z),clear=at(LENS_X,111.5),slope=at(-.6,149.1),beside=at(...HOLSTON_REST);
+  // The sensor is beside the hatch. He emerges away from it, turns, and walks
   // around the curb before approaching the lens. No backwards walking or
   // scripted shortcut across the hole in the ramp.
+  const facing=CLEAN_SIDE*Math.PI/2, along=CLEAN_SIDE*Math.PI;
   if(t<8)return {phase:'emerge',position:followGround(entry.lerp(lip,t/8)),heading:0,speed:1.275};
-  if(t<9)return {phase:'approach',position:lip,heading:-Math.PI/2*ease(t-8),speed:0};
-  if(t<12.5)return {phase:'approach',position:followGround(lip.lerp(corner,(t-9)/3.5)),heading:-Math.PI/2,speed:1.657};
-  if(t<13.5)return {phase:'approach',position:corner,heading:-Math.PI/2-Math.PI/2*ease(t-12.5),speed:0};
-  if(t<18)return {phase:'approach',position:followGround(corner.lerp(lens,(t-13.5)/4.5)),heading:-Math.PI,speed:2.18};
-  if(t<27)return {phase:'clean',position:lens,heading:-Math.PI,progress:(t-18)/9,speed:0};
-  const heading=Math.atan2(slope.x-lens.x,slope.z-lens.z);
-  if(t<30)return {phase:'turn',position:lens,heading:-Math.PI+(heading+Math.PI)*ease((t-27)/3),speed:0};
-  if(t<60)return {phase:'walk',position:followGround(lens.lerp(slope,(t-30)/30)),heading,speed:1.77};
+  if(t<9)return {phase:'approach',position:lip,heading:facing*ease(t-8),speed:0};
+  if(t<12.5)return {phase:'approach',position:followGround(lip.lerp(corner,(t-9)/3.5)),heading:facing,speed:1.657};
+  if(t<13.5)return {phase:'approach',position:corner,heading:facing+facing*ease(t-12.5),speed:0};
+  if(t<18)return {phase:'approach',position:followGround(corner.lerp(lens,(t-13.5)/4.5)),heading:along,speed:2.18};
+  if(t<27)return {phase:'clean',position:lens,heading:along,progress:(t-18)/9,speed:0};
+  const heading=Math.atan2(clear.x-lens.x,clear.z-lens.z);
+  if(t<30)return {phase:'turn',position:lens,heading:along+(heading-along)*ease((t-27)/3),speed:0};
+  // Out past the head of the cutting before turning up the hill. The tree is on
+  // the far side of the ramp from the sensor, so a straight line from the lens
+  // to it crosses the open trench — he walked over the hole and the ground
+  // dropped fourteen metres under him.
+  if(t<38)return {phase:'walk',position:followGround(lens.clone().lerp(clear,(t-30)/8)),heading:Math.atan2(clear.x-lens.x,clear.z-lens.z),speed:1.39};
+  if(t<60)return {phase:'walk',position:followGround(clear.clone().lerp(slope,(t-38)/22)),heading:Math.atan2(slope.x-clear.x,slope.z-clear.z),speed:2.25};
   if(t<68)return {phase:'helmet',position:slope,heading,progress:(t-60)/8,speed:0};
   const finalHeading=Math.atan2(beside.x-slope.x,beside.z-slope.z);
   if(t<80)return {phase:'crawl',position:followGround(slope.lerp(beside,(t-68)/12)),heading:finalHeading,progress:(t-68)/12,speed:.39};

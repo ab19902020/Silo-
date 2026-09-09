@@ -64,18 +64,20 @@ export function buildGunRange(m) {
   // Four lanes, divided to shoulder height so a shooter cannot drift sideways
   // into the next one, and open above so the range officer can see the line.
   const lanes = [-6, -2, 2, 6].map(dx => cx + dx);
-  for (const x of [cx - 8, cx - 4, cx, cx + 4, cx + 8]) {
-    if (x <= cx - 8 || x >= cx + 8) continue;
-    box('metal', x, .9, RANGE.line - 2.2, .12, 1.8, 5.2);
-  }
+  // Waist-high dividers between the lanes, low enough that the range officer
+  // can see the whole line over the top of them.
+  for (const x of [cx - 4, cx, cx + 4]) box('pale', x, .8, RANGE.line - 1.9, .1, 1.6, 4.6);
   for (let i = 0; i < lanes.length; i++) {
     const x = lanes[i];
-    // The bench each shooter works off: weapon down, muzzle downrange.
-    k.bevel('metal', x, .95, RANGE.line, 3.3, .1, .95);
-    for (const dx of [-1.4, 1.4]) k.beam('darkMetal', [x + dx, 0, RANGE.line], [x + dx, .9, RANGE.line], .05);
-    k.box('darkMetal', x, .55, RANGE.line + .38, 3.2, .06, .3);
+    // The bench each shooter works off: weapon down, muzzle downrange. Green
+    // panel below and a steel top, the way the desks next door are built.
+    box('green', x, .45, RANGE.line, 2.4, .9, .72);
+    k.bevel('metal', x, .93, RANGE.line, 2.5, .08, .8);
+    k.box('darkMetal', x, .9, RANGE.line - .42, 2.5, .05, .04);
+    // A rest to lay the weapon in, and a tray for what comes out of it.
+    for (const dx of [-.5, .5]) k.cylinder('rust', x + dx, 1.03, RANGE.line - .12, .055, .5, 0, 0, Math.PI / 2);
+    k.bevel('darkMetal', x + .85, .99, RANGE.line + .1, .5, .05, .34);
     addSign(root, `LANE ${i + 1}`, [x, 2.55, RANGE.line - .1], 1.15, .3, 0);
-    fixture(k, x, height - .2, RANGE.targets + 3, 2.4);
   }
 
   // --- targets -------------------------------------------------------------
@@ -161,8 +163,23 @@ export function buildGunRange(m) {
   box('green', cx + 6.2, .55, ammoZ, 2.6, 1.1, .9);
   k.bevel('metal', cx + 6.2, 1.14, ammoZ, 2.7, .09, 1);
 
+  // Ammunition crates stacked out of the lanes, and ear defenders on pegs by
+  // the door — the two things a range has that a corridor does not.
+  for (let i = 0; i < 3; i++) {
+    const z = RANGE.line + 2.9 + i * .1, x = cx + 4.4 + (i % 2) * .9;
+    box('wood', x, .22 + i * .44, z, .84, .42, .58);
+    k.box('brass', x, .22 + i * .44, z - .3, .3, .1, .02);
+  }
+  for (let i = 0; i < 4; i++) {
+    const z = RANGE.door - 1.1, x = cx - 1.8 + i * 1.2;
+    k.beam('darkMetal', [x, 2.1, z], [x, 1.95, z], .02);
+    k.torus('red', x, 1.87, z, .11, .045, Math.PI / 2);
+    k.box('darkMetal', x, 1.87, z, .24, .1, .05);
+  }
+  addSign(root, 'HEARING PROTECTION BEYOND THIS POINT', [cx, 2.55, RANGE.door - .95], 4.6, .34, Math.PI);
+
   // --- light ---------------------------------------------------------------
-  for (const z of [RANGE.targets + 1, RANGE.targets + 7, RANGE.line + 1.5])
+  for (const z of [RANGE.targets - 1.5, RANGE.targets + 1, RANGE.targets + 7, RANGE.line + 1.5])
     for (const x of [cx - 5, cx + 5]) fixture(k, x, height - .18, z, 3.2);
 
   root.add(k.group());

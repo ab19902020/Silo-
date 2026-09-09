@@ -286,7 +286,7 @@ export class SiloAudio {
   constructor(){
     this.context=null;this.enabled=true;this.musicVolume=.148;this.lastStep=0;this.foot=1;
     this.musicHeld=false;this.musicOffset=0;this.musicBuffer=null;this.musicCue=null;this.musicFade=5;this.openingPlaying=false;this.openingElement=null;
-    this.place=INTERIOR;this.stepSurface='concrete';this.surfaceOverride=null;this.steps=null;this.guns=null;this.gunLoad=null;this.musicRequested=false;this.musicPlaying=false;this.scrub=null;
+    this.place=INTERIOR;this.stepSurface='concrete';this.surfaceOverride=null;this.steps=null;this.guns=null;this.gunLoad=null;this.wade=null;this.musicRequested=false;this.musicPlaying=false;this.scrub=null;
   }
 
   // Created on the first user gesture; browsers refuse an AudioContext before one.
@@ -796,6 +796,52 @@ export class SiloAudio {
     }
     if(fall.scuff>.05)this.burst(out,t+.04,{frequency:rand(1200,2200),to:rand(400,700),q:.7,gain:.012*fall.scuff*(.4+force),decay:.18,attack:.02});
     if(force>.35)this.hit(out,'thunk',t,{gain:.016*force,rate:rand(1.1,1.35)});
+  }
+
+  // --- water --------------------------------------------------------------
+  // Going in. A body entering shallow water is a slap, then the cavity it made
+  // collapsing, then the spray coming down — three things, in that order, and
+  // the middle one is what makes it read as water rather than as a hit.
+  waterEnter(force=1){
+    if(!this.live())return;
+    const t=this.context.currentTime+.005,out=this.voice(rand(-.15,.15),0,1.1),f=clamp(force,.2,1.6);
+    this.sample(out,'wet',t,{gain:.11*f,rate:rand(.86,.96)});
+    this.burst(out,t+.02,{frequency:rand(420,700),to:rand(1500,2400),q:.7,gain:.055*f,decay:.30,attack:.02,rate:rand(.8,1.1)});
+    // The cavity closing rings upwards, the same way a drip does and for the
+    // same reason: the hole in the water is shrinking as it sings.
+    this.tone(out,t+.05,{frequency:rand(180,260),to:rand(520,760),gain:.030*f,decay:.20,attack:.006});
+    this.burst(out,t+.13,{frequency:rand(2600,4200),to:rand(900,1500),q:.6,gain:.030*f,decay:.42,attack:.06});
+  }
+  // Standing in it and moving. A loop rather than a sequence of splashes: the
+  // sound of wading is continuous, and stepping is layered on top of it by the
+  // ordinary footstep path using the `wet` recordings.
+  wadeStart(){
+    if(!this.live()||this.wade)return;
+    const c=this.context,t=c.currentTime;
+    const source=c.createBufferSource(),filter=c.createBiquadFilter(),envelope=c.createGain();
+    const swell=c.createGain(),lfo=c.createOscillator(),depth=c.createGain();
+    source.buffer=this.noise;source.loop=true;
+    filter.type='bandpass';filter.frequency.value=900;filter.Q.value=.85;
+    envelope.gain.setValueAtTime(.0001,t);envelope.gain.linearRampToValueAtTime(.020,t+.35);
+    swell.gain.value=.55;lfo.frequency.value=.9;depth.gain.value=.4;
+    lfo.connect(depth);depth.connect(swell.gain);
+    source.connect(filter);filter.connect(swell);swell.connect(envelope);
+    envelope.connect(this.sfx);envelope.connect(this.spaceSend);
+    source.start(t);lfo.start(t);
+    this.wade={nodes:[source,lfo],envelope};
+  }
+  wadeStop(){
+    if(!this.wade)return;
+    const {nodes,envelope}=this.wade,t=this.context.currentTime;
+    envelope.gain.cancelScheduledValues(t);envelope.gain.setValueAtTime(Math.max(.0001,envelope.gain.value),t);
+    envelope.gain.exponentialRampToValueAtTime(.0001,t+.4);
+    for(const node of nodes){try{node.stop(t+.45);}catch{}}
+    this.wade=null;
+  }
+  setWadeLevel(amount){
+    if(!this.wade)return;
+    const t=this.context.currentTime;
+    this.wade.envelope.gain.setTargetAtTime(.006+clamp(amount,0,1)*.030,t,.18);
   }
 
   // --- interactions -------------------------------------------------------

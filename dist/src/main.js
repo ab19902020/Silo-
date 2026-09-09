@@ -217,7 +217,49 @@ function fire(){
   if(drone.shoot(eye,direction.clone(),floor))notify('Hit. It is coming down.');
   else notify('You are firing at the sky. Let it come closer.');
 }
-let rangeHits=0,hudTick=-1;
+let rangeHits=0,hudTick=-1,wading=false,wadeStep=0;
+// Standing in the water at the bottom of the void.
+//
+// The basin is only 65 cm deep, so this is wading rather than swimming: the
+// player walks in off the ladder and the sheet has to answer for it. Entering
+// throws a ring and a splash; moving keeps a patch of churn under them and a
+// loop under that; each footfall drops its own ring, which is what makes the
+// surface look like it is being walked through rather than merely disturbed.
+const WATER=Object.freeze({surfaceY:5,bedY:4.35,radius:79});
+function updateWading(dt){
+  const water=world?.underground?.waterSurface;
+  if(!water||!started){if(wading)leaveWater();return;}
+  const inVoid=world.special==='excavator'||world.special==='tunnel';
+  let inside=false,speed=0;
+  if(inVoid){
+    // Test in the sheet's own space, so any transform on the void root is
+    // accounted for rather than assumed away.
+    const local=water.mesh.worldToLocal(body.position.clone());
+    inside=local.y<WATER.surfaceY-.04&&local.y>WATER.bedY-1.2&&Math.hypot(local.x,local.z)<WATER.radius;
+    speed=body.horizontalSpeed||0;
+    if(inside){
+      water.setWade(body.position.x,body.position.z,Math.min(1,speed/2.6));
+      if(speed>.35){
+        wadeStep-=dt*speed*1.15;
+        if(wadeStep<=0){wadeStep=1;water.ripple(body.position.x,body.position.z,.55+Math.random()*.5);}
+      }
+      audio.setWadeLevel?.(Math.min(1,speed/2.4));
+    }
+  }
+  if(inside&&!wading){
+    wading=true;
+    audio.waterEnter?.(.7+Math.min(1,speed/2.2)*.7);
+    audio.wadeStart?.();
+    audio.setSurface('wet');
+    water.ripple(body.position.x,body.position.z,1.6);
+  }else if(!inside&&wading)leaveWater();
+}
+function leaveWater(){
+  wading=false;
+  audio.wadeStop?.();
+  audio.setSurface(null);
+  world?.underground?.waterSurface?.setWade(0,0,0);
+}
 async function takeWeapon(key){
   const spec=WEAPONS[key];if(!spec)return;
   audio.pickup(spec.family==='blade'?'metal':'metal');
@@ -265,7 +307,9 @@ function updateHUD(){
   $('modeLabel').textContent=`${cast?.active?.definition.short||'ON FOOT'}${body.climbing?' · CLIMBING':running?' · RUNNING':''}`;audio.setLocation(world.outside?'surface':world.special||roomType(n,wing));
   // The great stairway is open steel and runs through every level, so the floor
   // underfoot there is not the floor of the room the level counter is reporting.
-  audio.setSurface(!world.outside&&!world.special&&r<SILO.stairRadius+.6?'grating':null);
+  // Wading owns the surface while it lasts, or this would clear it four times
+  // a second and put concrete footsteps under a player standing in water.
+  audio.setSurface(wading?'wet':!world.outside&&!world.special&&r<SILO.stairRadius+.6?'grating':null);
 }
 const inspectionText={
   generator:'Six removable panels protect the turbine. The rear panel is held open for inspection; the rotor, gantry and crane can be seen around the housing.',
@@ -514,6 +558,7 @@ function frame(){
   if(time-lastHUD>.25){updateHUD();lastHUD=time;}
   world.surface.renderFeed(renderer,time);
   if(world.special&&!opening?.focus)world.underground.waterSurface.update(renderer,scene,camera,time);
+  updateWading(dt);
   if(cleanWasRunning!==world.surface.cleaning){if(world.surface.cleaning)audio.scrubStart();else{audio.scrubStop();notify('Camera lens clean. The outside view is clear on the cafeteria screens.');}}cleanWasRunning=world.surface.cleaning;
   if(outsideTarget&&lastScreen!==world.screens[0]){for(const screen of world.screens){screen.material.map=outsideTarget.texture;screen.material.color.setHex(0xffffff);screen.material.needsUpdate=true;}lastScreen=world.screens[0];}
   torch.position.copy(camera.position);camera.getWorldDirection(direction);torch.target.position.copy(camera.position).addScaledVector(direction,15);torch.visible=torchOn&&started;
