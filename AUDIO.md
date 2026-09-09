@@ -413,6 +413,10 @@ Nothing clips; the limiter catches the rest.
 
 ## The six edits in `main.js`
 
+> Two more since, in the 9 September rewrite: `updateHUD()` calls
+> `audio.setSurface()` for the staircase, and `takeRelic()` calls
+> `audio.pickup()` instead of `audio.click()`.
+
 1. `saveSettings()` — persists `music`.
 2. `updateSettings()` — applies the slider and updates its readout.
 3. The settings restore loop — `'music'` added to the id list.
