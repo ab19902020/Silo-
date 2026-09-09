@@ -2,6 +2,17 @@
 
 A browser-based, first- and third-person reconstruction of the television silo, built in Adam’s **Silo-** repository using the circular collision system and selected interior assets from **Lost Signal**.
 
+## Latest residents, conversation and cleaning work
+
+- Rebuilt the head as one continuous sculpted surface. The face was two dozen ellipsoids and boxes laid over a sphere: the hair cap crossed the skull and cut torn bands across the forehead and cheeks, and the brows and age lines floated a centimetre off it. Brows, lashes, lips and stubble are painted onto the skin now, so nothing on a face can cross it.
+- Every resident on every floor walks a routine — a ring of stops with something to do at each one — instead of standing on one spot while twelve porters orbit the gallery.
+- Talking keeps you in the silo. The panel no longer pauses the world; the person stops, turns to face you and stays turned, the camera settles on them, and **1**–**4** ask while **E** or **Esc** steps away.
+- Restaged the cleaning so the cafeteria screen can actually see it: Holston is framed at the lens, steps in to wipe, and the rag blanks the picture on each pass. The helmet is a helmet rather than a pale sphere the size of a skull, and it comes off in his hands.
+- The directory book is on a front table and picking it up no longer snaps the camera into the screen.
+- The crater has a rim that closes the horizon and falls away behind, and the dead tree is grown rather than assembled from four dozen straight cylinders.
+
+See [the notes and reference limits](docs/residents-and-the-cleaning.md).
+
 ## Interface, conversations and rendering update
 
 - The chapter card now clears automatically. Navigation opens with **H / ☰**, touch controls fade when idle, and the cleaning opens with an unobstructed picture.
