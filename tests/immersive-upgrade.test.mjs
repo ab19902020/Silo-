@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
 import { conversationFor, ALGORITHM } from '../dist/src/conversations.js';
 import { PLAYABLE_CHARACTERS } from '../dist/src/characters.js';
+import { createResident } from '../dist/src/resident-model.js';
 import { SiloWorld } from '../dist/src/world.js';
 import { levelY,TAU,roomType } from '../dist/src/data.js';
 import { updateLivestock } from '../dist/src/livestock.js';
@@ -161,4 +162,62 @@ test('the Algorithm answers, and does not read out television lines',()=>{
   assert.equal(ALGORITHM.name,'LEGACY');
   assert.ok(ALGORITHM.topics.length>=4);
   for(const t of ALGORITHM.topics){assert.ok(t.label&&t.reply&&t.reply.length>30,`thin reply for ${t.id}`);}
+});
+
+// --- the walk --------------------------------------------------------------
+// Walking faster is not the same walk done more often. Step length and cadence
+// both grow with speed, roughly as its square root, and a rig that puts every
+// extra metre per second into cadence alone reads as a scurry.
+test('the stride lengthens with the pace, and the pelvis does not bounce',()=>{
+  const def=RESIDENT_CAST.find(d=>d.id==='holston');
+  const gait=speed=>{
+    const a=createResident(def,{}),dt=1/60;
+    a.root.position.set(0,0,0);a.root.rotation.y=0;
+    let z=0,last=0,hips=[],contacts=[];
+    for(let i=0;i<600;i++){
+      z+=speed*dt;a.root.position.z=z;
+      a.motion.update(dt,{speed,position:a.root.position,heading:0,grounded:true,active:true,ground:()=>0});
+      a.root.updateMatrixWorld(true);
+      if(i>180){
+        hips.push(a.motion.bones.Hips.getWorldPosition(new T.Vector3()).y);
+        if(a.motion.stepCount!==last){contacts.push(i*dt);last=a.motion.stepCount;}
+      }
+    }
+    const gaps=contacts.slice(1).map((t,i)=>t-contacts[i]);
+    const period=gaps.reduce((s,x)=>s+x,0)/gaps.length;
+    return {step:speed*period,cadence:60/period,bob:Math.max(...hips)-Math.min(...hips)};
+  };
+  const slow=gait(.95),normal=gait(1.25),brisk=gait(1.6),run=gait(3.6);
+  assert.ok(brisk.step>normal.step*1.06,`the step did not lengthen with the pace: ${(normal.step*100).toFixed(0)} cm at 1.25 m/s, ${(brisk.step*100).toFixed(0)} cm at 1.6`);
+  assert.ok(normal.step>slow.step*1.05,`the step did not shorten for an amble: ${(slow.step*100).toFixed(0)} cm`);
+  // Real adult gait: about 65 cm and 115 steps a minute at 1.25 m/s, 72 cm and
+  // 133 at 1.6, and a 1.35 m stride at 160 for a run.
+  assert.ok(normal.step>.56&&normal.step<.74,`${(normal.step*100).toFixed(0)} cm step at a normal walk`);
+  assert.ok(normal.cadence>102&&normal.cadence<130,`${normal.cadence.toFixed(0)} steps a minute at a normal walk`);
+  assert.ok(brisk.step>.64&&brisk.step<.84,`${(brisk.step*100).toFixed(0)} cm step at a brisk walk`);
+  assert.ok(run.step>1.15&&run.step<1.6,`${(run.step*100).toFixed(0)} cm running step`);
+  assert.ok(run.cadence>140&&run.cadence<185,`${run.cadence.toFixed(0)} steps a minute running`);
+  // A human pelvis rises and falls about 4.5 cm walking. Ten is a bounce.
+  assert.ok(normal.bob<.085,`the pelvis bounces ${(normal.bob*100).toFixed(1)} cm at a walk`);
+  assert.ok(run.bob<.17,`the pelvis bounces ${(run.bob*100).toFixed(1)} cm running`);
+});
+
+test('a planted foot stays planted at every pace',()=>{
+  const def=RESIDENT_CAST.find(d=>d.id==='holston');
+  for(const speed of [1.0,1.25,1.6,2.6,3.6,3.9]){
+    const a=createResident(def,{}),dt=1/60;
+    a.root.position.set(0,0,0);
+    let z=0,worst=0;const prev=[null,null];
+    for(let i=0;i<600;i++){
+      z+=speed*dt;a.root.position.z=z;
+      a.motion.update(dt,{speed,position:a.root.position,heading:0,grounded:true,active:true,ground:()=>0});
+      a.root.updateMatrixWorld(true);
+      for(const [k,leg] of a.motion.legs.entries()){
+        const foot=a.motion.bones['Foot'+leg.side].getWorldPosition(new T.Vector3());
+        if(i>200&&leg.stance&&prev[k]?.stance)worst=Math.max(worst,Math.hypot(foot.x-prev[k].p.x,foot.z-prev[k].p.z));
+        prev[k]={p:foot.clone(),stance:leg.stance};
+      }
+    }
+    assert.ok(worst<.004,`at ${speed} m/s a foot slid ${(worst*1000).toFixed(1)} mm in a frame while it was supposed to be planted`);
+  }
 });

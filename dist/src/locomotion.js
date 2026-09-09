@@ -27,7 +27,7 @@ export const MOTION_CLIPS=Object.freeze({Idle:3.2,Walk:1.05,Run:.72,StairUp:1.2,
 // balanced rather than either being taken to its ideal. A run also spends less
 // of its cycle on the ground, which buys stride length for free.
 const STANCE=run=>lerp(.62,.35,run);
-const REACH=run=>lerp(.47,.60,run);
+const REACH=run=>lerp(.49,.62,run);
 // Nobody takes a full stride up a staircase. Shortening it on a slope is both
 // what people do and what keeps the ankle inside the leg's reach on a tread.
 // The pose and the phase advance must apply this identically.
@@ -44,7 +44,7 @@ export class SkeletalMotion{
     // What the gait is actually built on: how far this rig's leg reaches, not
     // how tall it happens to be.
     this.legLength=Math.min(...this.legs.map(l=>l.a+l.b));
-    this.phase=0;this.time=0;this.weight=0;this.run=0;this.slope=0;this.air=0;this.unsupported=0;this.lastPosition=null;this.state='Idle';this.lastHeading=0;this.footContacts=[];this.stepCount=0;this.rise=0;this.landing=0;
+    this.phase=0;this.time=0;this.weight=0;this.run=0;this.pace=1;this.slope=0;this.air=0;this.unsupported=0;this.lastPosition=null;this.state='Idle';this.lastHeading=0;this.footContacts=[];this.stepCount=0;this.rise=0;this.landing=0;
   }
   reset(){this.lastPosition=null;this.weight=0;this.air=0;this.unsupported=0;this.stepCount=0;this.rise=0;this.landing=0;for(const leg of this.legs){leg.anchor=null;leg.stance=false;}}
   neutral(){for(const [name,b] of Object.entries(this.bones)){b.position.copy(this.rest[name].p);b.quaternion.copy(this.rest[name].q);}}
@@ -66,9 +66,14 @@ export class SkeletalMotion{
     this.aim(thigh,shin,knee);this.aim(shin,foot,hip.clone().addScaledVector(direction,distance));this.setWorldQuaternion(foot,footQuaternion);
     leg.error=foot.getWorldPosition(new THREE.Vector3()).distanceTo(target);leg.target.copy(target);
   }
-  pose({phase=this.phase,weight=this.weight,run=this.run,slope=this.slope,turn=0,air=0,impact=0,rise=0,ground=null,dt=0,lock=false}={}){
-    this.neutral();const h=this.height,L=this.legLength,p=phase*Math.PI*2,stance=STANCE(run),reach=REACH(run)*SHORTEN(slope)*L*weight*(1-air);
-    const hips=this.bones.Hips;hips.position.y-=L*lerp(.012,.036,run)*weight;   // residual knee flex; the drop below does the rest
+  pose({phase=this.phase,weight=this.weight,run=this.run,slope=this.slope,pace=this.pace,turn=0,air=0,impact=0,rise=0,ground=null,dt=0,lock=false}={}){
+    this.neutral();const h=this.height,L=this.legLength,p=phase*Math.PI*2,stance=STANCE(run),reach=REACH(run)*SHORTEN(slope)*L*weight*pace*(1-air);
+    // Residual knee flex at mid-stance. This is not cosmetic: a walker whose
+    // stance leg is straight has to drop the pelvis the full geometric depth
+    // at double support, which is a 10 cm bounce a step. A real mid-stance
+    // knee carries about 18 degrees, four per cent off the leg, and taking
+    // that off the top of the arc is most of what flattens the trajectory.
+    const hips=this.bones.Hips;hips.position.y-=L*lerp(.042,.060,run)*weight;
     // The pelvis rises over the planted leg and falls through double support,
     // twice a stride. Without it the body glides along on moving legs, which
     // is the single clearest tell of a bad walk. A run inverts it: highest at
@@ -76,7 +81,13 @@ export class SkeletalMotion{
     // reference slides half a period across as the pace comes up.
     const bob=Math.cos(4*Math.PI*(phase-lerp(stance*.5,stance*.5+.25,run)));
     // Measured human pelvis rise is about 4.5 cm walking and 9 cm running.
-    hips.position.y+=L*lerp(.023,.062,run)*bob*weight*(1-.5*Math.min(1,Math.abs(slope)));   // stairs are climbed flatter
+    // Measured human pelvis rise is about 4.5 cm walking and 9 cm running, and
+    // at a walk nearly all of it already arrives for free out of the leg
+    // geometry below — the pelvis has to drop at double support because both
+    // legs are reaching. Adding a full explicit rise on top of that produced a
+    // 10.5 cm bounce, which is twice a person. A run does need it, because the
+    // flight phase is not in the geometry.
+    hips.position.y+=L*lerp(.006,.055,run)*bob*weight*(1-.5*Math.min(1,Math.abs(slope)));   // stairs are climbed flatter
     hips.position.y-=h*.012*air;
     hips.position.y-=L*.30*impact;                                  // knees absorb the landing
     hips.position.x+=Math.sin(this.time*Math.PI*2/3.2)*h*.003*(1-weight);
@@ -107,7 +118,17 @@ export class SkeletalMotion{
         :lerp(.46,-.24,ease(clamp(u/.75,0,1))))*weight*(1-air);
       // Pivoting onto the toe raises the ankle; without this the heel drives
       // through the floor exactly when it should be lifting off it.
-      const toe=Math.max(0,roll)*h*.055;
+      // Rolling onto the toe raises the ankle, and how far it raises it is what
+      // decides how much the pelvis has to drop through double support. At
+      // 5.5 cm the hips fell nearly 10 cm a step — twice a person — because the
+      // trailing leg was still flat on the floor at full reach.
+      // A dorsiflexed foot at heel strike raises the ankle just as much as a
+      // toe-off does, and leaving that half out is why the pelvis had to drop
+      // so far: the leading leg was reaching for the floor with a flat foot.
+      // The lift each way is the geometry of the foot, not a free parameter:
+      // pitching the sole by `roll` about the ankle swings the toe or the heel
+      // through the floor unless the ankle rises by the same amount.
+      const toe=(Math.max(0,roll)*.100+Math.max(0,-roll)*.050)*h;
       const slopeLift=Math.max(0,slope)*h*.045*(on?0:Math.sin(Math.PI*u))*weight;
       const ankle=leg.ankle.clone();ankle.z+=z;ankle.y+=lift+toe+slopeLift;
       ankle.x+=Math.sin(p+i*Math.PI)*turn*.012*h*weight;
@@ -190,6 +211,12 @@ export class SkeletalMotion{
     const turn=dt?Math.atan2(Math.sin(heading-this.lastHeading),Math.cos(heading-this.lastHeading))/dt:0;
     this.weight=THREE.MathUtils.damp(this.weight,active&&speed>.025?clamp(speed/.8,0,1):0,9,dt);
     this.run=THREE.MathUtils.damp(this.run,ease((speed-2.05)/1.8),7,dt);
+    // People do not walk faster by taking the same step more often. Step length
+    // and cadence both grow about as the square root of speed, so the stride
+    // has to grow with the pace or a brisk walk turns into a scurry: this rig
+    // held a 61 cm step from 0.8 m/s all the way to 2 m/s and put every extra
+    // metre per second into cadence alone.
+    this.pace=THREE.MathUtils.damp(this.pace,clamp(Math.sqrt(Math.max(speed,.4)/1.25),.72,lerp(1.26,1,this.run)),6,dt);
     this.slope=THREE.MathUtils.damp(this.slope,distance>.004?clamp(vertical/distance,-.8,.8):0,5,dt);
     // Signed vertical speed, in body heights per second, so the air pose knows
     // whether it is on the way up or reaching for the ground.
@@ -199,7 +226,7 @@ export class SkeletalMotion{
     // against has to be scaled by it too. Left unmatched, the legs swing shorter
     // than the ground the body covers and the whole walk drags — which is what
     // the slow-motion residents were: they move below full weight all the time.
-    const stride=2*REACH(this.run)*SHORTEN(this.slope)*this.legLength*Math.max(.55,this.weight)/STANCE(this.run);
+    const stride=2*REACH(this.run)*SHORTEN(this.slope)*this.legLength*Math.max(.55,this.weight)*this.pace/STANCE(this.run);
     if(active&&!teleported)this.phase=cycle(this.phase+distance/stride);
     this.unsupported=grounded?0:this.unsupported+dt;this.air=THREE.MathUtils.damp(this.air,this.unsupported>.035?1:0,12,dt);
     this.state=this.air>.3?(this.rise>.08?'Jump':'Fall'):this.landing>.18?'Land':this.weight<.08?'Idle':this.slope>.16?'StairUp':this.slope<-.16?'StairDown':this.run>.5?'Run':Math.abs(turn)>1.5?'Turn':'Walk';
