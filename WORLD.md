@@ -1,3 +1,113 @@
+# Lighting, doors, animals, IT and the walk — 9 September 2026
+
+**Note for Astra.** Six things, all measured before and after. `npm test` is 83
+passing; 6 of those are new and they are the ones to watch.
+
+| File | Change |
+| --- | --- |
+| `dist/src/world.js` | The light rig is rewritten: `lampCandidates`, `placeLamps`, `lightRig`. Wing doors start shut. |
+| `dist/src/livestock.js` | **New.** Procedural animals and the pens they live in. |
+| `dist/src/it-department.js` | **New.** The IT offices, the Head of IT's office and the vault. |
+| `dist/src/locomotion.js` | A pace term; mid-stance knee; heel-strike ankle. |
+| `dist/src/resident-model.js` | Eye size, beard density, trapezius, waistcoat. |
+| `dist/src/rooms.js` | Farm wings call the livestock builder; Level 19 delegates to the IT module. |
+| `dist/src/kit.js`, `environment-details.js` | Materials for hides and vault panelling; the vault's own light. |
+
+## 1. Nothing in a silo moves, and everything was following the camera
+
+There is no sun down here and no lamp on a track. The rig had a directional
+"sun" and the shadow-casting spotlight both nailed to the player's position,
+two of the eight pooled point lights orbiting the silo on the player's own
+bearing, and the room's fixture list re-sorted and re-assigned to the pool
+every frame. Walking therefore swung every shadow in the room, slid light along
+the gallery walls, and popped lamps from one fitting to another. Three
+symptoms, one cause.
+
+**`lampCandidates(position, top)` is now the only place a light's position
+comes from.** Add a fitting there, with a stable key, or it will not exist as
+far as the rig is concerned. `placeLamps` hands the pool out to the nearest
+candidates and **a lit light is never moved** — it fades out, relocates dark
+and comes back up. Fittings a light already holds rank as if they were nearer
+than they are, so the pair either side of the cut-off cannot trade places and
+blink at each other.
+
+The test walks 900 frames of gallery and wing and fails if any lit lamp
+changes position, if the shadow caster moves while lit, or if the sun is on
+indoors. It caught 65 teleports in my own first version of this.
+
+## 2. All 864 doors were open
+
+The double leaf doors were already built, complete with colliders and an
+interaction that read "Close the residential door". Every one of them was
+constructed `open:true, amount:1`. **`PUBLIC_ROOMS` in `world.js`** now names
+the four that stand open — cafeteria, bazaar, park, bar — and the other 858
+start shut. If you add a room type that should be open on sight, put it there.
+
+The 864-wing walk test opens the door first now, because that test is looking
+for walls you cannot see.
+
+## 3. Animals
+
+`buildLivestock` puts a bird run, a pig pen, rabbit hutches and two cow stalls
+across the back of **every** agricultural wing; the growing beds moved forward
+to make room. Sizes are real — a hen is 42 cm, a cow 1.34 at the shoulder.
+Each animal is two merged part groups (body, and a head pivoted at the neck),
+so a hall of them is a handful of draw calls.
+
+`world.livestock` is collected next to `world.animated` and driven by
+`updateLivestock`. **If you add a species, add it to `BULK`** or it will stand
+inside its neighbours.
+
+## 4. Level 19
+
+I looked the department up rather than guessing, and the level was already
+right. IT is on 19; it is a large central office of workstations with the Head
+of IT working apart from it down a corridor; the server room connects to a
+vault behind a locked door; there is a concealed radio in there that reaches
+Silo 1; the vault deliberately does not look like the rest of the silo, has its
+servers and power banks raised on steps so the machine survives a cut to the
+generator, is stocked as long-stay quarters, and holds an AI that answers
+through a holographic interface. All of that is now in the three wings.
+
+The vault is the one room typed out of the standard dressing: no hung
+fittings, cove light, and cold rather than warm (see the `type==='vault'`
+branch in `environment-details.js`).
+
+**A partition standing in a wing's 4 m entrance makes the room unreachable.**
+Two of mine did. There is a test that walks a body in through all three Level
+19 doorways now.
+
+## 5. Faces
+
+The eye opening was 6 cm across with a 4 cm iris on a 15.5 cm head. That one
+ratio was most of why the residents read as cartoons. Also: the cast's beard
+*amount* was being thrown away, so four days' growth wore a full black beard;
+the neck rose out of the collar as a bare tube with no trapezius; and the
+waistcoat was two flat black slabs on the chest.
+
+## 6. The walk
+
+The feet were never skating — a planted foot slides 0.00 mm a frame at every
+speed, so the anchoring is sound. What was wrong is that **the stride never
+changed**: `weight` saturates at 0.8 m/s and `run` does not start until 2.05,
+so between them the reach was constant and every extra metre per second went
+into cadence. 61 cm at 1.25 m/s and 61 cm at 1.6, taken 157 times a minute.
+
+There is a `pace` term now. **It is applied in two places and they have to
+agree exactly** — the reach in `pose()` and the stride in `update()` — or the
+feet skate. The comment above the stride line says the same thing; it is the
+easiest thing in this file to break.
+
+The pelvis also bounced 10.5 cm a step. Most of that is geometry, not the
+explicit rise: a straight stance leg has to drop the full depth at double
+support. It is now 6.9 cm, from a mid-stance knee, a dorsiflexed ankle at heel
+strike that was missing entirely, and cutting the explicit rise right back at
+walking pace.
+
+## Verify
+
+`npm test` — 83. `npm run validate` for the module graph.
+
 # Current reference pass — 8 September 2026
 
 The latest implementation is documented in [reference-update.md](docs/reference-update.md). Read it before the historical notes below: bridges now use three bearings and 240° flights, the sensor is behind the hatch, and the first 30 seconds of the opening follow the new route. All major audio beats from 30 seconds onward are preserved. Day/night sky is shared by the actual exterior and the feed. Uploaded reference images are saved in `docs/references/`.
