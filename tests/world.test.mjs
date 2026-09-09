@@ -20,8 +20,55 @@ test('all 144 numbered levels and all requested landmark categories exist',()=>{
 });
 
 test('every original Lost Signal asset parses as glTF with finite geometry',async()=>{
-  const files=await fs.readdir(new URL('../dist/assets/lost-signal/',import.meta.url));
-  for(const file of files){const buf=await fs.readFile(new URL(`../dist/assets/lost-signal/${file}`,import.meta.url));const array=buf.buffer.slice(buf.byteOffset,buf.byteOffset+buf.byteLength);const gltf=await new GLTFLoader().parseAsync(array,'');let count=0;gltf.scene.traverse(o=>{if(o.isMesh){count++;assert.ok(o.geometry.attributes.position.count>0,file);}});assert.ok(count>0,file);}
+  // Recursive, so the weapons in guns/ are checked on the same terms as the
+  // interior props beside them.
+  const root=new URL('../dist/assets/lost-signal/',import.meta.url);
+  const entries=await fs.readdir(root,{recursive:true});
+  let checked=0;
+  for(const entry of entries){
+    if(!entry.endsWith('.glb'))continue;
+    const buf=await fs.readFile(new URL(entry,root));
+    const array=buf.buffer.slice(buf.byteOffset,buf.byteOffset+buf.byteLength);
+    const gltf=await new GLTFLoader().parseAsync(array,'');
+    let count=0;
+    gltf.scene.traverse(o=>{if(o.isMesh){count++;assert.ok(o.geometry.attributes.position.count>0,entry);
+      for(const v of o.geometry.attributes.position.array)assert.ok(Number.isFinite(v),`${entry} has a non-finite vertex`);}});
+    assert.ok(count>0,entry);checked++;
+  }
+  assert.ok(checked>=30,`only ${checked} models were checked`);
+});
+
+test('every weapon on the rack has a mesh, a magazine and a way to be heard',async()=>{
+  const {WEAPONS,USABLE_WEAPON_KEYS,shotInterval}=await import('../dist/src/weapons.js');
+  const {fireSampleForWeapon,reloadSamplesForWeapon,GUN_SAMPLE_URLS}=await import('../dist/src/gun-samples.js');
+  assert.ok(USABLE_WEAPON_KEYS.length>=24,`only ${USABLE_WEAPON_KEYS.length} usable weapons`);
+  for(const key of USABLE_WEAPON_KEYS){
+    const spec=WEAPONS[key];
+    assert.ok(spec.model,`${key} names no mesh`);
+    const file=new URL(`../dist/assets/lost-signal/guns/weapon_${spec.model}_v1.glb`,import.meta.url);
+    assert.ok(await fs.stat(file).then(()=>true,()=>false),`${key} points at a mesh that is not there: ${spec.model}`);
+    assert.ok(spec.kick,`${key} has no recoil profile`);
+    if(spec.kind==='melee')continue;
+    assert.ok(spec.magazine>0&&spec.reserve>=0,`${key} has no ammunition`);
+    assert.ok(shotInterval(spec)>0&&shotInterval(spec)<2,`${key} fires at ${spec.rpm} rpm`);
+    // Either a recording belongs to it or its own modelled voice does; a
+    // weapon that is silent when fired is the one thing that cannot ship.
+    const sample=fireSampleForWeapon(spec);
+    assert.ok(sample?GUN_SAMPLE_URLS[sample]:spec.audio?.fire,`${key} makes no sound when fired`);
+    // A reload that schedules nothing is a reload the player cannot hear.
+    assert.ok(reloadSamplesForWeapon(spec).length>0,`${key} reloads in silence`);
+  }
+});
+
+test('the range is behind the station, and everything downrange of the line',async()=>{
+  const {RANGE}=await import('../dist/src/gun-range.js');
+  // The shooter stands nearest the door and fires away from it. If the targets
+  // ever ended up between the firing line and the door, the lanes would point
+  // back into the sheriff's office.
+  assert.ok(RANGE.line<RANGE.door,'the firing line must be inside the room');
+  assert.ok(RANGE.targets<RANGE.line,'the targets must be downrange of the shooter');
+  assert.ok(RANGE.backstop<RANGE.targets,'the backstop must be behind the targets');
+  assert.ok(RANGE.line-RANGE.targets>=10,`only ${(RANGE.line-RANGE.targets).toFixed(1)} m of range`);
 });
 
 test('all structural instances and generated rooms have finite geometry',()=>{

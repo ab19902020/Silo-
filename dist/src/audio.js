@@ -22,6 +22,8 @@
 const FOOTSTEP_URL = new URL('../assets/audio/footsteps/', import.meta.url);
 const MUSIC_URL = new URL('../assets/audio/silo-18-theme.mp3', import.meta.url);
 const OPENING_URL = new URL('../assets/audio/silo-18-opening.mp3', import.meta.url);
+import { GUN_SAMPLE_URLS, fireSampleForWeapon, reloadSamplesForWeapon } from './gun-samples.js';
+
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,rand=(a,b)=>a+Math.random()*(b-a);
 const LEVEL=2.2;   // output trim ahead of the limiter; the sub-bus balance is set below
 
@@ -284,7 +286,7 @@ export class SiloAudio {
   constructor(){
     this.context=null;this.enabled=true;this.musicVolume=.148;this.lastStep=0;this.foot=1;
     this.musicHeld=false;this.musicOffset=0;this.musicBuffer=null;this.musicCue=null;this.musicFade=5;this.openingPlaying=false;this.openingElement=null;
-    this.place=INTERIOR;this.stepSurface='concrete';this.surfaceOverride=null;this.steps=null;this.musicRequested=false;this.musicPlaying=false;this.scrub=null;
+    this.place=INTERIOR;this.stepSurface='concrete';this.surfaceOverride=null;this.steps=null;this.guns=null;this.gunLoad=null;this.musicRequested=false;this.musicPlaying=false;this.scrub=null;
   }
 
   // Created on the first user gesture; browsers refuse an AudioContext before one.
@@ -651,6 +653,72 @@ export class SiloAudio {
       if(usable.length)steps[material]=usable;
     }));
     if(Object.keys(steps).length)this.steps=steps;
+  }
+  // --- firearms -----------------------------------------------------------
+  // The gun range fires real recordings. They are loaded the first time a
+  // weapon is picked up rather than at start-up: half a megabyte of gunfire is
+  // dead weight for a player who never goes near the sheriff's station.
+  async loadGuns(){
+    if(this.gunLoad)return this.gunLoad;
+    this.gunLoad=(async()=>{
+      const guns={};
+      await Promise.all(Object.entries(GUN_SAMPLE_URLS).map(async([key,url])=>{
+        try{
+          const response=await fetch(url);
+          if(!response.ok)return;
+          guns[key]=await this.decode(await response.arrayBuffer());
+        }catch{}
+      }));
+      if(Object.keys(guns).length)this.guns=guns;
+      return this.guns;
+    })();
+    return this.gunLoad;
+  }
+  gunSample(out,key,t,{gain=1,rate=1}={}){
+    const buffer=this.guns?.[key];if(!buffer)return false;
+    const c=this.context,source=c.createBufferSource(),level=c.createGain();
+    source.buffer=buffer;source.playbackRate.value=rate;level.gain.value=gain;
+    source.connect(level);level.connect(out);source.start(t);
+    return true;
+  }
+  // A shot indoors is mostly the room answering it. The recording carries the
+  // report; the send carries a hundred and forty levels of concrete shaft.
+  gunshot(spec){
+    if(!this.live())return;
+    const t=this.context.currentTime+.004,out=this.voice(rand(-.04,.04),0,1.5);
+    const key=fireSampleForWeapon(spec);
+    const level=(spec?.audio?.fire?.level??.5)*.42;
+    if(!key||!this.gunSample(out,key,t,{gain:level,rate:rand(.97,1.03)})){
+      // No recording belongs to this weapon (the pack has no revolver report),
+      // so the modelled one stands in rather than a 9 mm pretending to be a .44.
+      const voice=spec?.audio?.fire||{};
+      this.tone(out,t,{frequency:voice.bodyHz||200,to:voice.bodyEndHz||50,gain:level*.9,decay:voice.bodyDecay||.12,attack:.001});
+      this.burst(out,t,{frequency:voice.crackHz||2600,q:voice.crackQ||1,gain:level*1.1,decay:voice.crackDecay||.08,attack:.0008});
+      this.burst(out,t+.01,{frequency:voice.tailHz||1100,to:(voice.tailHz||1100)*.35,q:.7,gain:level*(voice.tailLevel||.3),decay:voice.tailDecay||.3,attack:.02});
+    }
+    this.hit(out,'clank',t+.055,{gain:.010,rate:rand(1.5,2.2)});      // the case hitting concrete
+  }
+  // Magazines, bolts, shells and cylinders, spread across the reload the way
+  // the weapon actually works: a revolver opens, cocks and closes; a shotgun
+  // takes one shell at a time.
+  gunReload(spec){
+    if(!this.live())return 0;
+    const now=this.context.currentTime+.004,out=this.voice(rand(-.08,.08),0,.7);
+    const events=reloadSamplesForWeapon(spec);
+    for(const step of events)this.gunSample(out,step.key,now+step.at,{gain:step.gain*.5,rate:step.rate});
+    return events.length;
+  }
+  // Steel at fifteen metres: the ring arrives a beat after the shot, and it is
+  // the only confirmation a shooter gets that they hit anything.
+  plateHit(){
+    if(!this.live())return;
+    const t=this.context.currentTime+.045,out=this.voice(rand(-.15,.15),0,1.35);
+    this.hit(out,'clank',t,{gain:.085,rate:rand(1.25,1.65)});
+    this.hit(out,'latch',t+.004,{gain:.030,rate:rand(1.1,1.5)});
+  }
+  gunDry(){
+    if(!this.live())return;
+    this.hit(this.voice(0,0,.4),'latch',this.context.currentTime+.004,{gain:.045,rate:rand(1.5,1.9)});
   }
   // One recording, pitched and levelled for this particular step. Rotating
   // through the variants matters more than any single one of them: the same

@@ -2,6 +2,7 @@ import * as THREE from '../vendor/three.module.js';
 import { Kit, addSign, fixture, table, chair, desk, bed, pipe } from './kit.js';
 import { buildCafeteriaCeiling } from './cafeteria-ceiling.js';
 import { dressCafeteria } from './environment-details.js';
+import { buildGunRange } from './gun-range.js';
 
 export function makeDisplayGeometry(w,h,radius=34){
   const positions=[],uv=[],indices=[],cols=96,rows=16,r=1.15;
@@ -42,7 +43,8 @@ export function buildTopFloor(m) {
   for(const x of [-16.15,16.15]){k.bevel('concrete',x,4.0,38.1,.55,7.8,.65);for(const y of [.22,7.62])k.bevel('darkConcrete',x,y,38.1,.72,.18,.80);}
   for(const side of [-1,1])for(const y of [.2,.38,7.6])k.bevel('darkConcrete',side*17.77,y,25,.09,.12,29.6);
   // Sheriff's station: its only public entrance is through the cafeteria.
-  floor(26,34,16,20);wall(26,24,16,.3,4.7);wall(34,34,.3,20,4.7);wall(18,42,.3,4,4.7);
+  // The station's back wall is split around a 2.6 m doorway into the range.
+  floor(26,34,16,20);wall(21.3,24,6.8,.3,4.7);wall(30.7,24,6.8,.3,4.7);wall(34,34,.3,20,4.7);wall(18,42,.3,4,4.7);
   box('darkConcrete',26,4.9,34,16,.4,20,false);
   for(const x of [22,28])for(const z of [29,35]){desk(k,x,z);chair(k,x,z+1);solids.push({x,z,w:2,d:1,y0:0,y1:1.5});}
   for(const x of [20,22,24]){box('green',x,1.25,42,1.6,2.5,.7);for(const y of [.4,.9,1.4,1.9]){k.box('brass',x,y,41.61,.28,.04,.03);}}
@@ -87,6 +89,9 @@ export function buildTopFloor(m) {
   for(const z of [56,60,63]){fixture(k,23.32,2.7,z,1.4,true,true);fixture(k,28.68,2.7,z,1.4,true,true);}
   for(const x of [24,28])pipe(k,x,59,4.4,9,.08,'metal');
   for(let z=55;z<64;z+=.35)k.box('darkMetal',26,.008,z,4.8,.012,.06);
+  label('RANGE  ↓',26,3.8,25.4,3.1,.4,0);
+  const range=buildGunRange(m);root.add(range.root);
+  solids.push(...range.solids);floors.push(...range.floors);interactions.push(...range.interactions);
   dressCafeteria(k,root);root.add(k.group());
-  root.userData={...root.userData,solids,floors,interactions,animated,doors,type:'cafeteria',outsideScreen:screen,extraScreens:[cellScreen,dutyScreen],bespoke:true};return root;
+  root.userData={...root.userData,solids,floors,interactions,animated,doors,type:'cafeteria',outsideScreen:screen,extraScreens:[cellScreen,dutyScreen],rangeTargets:range.targets,bespoke:true};return root;
 }
