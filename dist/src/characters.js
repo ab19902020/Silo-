@@ -21,7 +21,7 @@ export function actorFrom(gltf,definition){
     o.castShadow=o.receiveShadow=true;o.frustumCulled=false;
     // The scanned coat hems are thin shells. Culling their reverse faces
     // punches holes through Sims and Bernard as the cloth turns in motion.
-    const solid=material=>{const m=material.clone();m.side=THREE.DoubleSide;m.shadowSide=THREE.DoubleSide;m.transparent=false;m.opacity=1;m.alphaTest=0;m.depthTest=true;m.depthWrite=true;m.needsUpdate=true;return m;};
+    const solid=material=>{const m=material.clone();m.side=THREE.DoubleSide;m.shadowSide=THREE.DoubleSide;m.transparent=false;m.opacity=1;m.alphaTest=0;m.depthTest=true;m.depthWrite=true;if(m.isMeshStandardMaterial){m.roughness=THREE.MathUtils.clamp(m.roughness,.55,.92);m.metalness=Math.min(m.metalness,.12);m.envMapIntensity=.9;}if(m.map)m.map.anisotropy=8;m.needsUpdate=true;return m;};
     o.material=Array.isArray(o.material)?o.material.map(solid):solid(o.material);meshes.push(o);
   }if(o.isBone)bones.push(o);});
   if(!meshes.some(o=>o.isSkinnedMesh))throw Error(`${definition.name} is missing its skeleton`);
@@ -58,7 +58,7 @@ export class CharacterCast{
         a.root.visible=started&&this.thirdPerson;
       }else{
         a.root.position.copy(a.post);a.root.rotation.y=-a.definition.wing*Math.PI/3-Math.PI/2;a.root.updateMatrixWorld(true);if(near)a.motion.update(dt,{position:a.post,active:false});a.state='Idle';a.root.visible=near;
-        if(near){const p=a.root.position.clone();p.y+=1.3;this.world.actorInteractions.push({position:p,label:`${a.definition.name} · ${a.definition.role}`,action:`person-${a.definition.id}`});}
+        if(near){const p=a.root.position.clone();p.y+=1.3;this.world.actorInteractions.push({position:p,label:`Talk to ${a.definition.name}`,action:`person-${a.definition.id}`,resident:a.definition});}
       }
       a.root.updateMatrixWorld(true);a.feed.visible=selected&&this.world.outside&&started;
       if(a.feed.visible){a.feed.position.copy(a.root.position);a.feed.quaternion.copy(a.root.quaternion);for(let i=0;i<a.bones.length;i++){const b=a.bones[i],f=a.feedBones[i];f.position.copy(b.position);f.quaternion.copy(b.quaternion);f.scale.copy(b.scale);}a.feed.updateMatrixWorld(true);}

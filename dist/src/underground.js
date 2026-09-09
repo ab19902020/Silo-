@@ -3,6 +3,8 @@ import { Kit, random, addSign, railing, fixture } from './kit.js';
 import { wallGauge } from './environment-details.js';
 import { VOID, voidLedgeGaps, buildVoidAccess } from './void-access.js';
 import { voidWaterGeometry } from './void-surfaces.js';
+import { projectMaterial } from './materials.js';
+import { VoidWater } from './water.js';
 
 export function buildUnderground(m) {
   const root=new THREE.Group(),k=new Kit(m),solids=[],interactions=[],walkways=[];
@@ -11,10 +13,10 @@ export function buildUnderground(m) {
   // scale from the central atrium; dimensions remain reconstruction estimates.
   const R=80,base=5;
   const shell=new THREE.CylinderGeometry(R,R*1.04,68,192,68,true);
-  const p=shell.getAttribute('position');for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i),r=Math.hypot(x,z),n=1+(rng()-.5)*.045;p.setXYZ(i,x*n,p.getY(i),z*n);if(r===0)continue;}const indices=[];for(let i=0;i<shell.index.count;i+=3){const ids=[0,1,2].map(j=>shell.index.getX(i+j)),x=ids.reduce((v,j)=>v+p.getX(j),0)/3,z=ids.reduce((v,j)=>v+p.getZ(j),0)/3,y=ids.reduce((v,j)=>v+p.getY(j),0)/3+38;const d=Math.atan2(Math.sin(Math.atan2(z,x)-VOID.tunnelAngle),Math.cos(Math.atan2(z,x)-VOID.tunnelAngle));const entrance=Math.abs(Math.atan2(z,x))<.024&&y>11.6&&y<15.35;if(!(Math.abs(d)<.053&&y<9.5)&&!entrance)indices.push(...ids);}shell.setIndex(indices);shell.computeVertexNormals();
-  const rockMat=m.rock.clone();rockMat.side=THREE.BackSide;const rock=new THREE.Mesh(shell,rockMat);rock.position.y=38;root.add(rock);
+  const p=shell.getAttribute('position');for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i),angle=Math.atan2(z,x),y=p.getY(i),r=Math.hypot(x,z),n=1+.014*Math.sin(angle*11+y*.27)+.009*Math.cos(angle*23-y*.48)+.006*Math.sin(y*1.12+Math.sin(angle*7));p.setXYZ(i,x*n,p.getY(i),z*n);if(r===0)continue;}const indices=[];for(let i=0;i<shell.index.count;i+=3){const ids=[0,1,2].map(j=>shell.index.getX(i+j)),x=ids.reduce((v,j)=>v+p.getX(j),0)/3,z=ids.reduce((v,j)=>v+p.getZ(j),0)/3,y=ids.reduce((v,j)=>v+p.getY(j),0)/3+38;const d=Math.atan2(Math.sin(Math.atan2(z,x)-VOID.tunnelAngle),Math.cos(Math.atan2(z,x)-VOID.tunnelAngle));const entrance=Math.abs(Math.atan2(z,x))<.024&&y>11.6&&y<15.35;if(!(Math.abs(d)<.053&&y<9.5)&&!entrance)indices.push(...ids);}shell.setIndex(indices);shell.computeVertexNormals();
+  const rockMat=m.rock.clone();rockMat.side=THREE.BackSide;rockMat.userData.voidStrata=true;projectMaterial(rockMat,2.8);const rock=new THREE.Mesh(shell,rockMat);rock.position.y=38;root.add(rock);
   k.cylinder('darkConcrete',0,70,0,R,1.2);
-  const water=new THREE.Mesh(voidWaterGeometry(),m.water);water.name='continuous-void-water';water.renderOrder=2;root.add(water);
+  const water=new THREE.Mesh(voidWaterGeometry(),m.water);water.name='continuous-void-water';water.renderOrder=2;root.add(water);const waterSurface=new VoidWater(water);
   for(let i=0;i<140;i++){
     const a=rng()*Math.PI*2,r=52+rng()*27,y=5+rng()*8,x=Math.cos(a)*r,z=Math.sin(a)*r,rx=1+rng()*4,ry=.8+rng()*2,rz=1+rng()*4;
     // Keep the visible wading route clear of the decorative scree too.
@@ -91,5 +93,6 @@ export function buildUnderground(m) {
   const mineLights=[];for(const z of [-26,-10,6,22]){const light=new THREE.PointLight(0xe1c392,72,20,1.8);light.position.set(0,3.7,z);mines.add(light);mineLights.push(light);}
   const tunnel=access.tunnel;root.add(k.group());
   const lights=[new THREE.PointLight(0xb8d2c7,550,100,1.7),new THREE.PointLight(0xd8a65f,450,100,1.6)];lights[0].position.set(28,42,16);lights[1].position.set(-28,24,-10);root.add(...lights);
-  return {root,solids,interactions,walkways,water,mines,tunnel,lights,mineLights,entry,camp:access.camp,ladders:access.ladders,access};
+  const refreshMaterials=()=>{for(const key of ['map','normalMap','roughnessMap'])rockMat[key]=m.rock[key];rockMat.normalScale.set(.65,.65);rockMat.color.setHex(0x969d98);rockMat.roughness=.92;rockMat.envMapIntensity=.45;projectMaterial(rockMat,2.8);};
+  return {root,solids,interactions,walkways,water,waterSurface,refreshMaterials,mines,tunnel,lights,mineLights,entry,camp:access.camp,ladders:access.ladders,access};
 }

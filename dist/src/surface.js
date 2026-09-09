@@ -86,7 +86,7 @@ export class SurfaceWorld {
     this.sensorPoint=topPoint(...sensorLocal().toArray());
     addSign(this.root,'18',[sx,base+.6,sz+.12],.65,.48,0,{background:'#77796e',color:'#252c27',font:'bold 180px Arial',border:false});
     // Hatch boundaries are actual grid edges; no triangle bridges the opening.
-    this.groundMaterial=m.rock.clone();this.groundMaterial.color.setHex(0xa09d8b);this.groundMaterial.vertexColors=true;this.groundMaterial.normalScale.set(.42,.42);projectMaterial(this.groundMaterial,5.2);
+    this.groundMaterial=m.rock.clone();this.groundMaterial.color.setHex(0x9c9b94);this.groundMaterial.vertexColors=true;this.groundMaterial.normalScale.set(.42,.42);projectMaterial(this.groundMaterial,3.2);
     this.terrainTiles=new Map();this.tileKey='';this.streamTerrain({x:26,z:140});this.ground=this.terrainTiles.get('0,0');
     // Angular scree with uneven silhouette, never a field of smooth spheres.
     const rockGeo=new THREE.IcosahedronGeometry(1,1),rp=rockGeo.attributes.position;for(let i=0;i<rp.count;i++){const v=new THREE.Vector3().fromBufferAttribute(rp,i).multiplyScalar(.78+rng()*.36);rp.setXYZ(i,v.x,v.y,v.z);}rockGeo.computeVertexNormals();
@@ -125,7 +125,7 @@ export class SurfaceWorld {
     const size=800,step=ix===0&&iz===0?4:16,cx=26+ix*size,cz=140+iz*size;
     const axis=(center,extra)=>[...new Set([...Array.from({length:size/step+1},(_,i)=>center-size/2+i*step),...extra.filter(v=>v>center-size/2&&v<center+size/2)])].sort((a,b)=>a-b);
     const xs=axis(cx,[23,29]),zs=axis(cz,[94,108]),pos=[],colors=[],uv=[],indices=[];
-    for(const z of zs)for(const x of xs){const y=groundY(x,z),shade=terrainShade(x,y,z);pos.push(x,y,z);colors.push(shade,shade*.97,shade*.91);uv.push(x/1.8,z/1.8);}
+    for(const z of zs)for(const x of xs){const y=groundY(x,z),shade=terrainShade(x,y,z);pos.push(x,y,z);colors.push(shade,shade*.99,shade*.96);uv.push(x/1.8,z/1.8);}
     for(let j=0;j<zs.length-1;j++)for(let i=0;i<xs.length-1;i++){
       if(inRampCutout((xs[i]+xs[i+1])/2,(zs[j]+zs[j+1])/2))continue;
       const a=j*xs.length+i,b=a+1,c=a+xs.length,d=c+1;indices.push(a,c,b,b,c,d);
@@ -138,18 +138,22 @@ export class SurfaceWorld {
     for(const key of keep)if(!this.terrainTiles.has(key)){const [x,z]=key.split(',').map(Number),mesh=new THREE.Mesh(this.terrainGeometry(x,z),this.groundMaterial);mesh.name='barren-ground';mesh.receiveShadow=true;this.root.add(mesh);this.terrainTiles.set(key,mesh);}
     for(const [key,mesh] of this.terrainTiles)if(!keep.has(key)){mesh.removeFromParent();mesh.geometry.dispose();this.terrainTiles.delete(key);}
   }
-  refreshMaterials(){const mat=this.groundMaterial;mat.map=this.m.rock.map;mat.normalMap=this.m.rock.normalMap;mat.roughnessMap=this.m.rock.roughnessMap;mat.roughness=.96;mat.normalScale.set(.42,.42);projectMaterial(mat,5.2);}
+  refreshMaterials(){const mat=this.groundMaterial;mat.map=this.m.rock.map;mat.normalMap=this.m.rock.normalMap;mat.roughnessMap=this.m.rock.roughnessMap;mat.roughness=.96;mat.normalScale.set(.42,.42);projectMaterial(mat,3.2);}
   floorAt(x,z,radius,maxHeight){
     const p=topLocal({x,y:maxHeight,z}),terrain=levelY(1)+groundY(p.x,p.z);
     if(inRampPassage(p.x,p.z)&&(inRampCutout(p.x,p.z)||maxHeight<terrain-.001)){const y=levelY(1)+rampY(p.z);return y<=maxHeight+.001?y:0;}
     return terrain<=maxHeight+.001?terrain:0;
+  }
+  setQuality(quality){
+    this.quality=quality;if(!this.raw)return;const width=quality==='high'?1920:quality==='low'?1024:1536,height=Math.round(width*6.8/30),samples=Math.min(this.maxSamples||0,quality==='high'?4:quality==='low'?0:2);
+    if(this.raw.samples!==samples){this.raw.samples=samples;this.raw.dispose();}this.raw.setSize(width,height);this.target.setSize(width,height);this.lastFeed=-100;
   }
   setTimeOfDay(mode){this.sky.setMode(mode);this.lastFeed=-100;}
   beginCleaning(){this.cleaning=true;this.cleanTime=(this.cleanliness-.28)/.72*4;}
   update(dt){this.sky.update(dt);this.feedAmbient.intensity=THREE.MathUtils.lerp(.16,2,this.sky.daylight);this.feedSun.intensity=THREE.MathUtils.lerp(.12,2.2,this.sky.daylight);this.feedScene.fog.color.copy(this.sky.fogColor);if(this.cleaning){this.cleanTime+=dt;this.cleanliness=Math.min(1,.28+this.cleanTime/4*.72);if(this.cleanTime>=4)this.cleaning=false;}this.lensDirt.opacity=(1-this.cleanliness)*.67;this.dust.position.x=(this.dust.position.x+dt*.6)%8;this.feedDust.position.x=this.dust.position.x;}
   get cleaningPoint(){return this.sensorPoint.clone();}
   initFeed(renderer){
-    this.raw=new THREE.WebGLRenderTarget(1280,290,{type:renderer.extensions.has('EXT_color_buffer_float')?THREE.HalfFloatType:THREE.UnsignedByteType});this.target=new THREE.WebGLRenderTarget(1280,290);
+    this.raw=new THREE.WebGLRenderTarget(1280,290,{type:renderer.extensions.has('EXT_color_buffer_float')?THREE.HalfFloatType:THREE.UnsignedByteType});this.target=new THREE.WebGLRenderTarget(1280,290,{type:this.raw.texture.type});this.maxSamples=renderer.capabilities.maxSamples;this.setQuality(this.quality||'balanced');
     this.postScene=new THREE.Scene();this.postCamera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
     // Years of dust on the outside of the glass do three things, and the old
     // pass only did one of them. It tints — but it also scatters, so the

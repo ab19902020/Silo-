@@ -2,6 +2,17 @@
 
 A browser-based, first- and third-person reconstruction of the television silo, built in Adam’s **Silo-** repository using the circular collision system and selected interior assets from **Lost Signal**.
 
+## Interface, conversations and rendering update
+
+- The chapter card now clears automatically. Navigation opens with **H / ☰**, touch controls fade when idle, and the cleaning opens with an unobstructed picture.
+- Approach a resident and press **E / Use** to ask about their work, nearby places or the cleaning. Named characters and general department workers have different replies.
+- Added offscreen edge smoothing, corrected contact shading on sloping floors, neutral ceiling lighting, worn steel finishes, and finer exterior materials.
+- Upgraded generated faces and hair, differentiated skin/fabric/leather, and added reflective cleaning visors. All supplied characters retain their opaque, double-sided rigs.
+- The void has continuous rippled water with quality-scaled planar reflections, coherent rock strata and the restored photographic rock maps.
+- Holston settles beside Allison with full-body ground contact. The 90-second opening and the existing audio timings are retained.
+
+See [implementation, checks and limits](docs/immersive-update.md).
+
 ## Latest reference update
 
 Stair bridges now rotate between three directions throughout all 144 floors, with matching walkable flights, concrete gallery guards and protected terminal landings. The cafeteria has rounded petal lights and layered ceiling frames based on the supplied still. The exterior sensor looks over the exit from behind: Holston emerges with his back to the camera, then turns and approaches it. The raised panorama includes sky and stars; choose **Settings → Outside sky → Night** to see them immediately.

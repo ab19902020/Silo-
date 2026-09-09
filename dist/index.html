@@ -10,6 +10,7 @@
 <body>
   <canvas id="world" aria-label="Explorable 3D view of Silo 18" tabindex="0"></canvas>
   <div id="vignette" aria-hidden="true"></div>
+  <button id="controlsButton" aria-label="Show exploration controls" aria-expanded="false">☰</button>
   <header id="hud">
     <button class="brand" id="home" aria-label="Pause exploration"><span class="brand-ring">18</span><span>SILO <b>18</b><small id="zone">UP TOP</small></span></button>
     <div class="location"><span class="eyebrow" id="levelLabel">LEVEL 001</span><strong id="locationName">The central staircase</strong><small id="depthLabel">0 m below the upper landing</small></div>
@@ -24,8 +25,11 @@
   <div id="fade" aria-hidden="true"></div>
   <aside id="chapterHud" hidden aria-label="Opening chapter">
     <span class="eyebrow">CHAPTER ONE · THE CLEANING</span><strong id="chapterTitle">A book on the table</strong><p id="chapterObjective">Find the directory book on the table ahead.</p>
-    <div class="chapter-actions"><button id="focusScreenButton" hidden>Focus on screen</button><button id="openBookButton" hidden>Open your book</button><button id="skipOpening" hidden>Skip cleaning</button></div>
+    <div class="chapter-actions"><button id="openBookButton" hidden>Open your book</button></div>
   </aside>
+
+  <div id="cinemaControls"><button id="focusScreenButton" hidden>Back to cafeteria</button><button id="skipOpening" hidden>Skip</button></div>
+  <dialog id="conversation" class="panel conversation-panel" aria-labelledby="speakerName"><div class="panel-head"><div><span id="speakerRole" class="eyebrow accent"></span><h2 id="speakerName"></h2></div><button class="close" data-close aria-label="Leave conversation">×</button></div><p id="dialogueLine" aria-live="polite"></p><div id="dialogueChoices"></div><button id="leaveConversation" class="secondary wide">Leave conversation</button></dialog>
 
   <dialog id="welcome" class="welcome">
     <div class="welcome-top"><span class="eyebrow">AN UNDERGROUND WORLD</span><span class="edition">CHAPTER ONE · THE CLEANING</span></div>
@@ -56,7 +60,7 @@
 
   <dialog id="settings" class="panel compact">
     <div class="panel-head"><div><span class="eyebrow accent">EXPLORATION</span><h2>Settings</h2></div><button class="close" data-close aria-label="Close settings">×</button></div>
-    <div class="settings-content"><label>Brightness <output id="brightnessValue">115%</output><input id="brightness" type="range" min="65" max="180" value="115"></label><label>Look sensitivity <output id="sensitivityValue">100%</output><input id="sensitivity" type="range" min="35" max="180" value="100"></label><label>Rendering detail<select id="quality"><option value="balanced">Balanced</option><option value="high">High</option><option value="low">Battery saver</option></select></label><label>Outside sky<select id="timeOfDay"><option value="day">Day</option><option value="night">Night · stars</option><option value="cycle">Day / night cycle</option></select></label><label>Music <output id="musicValue">65%</output><input id="music" type="range" min="0" max="100" value="65"></label><label class="toggle">Sound <input id="sound" type="checkbox" checked></label><label class="toggle">Reduce camera motion <input id="reduceMotion" type="checkbox"></label><button id="fullscreen" class="secondary wide">Enter fullscreen</button><button id="resetPosition" class="secondary wide">Return to nearest landing</button><p class="help">Move: WASD / arrow keys. Look: drag or click to capture the mouse. E: interact. F: torch. V: change view. C: character. Shift: run. M: directory. Esc: pause.<br><br>On a phone, use the left stick to walk and drag the right side to look.</p></div>
+    <div class="settings-content"><label>Brightness <output id="brightnessValue">100%</output><input id="brightness" type="range" min="65" max="180" value="100"></label><label>Look sensitivity <output id="sensitivityValue">100%</output><input id="sensitivity" type="range" min="35" max="180" value="100"></label><label>Rendering detail<select id="quality"><option value="balanced">Balanced</option><option value="high">High</option><option value="low">Battery saver</option></select></label><label>Outside sky<select id="timeOfDay"><option value="day">Day</option><option value="night">Night · stars</option><option value="cycle">Day / night cycle</option></select></label><label>Music <output id="musicValue">65%</output><input id="music" type="range" min="0" max="100" value="65"></label><label class="toggle">Sound <input id="sound" type="checkbox" checked></label><label class="toggle">Reduce camera motion <input id="reduceMotion" type="checkbox"></label><button id="fullscreen" class="secondary wide">Enter fullscreen</button><button id="resetPosition" class="secondary wide">Return to nearest landing</button><p class="help">Move: WASD / arrow keys. Look: drag or click to capture the mouse. E: interact. F: torch. V: change view. C: character. H: show controls. Shift: run. M: directory. Esc: pause.<br><br>On a phone, use the left stick to walk and drag the right side to look. Tap ☰ for the menu. Controls fade when idle. During the cleaning, tap the picture to show playback controls.</p></div>
   </dialog>
 
   <dialog id="about" class="panel">

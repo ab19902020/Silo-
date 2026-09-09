@@ -49,7 +49,7 @@ export class SiloWorld {
       const bounds=new THREE.Box3().setFromObject(pivot),center=bounds.getCenter(new THREE.Vector3());original.position.x-=center.x;original.position.y-=bounds.min.y;original.position.z-=center.z;
       pivot.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});this.assets[name]=pivot;onProgress(++count/10);
     }));
-    this.assetFailures=results.filter(r=>r.status==='rejected').length;this.materialFailures=await materialLoad;this.surface.refreshMaterials();
+    this.assetFailures=results.filter(r=>r.status==='rejected').length;this.materialFailures=await materialLoad;this.surface.refreshMaterials();this.underground.refreshMaterials();
     return results;
   }
   buildStructure() {
@@ -321,8 +321,8 @@ export class SiloWorld {
     for(let i=0;i<this.localLights.length;i++){
       const l=this.localLights[i];l.visible=!this.outside;l.distance=38;
       if(this.special){l.visible=false;l.intensity=0;}
-      else if(i<6){const a=i*TAU/6;l.position.set(Math.cos(a)*21,y+4.8,Math.sin(a)*21);l.intensity=105;l.color.setHex(i%3?0xf4d39b:0xc0d4c3);}
-      else {const angle=Math.atan2(position.z,position.x);l.position.set(Math.cos(angle)*(i===6?33:44),y+4.7,Math.sin(angle)*(i===6?33:44));l.intensity=150;l.color.setHex(roomType(this.activeLevel,Math.round(angle/TAU*6+6)%6)==='medical'?0xc1dcd5:0xe7d3a5);}
+      else if(i<6){const a=i*TAU/6;l.position.set(Math.cos(a)*21,y+4.8,Math.sin(a)*21);l.intensity=105;l.color.setHex(i%3?0xf0e2c9:0xc0d4d3);}
+      else {const angle=Math.atan2(position.z,position.x);l.position.set(Math.cos(angle)*(i===6?33:44),y+4.7,Math.sin(angle)*(i===6?33:44));l.intensity=150;l.color.setHex(roomType(this.activeLevel,Math.round(angle/TAU*6+6)%6)==='medical'?0xc1dcd5:0xe6ddc9);}
     }
     let roomKey=null;
     if(!this.special&&!this.outside&&Math.hypot(position.x,position.z)>SILO.deckOuter){
@@ -337,8 +337,8 @@ export class SiloWorld {
     // Below Mechanical the practical fixtures own the light. A shadow-casting
     // spotlight following every footstep made wet floors visibly swim.
     this.keyLight.visible=!this.outside&&!this.special;this.keyLight.position.set(position.x+3,position.y+4.2,position.z+1.5);this.keyLight.target.position.set(position.x,position.y,position.z);this.keyLight.intensity=260;
-    if(roomKey){this.keyLight.position.copy(roomKey.world);this.keyLight.target.position.copy(roomKey.world).add(new THREE.Vector3(0,-3,0));this.keyLight.color.setHex(roomKey.color);this.keyLight.intensity=roomKey.residential?95:150;this.keyLight.distance=14;}else{this.keyLight.color.setHex(0xffd6a0);this.keyLight.distance=48;}
-    if(this.activeLevel===1&&top.z>10&&!this.special){for(let i=0;i<8;i++){const l=this.localLights[i];l.position.copy(topPoint(i<4?(i%2?10:-10):26,i<4?6.7:3.7,i<4?(i<2?17:31):[29,40,50,59][i-4]));l.intensity=i<4?240:95;l.distance=28;}if(top.z>64){this.keyLight.position.copy(position).add(new THREE.Vector3(0,3.4,0));this.keyLight.intensity=170;}}
+    if(roomKey){this.keyLight.position.copy(roomKey.world);this.keyLight.target.position.copy(roomKey.world).add(new THREE.Vector3(0,-3,0));this.keyLight.color.setHex(roomKey.color);this.keyLight.intensity=roomKey.residential?95:150;this.keyLight.distance=14;}else{this.keyLight.color.setHex(0xf0e2cd);this.keyLight.distance=48;}
+    if(this.activeLevel===1&&top.z>10&&!this.special){for(let i=0;i<8;i++){const l=this.localLights[i];l.position.copy(topPoint(i<4?(i%2?10:-10):26,i<4?6.7:3.7,i<4?(i<2?17:31):[29,40,50,59][i-4]));l.intensity=i<4?145:75;l.color.setHex(i<4?0xf1e9d9:0xc8d6d4);l.distance=28;}this.keyLight.position.copy(topPoint(0,7.3,24));this.keyLight.target.position.copy(topPoint(0,0,24));this.keyLight.color.setHex(0xf1e9d9);this.keyLight.intensity=115;this.keyLight.distance=32;if(top.z>64){this.keyLight.position.copy(position).add(new THREE.Vector3(0,3.4,0));this.keyLight.intensity=170;}}
     this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):.10;this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):.48;this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
     this.scene.fog.density=this.outside?.0029:this.special==='excavator'?.004:this.special?.007:.008;this.scene.fog.color.setHex(this.outside?0x929fa3:0x242d2b);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);if(this.outside)this.scene.fog.color.copy(this.surface.sky.fogColor);this.structure.visible=this.landings.visible=this.stairs.visible=this.distant.visible=this.distantLandings.visible=this.distantStairs.visible=this.topCore.visible=!this.special&&!this.outside;
   }

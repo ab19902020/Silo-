@@ -20,7 +20,13 @@ export function residentGLB(definition,suit=false){
   for(const [name,key,type,component] of [['position','POSITION','VEC3',5126],['normal','NORMAL','VEC3',5126],['color','COLOR_0','VEC3',5126],['skinIndex','JOINTS_0','VEC4',5123],['skinWeight','WEIGHTS_0','VEC4',5126]]){
     attributes[key]=append(g.attributes[name].array,type,component,name==='position'?{min:g.boundingBox.min.toArray(),max:g.boundingBox.max.toArray()}:{});
   }
-  const primitives=(g.groups.length?g.groups:[{start:0,count:g.index.count,materialIndex:0}]).map(group=>({attributes,indices:append(new Uint32Array(g.index.array.slice(group.start,group.start+group.count)),'SCALAR',5125),material:group.materialIndex,mode:4}));
+  const buckets=new Map(),finish=g.attributes.residentSurface;
+  for(const group of (g.groups.length?g.groups:[{start:0,count:g.index.count,materialIndex:0}]))for(let i=group.start;i<group.start+group.count;i+=3){
+    const index=g.index.getX(i);let material=group.materialIndex;
+    if(material===0&&finish){material=finish.getZ(index)>.5?3:finish.getW(index)<.5?(finish.getX(index)>.85?4:5):0;}
+    if(!buckets.has(material))buckets.set(material,[]);buckets.get(material).push(g.index.getX(i),g.index.getX(i+1),g.index.getX(i+2));
+  }
+  const primitives=[...buckets].map(([material,indices])=>({attributes,indices:append(new Uint32Array(indices),'SCALAR',5125),material,mode:4}));
   const nodes=[{name:definition.name,children:[1,bones.length+1]}];
   for(const b of bones)nodes.push({name:b.name,translation:b.position.toArray(),rotation:b.quaternion.toArray(),...(b.children.filter(c=>c.isBone).length?{children:b.children.filter(c=>c.isBone).map(c=>bones.indexOf(c)+1)}:{})});
   nodes.push({name:mesh.name,mesh:0,skin:0});
@@ -39,7 +45,7 @@ export function residentGLB(definition,suit=false){
     for(let j=0;j<bones.length;j++)for(const [key,type,target] of [['q','VEC4','rotation'],['p','VEC3','translation']]){const output=append(new Float32Array(tracks[j][key]),type,5126),sampler=samplers.length;samplers.push({input,output,interpolation:'LINEAR'});channels.push({sampler,target:{node:j+1,path:target}});}
     animations.push({name,samplers,channels});
   }
-  const json={asset:{version:'2.0',generator:'Silo 18 resident model source',copyright:'Original game reconstruction; fictional character references belong to their respective owners.'},scene:0,scenes:[{nodes:[0]}],nodes,meshes:[{name:mesh.name,primitives}],skins:[{joints:bones.map((_,i)=>i+1),skeleton:1,inverseBindMatrices:inverses}],materials:[{name:'Aged clothing and skin',doubleSided:true,pbrMetallicRoughness:{baseColorFactor:[1,1,1,1],metallicFactor:.025,roughnessFactor:.79}},...(suit?[{name:'Removable cleaning helmet',doubleSided:true,pbrMetallicRoughness:{baseColorFactor:[1,1,1,1],metallicFactor:.12,roughnessFactor:.47}}]:[])],animations,accessors,bufferViews:views,buffers:[{byteLength:size}],extras:{character:definition.name,role:definition.role,heightMetres:definition.height,likeness:'Approximate original mesh informed by production stills',suit}};
+  const json={asset:{version:'2.0',generator:'Silo 18 resident model source',copyright:'Original game reconstruction; fictional character references belong to their respective owners.'},scene:0,scenes:[{nodes:[0]}],nodes,meshes:[{name:mesh.name,primitives}],skins:[{joints:bones.map((_,i)=>i+1),skeleton:1,inverseBindMatrices:inverses}],materials:[['Worn cloth',0,.84],['Removable cleaning helmet',.02,.63],['Reflective visor',.66,.22],['Skin',0,.51],['Hair',0,.90],['Boots and leather',0,.59]].map(([name,metallicFactor,roughnessFactor])=>({name,doubleSided:true,pbrMetallicRoughness:{baseColorFactor:[1,1,1,1],metallicFactor,roughnessFactor}})),animations,accessors,bufferViews:views,buffers:[{byteLength:size}],extras:{character:definition.name,role:definition.role,heightMetres:definition.height,likeness:'Approximate original mesh informed by production stills',suit}};
   actor.motion.neutral();return encodeGLB(json,Buffer.concat(chunks));
 }
 if(process.argv[1]&&import.meta.url===new URL('file://'+path.resolve(process.argv[1])).href){

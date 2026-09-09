@@ -17,7 +17,7 @@ import { SILO,levelY } from '../dist/src/data.js';
 globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>({fillRect(){},strokeRect(){},fillText(){}})})};
 
 test('the basin and tunnel mouth have one water sheet with no duplicate transparent surface',()=>{
-  const world=new SiloWorld(new THREE.Scene());world.setLevel(144,'tunnel');const water=[];world.underground.root.traverse(o=>{if(o.isMesh&&o.material===world.m.water)water.push(o);});assert.equal(water.length,1);assert.equal(water[0].material.depthWrite,false);world.scene.updateMatrixWorld(true);
+  const world=new SiloWorld(new THREE.Scene());world.setLevel(144,'tunnel');const water=[];world.underground.root.traverse(o=>{if(o.isMesh&&o.name==='continuous-void-water')water.push(o);});assert.equal(water.length,1);assert.equal(water[0].material.depthWrite,false);world.scene.updateMatrixWorld(true);
   for(const z of [0,3.21,6.93,7.19,8.3,9.1]){const p=tunnelPoint(.27,3,z),ray=new THREE.Raycaster(p,new THREE.Vector3(0,-1,0));const hits=ray.intersectObject(water[0]);assert.equal(hits.length,1,`water overlaps or is missing at tunnel ${z}`);assert.ok(Math.abs(hits[0].point.y-5)<1e-5);}
   for(const p of [tunnelPoint(0,.7,12),tunnelPoint(1,.7,17)]){world.update(.016,p);assert.equal(world.keyLight.visible,false);assert.ok(world.localLights.every(l=>!l.visible));}
 });

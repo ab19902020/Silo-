@@ -99,6 +99,7 @@ export class Population{
       const r=a.record,dist=a.root.position.distanceTo(body.position);a.root.visible=r.id!==selected;if(!a.root.visible)continue;
       const cafeteria=this.level===1&&r.position.x>SILO.deckOuter&&-r.position.z<18&&r.position.x<SILO.deckOuter+40;
       const watching=watch&&cafeteria;a.tick+=dt;
+      if(dist<5)this.world.residentInteractions.push({position:a.root.position.clone().add(new THREE.Vector3(0,1.25,0)),label:`Talk to ${a.definition.name}`,action:`resident-${r.id}`,resident:{...a.definition,kind:r.kind}});
       const interval=dist<16?1/30:dist<40?1/15:1/8;if(a.tick<interval)continue;const step=Math.min(a.tick,.15);a.tick=0;
       let pose=r.activity,speed=0;desired.set(0,0,0);
       if(watching){pose=r.seat?'sit':'watch';a.root.rotation.y=THREE.MathUtils.damp(a.root.rotation.y,Math.PI/2,4,step);}
@@ -126,7 +127,7 @@ export class Population{
       a.ground=(x,z)=>this.world.colliders.floorAt(x,z,.08,a.root.position.y+.3);
       poseResident(a,pose,this.time+r.seed*.37,step,speed);
       if(a.poseFrom){a.poseMix=Math.min(1,a.poseMix+step/.28);const t=a.poseMix*a.poseMix*(3-2*a.poseMix);for(const [n,b] of Object.entries(a.motion.bones)){const old=a.poseFrom[n];b.quaternion.copy(old.q.clone().slerp(b.quaternion,t));b.position.copy(old.p.clone().lerp(b.position,t));}if(t>=1)a.poseFrom=null;a.model.updateWorldMatrix(true,true);}
-      if(r.definition&&dist<5)this.world.residentInteractions.push({position:a.root.position.clone().add(new THREE.Vector3(0,1.25,0)),label:`${r.definition.name} · ${r.definition.role}`,action:`resident-${r.id}`});
+
     }
   }
   separatePlayer(body){

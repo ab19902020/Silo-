@@ -1,9 +1,10 @@
 import * as THREE from '../vendor/three.module.js';
 import { clone } from '../vendor/SkeletonUtils.js';
 import { SkeletalMotion } from './locomotion.js';
+import { residentMaterial } from './resident-surface.js';
 
 const templates=new Map();
-const material=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.79,metalness:.025,side:THREE.DoubleSide});
+const material=residentMaterial();
 const V=(x,y,z)=>new THREE.Vector3(x,y,z),clamp=THREE.MathUtils.clamp;
 
 // A reusable, fully skinned human mesh, with shaped garment profiles rather
@@ -26,7 +27,9 @@ export function buildResidentModel(definition,{suit=false}={}){
     rig('UpperArm'+s,'Chest',sign*.178*wide,1.405,0);rig('Forearm'+s,'UpperArm'+s,sign*.196*wide,1.118,.011);rig('Hand'+s,'Forearm'+s,sign*.208*wide,.868,.017);
     rig('Thigh'+s,'Hips',sign*.092*wide,.90,0);rig('Shin'+s,'Thigh'+s,sign*.095*wide,.50,.012);rig('Foot'+s,'Shin'+s,sign*.095*wide,.080,.018);rig('Toe'+s,'Foot'+s,sign*.095*wide,.07,.155);rig('Coat'+s,'Hips',sign*.118,.85,-.04);
   }
-  const positions=[],normals=[],colors=[],weights=[],joints=[],indices=[],skin=new THREE.Color(a.skin??0xb79476),coat=new THREE.Color(suit?0xd4d0b6:a.coat??0x66715f),hair=new THREE.Color(a.hair??0x44352b),dark=new THREE.Color(0x242923),shirt=new THREE.Color(a.shirt??0xa29981);let helmetRange=null;
+  const positions=[],normals=[],colors=[],surfaces=[],weights=[],joints=[],indices=[],skin=new THREE.Color(a.skin??0xb79476),coat=new THREE.Color(suit?0xd4d0b6:a.coat??0x66715f),hair=new THREE.Color(a.hair??0x44352b),dark=new THREE.Color(0x242923),shirt=new THREE.Color(a.shirt??0xa29981);let helmetRange=null,visorRange=null;
+  const skinTone=factor=>{const c=skin.clone().multiplyScalar(factor);c.skinSurface=true;return c;};
+  const hairTone=factor=>{const c=hair.clone().multiplyScalar(factor);c.hairSurface=true;return c;};
   const binding=(b,b2=null,w=1)=>[bones.indexOf(byName[b]),bones.indexOf(byName[b2||b]),clamp(w,0,1)];
   const torso=y=>y<1.08?binding('Hips','Spine',clamp((1.13-y)/.15,0,1)):binding('Spine','Chest',clamp((1.34-y)/.25,0,1));
   const add=(geometry,color,bind,transform=null,cloth=false)=>{
@@ -36,6 +39,8 @@ export function buildResidentModel(definition,{suit=false}={}){
       positions.push(x,y,z);normals.push(n.getX(i),n.getY(i),n.getZ(i));joints.push(b,c,0,0);weights.push(w,1-w,0,0);
       const shade=cloth?.96+.021*Math.sin(y*85+x*44)+.019*Math.sin(z*31+y*11):color===skin?.97+.025*Math.cos(y*11+x*24)+.012*Math.sin(x*273+y*197+z*211):1;
       colors.push(color.r*shade,color.g*shade,color.b*shade);
+      const skinPart=color===skin||color.skinSurface,hairPart=color===hair||color.hairSurface,leather=color===dark;
+      surfaces.push(skinPart?.51:hairPart?.9:leather?.59:.84,0,skinPart?1:0,skinPart||hairPart||leather?0:1);
     }
     if(geometry.index)for(const i of geometry.index.array)indices.push(start+i);else for(let i=0;i<p.count;i++)indices.push(start+i);geometry.dispose();
   };
@@ -84,41 +89,58 @@ export function buildResidentModel(definition,{suit=false}={}){
     }
   };
   const fw=(a.faceWidth||1)*(female?.96:1),age=a.age||0;
-  ell(0,1.634,0,.102*fw,.131,.090,skin,'Head',24);
-  ell(0,1.58,.023,.087*fw,.071,.075,skin,'Head',20);
+  // One shaped facial surface: tapered jaw, cheekbones and recessed sockets.
+  // The old overlapping skull/jaw/cheek spheres left visible bulbous seams.
+  const face=new THREE.SphereGeometry(1,40,32),fp=face.attributes.position;
+  const bell=(v,center,width)=>Math.exp(-(((v-center)/width)**2));
+  for(let i=0;i<fp.count;i++){
+    const nx=fp.getX(i),ny=fp.getY(i),nz=fp.getZ(i),jaw=1-.20*clamp((-ny-.25)/.75,0,1);let x=nx*.102*fw*jaw,y=1.634+ny*.131,z=nz*.09;
+    if(nz>0){const front=nz*nz,sockets=bell(Math.abs(x),.045*fw,.027)*bell(y,1.646,.019),cheeks=bell(Math.abs(x),.055*fw,.025)*bell(y,1.611,.026);z+=front*(-sockets*.011+cheeks*.009+bell(y,1.559,.02)*.014+bell(y,1.664,.012)*.003);}
+    fp.setXYZ(i,x,y,z);
+  }
+  face.computeVertexNormals();add(face,skin,'Head');
   for(const sign of [-1,1]){
     ell(sign*.103*fw,1.631,-.005,.018,.032,.014,skin,'Head',10);
-    ell(sign*.049*fw,1.643,.079,.031,.018,.014,skin.clone().multiplyScalar(.8),'Head',12);
+    ell(sign*.049*fw,1.643,.079,.031,.018,.014,skinTone(.8),'Head',12);
     ell(sign*.046*fw,1.646,.088,.0205,.0095,.007,new THREE.Color(0xb4b0a3),'Head',12);
     ell(sign*.046*fw,1.646,.094,.007,.008,.004,new THREE.Color(0x454737),'Head',10);
     ell(sign*.046*fw,1.646,.097,.0035,.005,.002,dark,'Head',8);
     box(sign*.045*fw,1.666,.088,.045,.008,.009,hair,'Head',-sign*.1);
-    ell(sign*.058,1.603,.073,.030,.026,.017,skin,'Head',12);
     // Eyelid rims follow the eye socket; tiny catchlights and a recessed ear
     // concha give close conversations depth without oversized cartoon eyes.
     for(let j=0;j<7;j++){const t=j/6*Math.PI,xx=sign*.046*fw+Math.cos(t)*.021;
       ell(xx,1.646+Math.sin(t)*.010,.094,.005,.0025,.003,skin,'Head',8);
-      ell(xx,1.646-Math.sin(t)*.009,.092,.004,.002,.002,skin.clone().multiplyScalar(.88),'Head',8);
+      ell(xx,1.646-Math.sin(t)*.009,.092,.004,.002,.002,skinTone(.88),'Head',8);
     }
     ell(sign*.046*fw-.002,1.649,.099,.0018,.0018,.001,new THREE.Color(0xe4dfd0),'Head',8);
-    ell(sign*.111*fw,1.633,.005,.005,.018,.006,skin.clone().multiplyScalar(.63),'Head',10);
-    ell(sign*.011,1.607,.120,.005,.003,.003,skin.clone().multiplyScalar(.47),'Head',8);
-    if(age>.3)for(let i=0;i<2;i++)box(sign*.055,1.626-i*.009,.089,.034,.002,.002,skin.clone().multiplyScalar(.85),'Head',sign*.13);
+    ell(sign*.111*fw,1.633,.005,.005,.018,.006,skinTone(.63),'Head',10);
+    ell(sign*.011,1.607,.120,.005,.003,.003,skinTone(.47),'Head',8);
+    if(age>.3)for(let i=0;i<2;i++)box(sign*.055,1.626-i*.009,.089,.034,.002,.002,skinTone(.85),'Head',sign*.13);
   }
   ell(0,1.625,.091,.016,.033,.022,skin,'Head',12);ell(0,1.612,.111,.021,.011,.016,skin,'Head',12);
-  ell(0,1.576,.087,.030,.009,.007,skin.clone().multiplyScalar(.69),'Head',16);box(0,1.576,.094,.045,.0018,.002,skin.clone().multiplyScalar(.48),'Head');
+  ell(0,1.576,.087,.030,.009,.007,skinTone(.69),'Head',16);box(0,1.576,.094,.045,.0018,.002,skinTone(.48),'Head');
   ell(0,1.551,.070,.035,.018,.018,skin,'Head');
   if(a.beard){const g=new THREE.SphereGeometry(1,20,10,0,Math.PI*2,Math.PI*.40,Math.PI*.57);g.scale(.092, .061,.082);g.translate(0,1.596,.016);add(g,hair,'Head');}
   if(!a.bald){const g=new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,Math.PI*.46);g.scale(.106*fw,.137,.094);g.translate(0,1.637,-.006);add(g,hair,'Head');}
   if(a.moustache)ell(0,1.592,.095,.032,.010,.009,hair,'Head');
   if(['waves','curls','long','bun','braids','longCurls','fringe'].includes(a.hairStyle)){
-    const curls=['curls','longCurls'].includes(a.hairStyle),count=curls?32:18;
-    for(let i=0;i<count;i++){const t=i*Math.PI*2/count;ell(Math.cos(t)*.091,1.682+Math.sin(i*2.4)*.019,-.020+Math.sin(t)*.071,curls?.027:.030,.042,.028,hair,'Head',8);}
-    if(a.hairStyle==='long'||a.hairStyle==='waves'&&female){for(const sign of [-1,1])ell(sign*.09,1.574,-.026,.029,.105,.048,hair,'Head',12);ell(0,1.57,-.077,.082,.092,.025,hair,'Head');}
-    if(a.hairStyle==='bun')ell(0,1.684,-.096,.052,.05,.046,hair,'Head');
-    if(a.hairStyle==='fringe')for(let i=0;i<9;i++)ell((i-4)*.020,1.692,.070,.016,.044,.028,hair,'Head',8);
-    if(a.hairStyle==='braids')for(const sign of [-1,1])for(let i=0;i<11;i++)ell(sign*(.101+Math.sin(i*1.6)*.008),1.60-i*.022,-.002,.019-i*.0008,.025,.025,hair,i<4?'Head':'Chest',8);
-    if(a.hairStyle==='longCurls')for(const sign of [-1,1])for(let i=0;i<22;i++)ell(sign*(.100+(i%3)*.017),1.64-Math.floor(i/3)*.034,-.008+(i%3)*.004,.025,.027,.035,hair,i<9?'Head':'Chest',8);
+    const curls=['curls','longCurls'].includes(a.hairStyle);
+    // A continuous volume follows the scalp; fine strands supply the texture
+    // instead of the former necklace of large round hair clumps.
+    if(curls){const g=new THREE.SphereGeometry(1,40,24,0,Math.PI*2,0,Math.PI*.57),p=g.attributes.position;
+      for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),n=1+.032*Math.sin(x*28+y*19)*Math.cos(z*31-y*7);p.setXYZ(i,x*.110*fw*n,1.637+y*.141*n,-.011+z*.100*n);}g.computeVertexNormals();add(g,hair,'Head');}
+    const long=['long','longCurls'].includes(a.hairStyle)||a.hairStyle==='waves'&&female;
+    if(long){
+      const g=new THREE.SphereGeometry(1,28,20),p=g.attributes.position;
+      for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i);p.setXYZ(i,x*.11*fw*(1+.03*Math.sin(y*15)),1.567+y*.128,-.056+z*.055);}g.computeVertexNormals();add(g,hair,'Head');
+      for(const sign of [-1,1])for(let strand=0;strand<8;strand++)for(let j=0;j<7;j++){
+        const point=q=>V(sign*(.094+strand*.0035+Math.sin(q*11+strand)*.0025),1.685-q*.245,-.02-strand*.005+Math.sin(q*9+strand)*.004);
+        tube(point(j/7),point((j+1)/7),.0033,.0027,hairTone(strand%3?1.05:.83),'Head',5);
+      }
+    }
+    if(a.hairStyle==='bun')ell(0,1.684,-.096,.044,.042,.037,hair,'Head',18);
+    if(a.hairStyle==='fringe')for(let i=0;i<16;i++)tube(V((i-7.5)*.011,1.731,.058),V((i-7.5)*.010,1.688+Math.sin(i)*.004,.088),.006,.002,hairTone(i%3?1:.83),'Head',6);
+    if(a.hairStyle==='braids')for(const sign of [-1,1])for(let i=0;i<14;i++)ell(sign*(.099+Math.sin(i*1.6)*.005),1.62-i*.018,-.007,.012-i*.0003,.014,.014,hair,i<7?'Head':'Chest',10);
   }
   if(a.glasses){for(const sign of [-1,1])torus(sign*.047,1.647,.1,.028,.0028,dark,'Head',0,1,.8);box(0,1.647,.101,.038,.003,.004,dark,'Head');}
   if(!a.bald){
@@ -126,17 +148,19 @@ export function buildResidentModel(definition,{suit=false}={}){
     for(let lock=0;lock<24;lock++){
       const az=lock*Math.PI*2/24;for(let j=0;j<4;j++){
         const t=.18+j*.23,u=t+.23,point=q=>V(Math.cos(az)*Math.sin(q)*.107*fw,1.637+Math.cos(q)*.139,-.006+Math.sin(az)*Math.sin(q)*.096);
-        tube(point(t),point(u),.0028,.0018,hair.clone().multiplyScalar(lock%3===0?1.19:.89),'Head',6);
+        tube(point(t),point(u),.0028,.0018,hairTone(lock%3===0?1.12:.90),'Head',6);
       }
     }
   }
-  if(age>.45)for(let j=0;j<3;j++)box(0,1.682+j*.010,.078,.070,.0012,.001,skin.clone().multiplyScalar(.89),'Head');
+  if(age>.45)for(let j=0;j<3;j++)box(0,1.682+j*.010,.078,.070,.0012,.001,skinTone(.89),'Head');
   narrowHead();
   if(suit){
     const start=indices.length;
     ell(0,1.62,0,.147,.186,.152,coat,'Head',24);
-    // Opaque reflective visor avoids sorting artefacts and hides the head.
-    ell(0,1.631,.108,.113,.128,.070,new THREE.Color(0x555543),'Head',24);
+    // A separately finished opaque visor reflects the light without the
+    // transparency/sorting failures of the original uploaded coats.
+    const visorStart=indices.length;ell(0,1.631,.108,.113,.128,.070,new THREE.Color(0x383e3c),'Head',32);visorRange=[visorStart,indices.length-visorStart];
+    torus(0,1.631,.117,.121,.009,dark,'Head',0,.94,1);
     torus(0,1.473,0,.098,.030,dark,'Neck',Math.PI/2,1,.85);
     helmetRange=[start,indices.length-start];
     box(0,1.19,-.156,.26,.40,.15,dark,'Chest');box(0,1.20,-.238,.232,.32,.065,coat,'Chest');
@@ -160,9 +184,12 @@ export function buildResidentModel(definition,{suit=false}={}){
     if(a.outfit==='medical'){for(const sign of [-1,1])tube(V(sign*.044,1.46,.10),V(sign*.07,1.22,.152),.006,.006,dark,'Chest',6);ell(.07,1.218,.16,.018,.018,.004,dark,'Chest');}
   }
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));geometry.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(joints,4));geometry.setAttribute('skinWeight',new THREE.Float32BufferAttribute(weights,4));geometry.setIndex(indices);
+  geometry.setAttribute('residentSurface',new THREE.Float32BufferAttribute(surfaces,4));
   geometry.computeBoundingBox();const factor=definition.height/geometry.boundingBox.max.y;geometry.scale(factor,factor,factor);for(const b of bones)b.position.multiplyScalar(factor);
-  if(helmetRange){geometry.addGroup(0,helmetRange[0],0);geometry.addGroup(helmetRange[0],helmetRange[1],1);geometry.addGroup(helmetRange[0]+helmetRange[1],indices.length-helmetRange[0]-helmetRange[1],0);}
-  const mesh=new THREE.SkinnedMesh(geometry,helmetRange?[material,material.clone()]:material);mesh.name=definition.id+(suit?'-cleaning-suit':'-resident');mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=false;model.add(mesh);model.updateMatrixWorld(true);mesh.bind(new THREE.Skeleton(bones));geometry.computeBoundingSphere();
+  let finishes=material;
+  if(helmetRange){geometry.addGroup(0,helmetRange[0],0);geometry.addGroup(helmetRange[0],visorRange[0]-helmetRange[0],1);geometry.addGroup(visorRange[0],visorRange[1],2);geometry.addGroup(visorRange[0]+visorRange[1],helmetRange[0]+helmetRange[1]-visorRange[0]-visorRange[1],1);geometry.addGroup(helmetRange[0]+helmetRange[1],indices.length-helmetRange[0]-helmetRange[1],0);
+    finishes=[material,residentMaterial(),new THREE.MeshPhysicalMaterial({vertexColors:true,roughness:.22,metalness:.66,clearcoat:1,clearcoatRoughness:.12,envMapIntensity:1.1,side:THREE.DoubleSide})];}
+  const mesh=new THREE.SkinnedMesh(geometry,finishes);mesh.name=definition.id+(suit?'-cleaning-suit':'-resident');mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=false;model.add(mesh);model.updateMatrixWorld(true);mesh.bind(new THREE.Skeleton(bones));geometry.computeBoundingSphere();
   return model;
 }
 

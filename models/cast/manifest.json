@@ -3,7 +3,7 @@
     "id": "holston",
     "name": "Holston Becker",
     "file": "holston.glb",
-    "bytes": 1652836,
+    "bytes": 1691108,
     "suit": false,
     "height": 1.78
   },
@@ -11,7 +11,7 @@
     "id": "holston",
     "name": "Holston Becker",
     "file": "holston-cleaning-suit.glb",
-    "bytes": 1578720,
+    "bytes": 1637072,
     "suit": true,
     "height": 1.78
   },
@@ -19,7 +19,7 @@
     "id": "allison",
     "name": "Allison Becker",
     "file": "allison.glb",
-    "bytes": 1972496,
+    "bytes": 1807208,
     "suit": false,
     "height": 1.64
   },
@@ -27,7 +27,7 @@
     "id": "allison",
     "name": "Allison Becker",
     "file": "allison-cleaning-suit.glb",
-    "bytes": 1806628,
+    "bytes": 1661420,
     "suit": true,
     "height": 1.64
   },
@@ -35,7 +35,7 @@
     "id": "walker",
     "name": "Martha Walker",
     "file": "walker.glb",
-    "bytes": 2006324,
+    "bytes": 1993472,
     "suit": false,
     "height": 1.65
   },
@@ -43,7 +43,7 @@
     "id": "knox",
     "name": "Knox",
     "file": "knox.glb",
-    "bytes": 1665356,
+    "bytes": 1703628,
     "suit": false,
     "height": 1.89
   },
@@ -51,7 +51,7 @@
     "id": "shirley",
     "name": "Shirley Campbell",
     "file": "shirley.glb",
-    "bytes": 1812756,
+    "bytes": 1688740,
     "suit": false,
     "height": 1.7
   },
@@ -59,7 +59,7 @@
     "id": "jahns",
     "name": "Ruth Jahns",
     "file": "jahns.glb",
-    "bytes": 1995608,
+    "bytes": 1871588,
     "suit": false,
     "height": 1.7
   },
@@ -67,7 +67,7 @@
     "id": "marnes",
     "name": "Sam Marnes",
     "file": "marnes.glb",
-    "bytes": 1662744,
+    "bytes": 1701012,
     "suit": false,
     "height": 1.78
   },
@@ -75,7 +75,7 @@
     "id": "billings",
     "name": "Paul Billings",
     "file": "billings.glb",
-    "bytes": 1945084,
+    "bytes": 1775188,
     "suit": false,
     "height": 1.8
   },
@@ -83,7 +83,7 @@
     "id": "lukas",
     "name": "Lukas Kyle",
     "file": "lukas.glb",
-    "bytes": 1807576,
+    "bytes": 1681468,
     "suit": false,
     "height": 1.78
   },
@@ -91,7 +91,7 @@
     "id": "camille",
     "name": "Camille Sims",
     "file": "camille.glb",
-    "bytes": 2419984,
+    "bytes": 2152936,
     "suit": false,
     "height": 1.72
   },
@@ -99,7 +99,7 @@
     "id": "meadows",
     "name": "Judge Mary Meadows",
     "file": "meadows.glb",
-    "bytes": 2101260,
+    "bytes": 1931356,
     "suit": false,
     "height": 1.72
   },
@@ -107,7 +107,7 @@
     "id": "carla",
     "name": "Carla McLain",
     "file": "carla.glb",
-    "bytes": 1850448,
+    "bytes": 1984912,
     "suit": false,
     "height": 1.68
   },
@@ -115,7 +115,7 @@
     "id": "patrick",
     "name": "Patrick Kennedy",
     "file": "patrick.glb",
-    "bytes": 1364456,
+    "bytes": 1402720,
     "suit": false,
     "height": 1.72
   },
@@ -123,7 +123,7 @@
     "id": "pete",
     "name": "Dr. Pete Nichols",
     "file": "pete.glb",
-    "bytes": 1668408,
+    "bytes": 1706680,
     "suit": false,
     "height": 1.84
   },
@@ -131,7 +131,7 @@
     "id": "gloria",
     "name": "Gloria Hildebrandt",
     "file": "gloria.glb",
-    "bytes": 1849540,
+    "bytes": 1984000,
     "suit": false,
     "height": 1.61
   },
@@ -139,7 +139,7 @@
     "id": "hank",
     "name": "Hank",
     "file": "hank.glb",
-    "bytes": 1817192,
+    "bytes": 1691084,
     "suit": false,
     "height": 1.82
   },
@@ -147,7 +147,7 @@
     "id": "cooper",
     "name": "Cooper",
     "file": "cooper.glb",
-    "bytes": 1795252,
+    "bytes": 1669148,
     "suit": false,
     "height": 1.74
   },
@@ -155,7 +155,7 @@
     "id": "teddy",
     "name": "Teddy",
     "file": "teddy.glb",
-    "bytes": 1630864,
+    "bytes": 1669132,
     "suit": false,
     "height": 1.79
   },
@@ -163,7 +163,7 @@
     "id": "amundsen",
     "name": "Amundsen",
     "file": "amundsen.glb",
-    "bytes": 1629924,
+    "bytes": 1668196,
     "suit": false,
     "height": 1.85
   },
@@ -171,7 +171,7 @@
     "id": "george",
     "name": "George Wilkins",
     "file": "george.glb",
-    "bytes": 1804436,
+    "bytes": 1678328,
     "suit": false,
     "height": 1.78
   }

@@ -9,11 +9,13 @@ import { CharacterCast, PLAYABLE_CHARACTERS } from './characters.js';
 import { LadderClimb } from './climbing.js';
 import { Population } from './population.js';
 import { CafeteriaOpening, CAFETERIA_START } from './opening.js';
+import { conversationFor } from './conversations.js';
 import { RESIDENT_CAST } from './resident-data.js';
 
-const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic');
-const dialogs=[welcome,directory,settings,about,characters,relic],coarse=matchMedia('(pointer:coarse)').matches;
+const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation');
+const dialogs=[welcome,directory,settings,about,characters,relic,conversation],coarse=matchMedia('(pointer:coarse)').matches;
 let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
+let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null;
 let yaw=Math.PI/2,pitch=0,lookSensitivity=1,running=false,torchOn=false,quality='balanced';
 const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3}),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,2300),audio=new SiloAudio();
 const keys=new Set(),stick={x:0,y:0},desired=new THREE.Vector3(),direction=new THREE.Vector3(),clock=new THREE.Clock();
@@ -23,15 +25,29 @@ const saved=(()=>{try{return JSON.parse(localStorage.getItem('silo18-settings')|
 const openingComplete=(()=>{try{return localStorage.getItem('silo18-opening-complete')==='1';}catch{return false;}})();
 const paused=()=>dialogs.some(d=>d.open)||!started||traveling;
 function notify(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4600);}
+function revealControls(){touchUntil=performance.now()+3500;}
+function toggleControls(){hudOpen=!hudOpen;document.body.classList.toggle('hud-open',hudOpen);$('controlsButton').setAttribute('aria-expanded',String(hudOpen));revealControls();}
+function updateInterface(time){
+  if(hudOpen&&(body.horizontalSpeed>.12||opening?.focus&&time*1000>touchUntil)){hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');}
+  document.body.classList.toggle('playing',started&&!paused());document.body.classList.toggle('touch-awake',time*1000<touchUntil||body.horizontalSpeed>.12);
+  $('chapterHud').hidden=paused()||opening?.watching||time*1000>chapterUntil;
+  $('controlsButton').hidden=!started||paused();
+  document.body.classList.toggle('screen-focused',!!opening?.focus);
+}
+function startConversation(person){
+  const text=conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name});$('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;$('dialogueChoices').replaceChildren();
+  for(const topic of text.topics){const b=document.createElement('button');b.textContent=topic.label;b.addEventListener('click',()=>{$('dialogueLine').textContent=topic.reply;for(const other of $('dialogueChoices').children)other.setAttribute('aria-pressed',String(other===b));});$('dialogueChoices').append(b);}
+  audio.click();openDialog(conversation);
+}
 function syncPause(){document.body.classList.toggle('paused',paused());$('hud').classList.toggle('hidden',welcome.open);keys.clear();stick.x=stick.y=0;$('joystick').firstElementChild.style.transform='';if(paused()&&document.pointerLockElement)document.exitPointerLock();}
-function openDialog(d){for(const x of dialogs)if(x.open)x.close();d.showModal();syncPause();}
-function closeDialog(d){d.close();if(!started&&d!==welcome)welcome.showModal();syncPause();}
+function openDialog(d){hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');for(const x of dialogs)if(x.open)x.close();d.showModal();syncPause();}
+function closeDialog(d){d.close();if(!started&&d!==welcome)welcome.showModal();syncPause();if(started)canvas.focus();}
 function saveSettings(){try{localStorage.setItem('silo18-settings',JSON.stringify({brightness:$('brightness').value,sensitivity:$('sensitivity').value,quality,timeOfDay:$('timeOfDay').value,sound:$('sound').checked,music:$('music').value,reduceMotion:$('reduceMotion').checked,character:cast?.selected||saved.character||'juliette',thirdPerson:cast?.thirdPerson??saved.thirdPerson??true}));}catch{}}
 function updateSettings(){
   if(renderer)renderer.toneMappingExposure=Number($('brightness').value)/100;
   $('brightnessValue').textContent=`${$('brightness').value}%`;$('sensitivityValue').textContent=`${$('sensitivity').value}%`;lookSensitivity=Number($('sensitivity').value)/100;
   $('musicValue').textContent=`${$('music').value}%`;audio.setEnabled($('sound').checked);audio.setMusicVolume(Number($('music').value)/100);quality=$('quality').value;if(world)world.surface.setTimeOfDay($('timeOfDay').value);
-  if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?2:quality==='low'?1:1.5));renderer.setSize(innerWidth,innerHeight,false);renderer.shadowMap.enabled=quality!=='low';if(world){world.quality=quality;world.keyLight.castShadow=quality!=='low';}if(rendering){rendering.enabled=quality!=='low';rendering.resize();rendering.material.uniforms.strength.value=quality==='high'?.38:.24;}}
+  if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?2:quality==='low'?1:1.5));renderer.setSize(innerWidth,innerHeight,false);renderer.shadowMap.enabled=quality!=='low';if(world){world.quality=quality;world.keyLight.castShadow=quality!=='low';world.underground.waterSurface.setQuality(quality);world.surface.setQuality(quality);}if(rendering){rendering.enabled=true;rendering.setQuality(quality);rendering.resize();}}
   saveSettings();
 }
 function syncCharacterUI(){
@@ -56,9 +72,9 @@ function syncMusicGate(){
 }
 function openingChanged(state){
   syncMusicGate();
-  const watching=state==='watch',reading=state==='read-book';
+  const watching=state==='watch',reading=state==='read-book';chapterUntil=performance.now()+(state==='find-book'?6500:reading?5000:0);if(watching&&lastOpeningState!=='watch'){opening.focus=true;hudOpen=false;document.body.classList.remove('hud-open');keys.clear();stick.x=stick.y=0;jumpQueued=false;}lastOpeningState=state;
   $('chapterHud').hidden=state==='explore';$('chapterTitle').textContent=state==='find-book'?'A book on the table':watching?'Holston’s cleaning':'The room falls quiet';
-  $('chapterObjective').textContent=state==='find-book'?'Find the directory book on the table ahead.':watching?'Watch the cafeteria screen. You can still look around.':'Open the book to read the silo directory.';
+  $('chapterObjective').textContent=state==='find-book'?'Find the directory book on the table ahead.':watching?'Holston is outside.':'Your directory is ready.';
   $('focusScreenButton').hidden=!watching;$('skipOpening').hidden=!watching;$('openBookButton').hidden=!reading;
   $('focusScreenButton').textContent=opening?.focus?'Back to cafeteria':'Focus on screen';
   document.body.classList.toggle('screen-focused',!!opening?.focus);
@@ -133,10 +149,10 @@ const inspectionText={
   relics:'Tins, bottles, books and wound cable carried down from the levels above and kept where a sweep would not find them. Possession of relics from before is an offence under the Pact.',
 };
 function use(){
-  if(opening?.state==='read-book'&&!paused()){requestDirectory();return;}
+  if(opening?.state==='read-book'&&!interaction&&!paused()){requestDirectory();return;}
   if(!interaction||paused()||body.climbing)return;
-  if(interaction.action==='opening-book'){audio.click();audio.playOpeningTheme();opening.takeBook();notify('Holston is leaving. Watch the cafeteria screen.');return;}
-  if(interaction.action?.startsWith('resident-')){const def=RESIDENT_CAST.find(d=>d.id===interaction.action.slice(9));if(def)notify(`${def.name} — ${def.role}. Use Character to explore as them.`);return;}
+  if(interaction.action==='opening-book'){audio.click();audio.playOpeningTheme();opening.takeBook();return;}
+  if(interaction.resident){startConversation(interaction.resident);return;}
   if(interaction.ladder){
     const ladder=world.underground.ladders.find(l=>l.id===interaction.ladder);
     if(ladder&&LadderClimb.begin(body,ladder,interaction.up)){yaw=ladder.heading+Math.PI;pitch=0;notify(interaction.up?'Climbing back to the camp.':'Climbing down to the water.');}
@@ -158,6 +174,8 @@ function use(){
 function toggleTorch(){torchOn=!torchOn;audio.torch(torchOn);torch.visible=torchOn;$('torchButton').classList.toggle('active',torchOn);$('torchButton').setAttribute('aria-pressed',String(torchOn));}
 
 for(const d of dialogs){d.addEventListener('cancel',e=>{e.preventDefault();if(d===welcome&&ready){if(started){d.close();syncPause();}else begin();}else closeDialog(d);});d.querySelector('[data-close]')?.addEventListener('click',()=>closeDialog(d));}
+$('controlsButton').addEventListener('click',toggleControls);$('leaveConversation').addEventListener('click',()=>closeDialog(conversation));
+addEventListener('pointerdown',revealControls,{passive:true});
 $('enterButton').addEventListener('click',begin);$('home').addEventListener('click',()=>{if(started){$('enterButton').textContent='Resume exploration';}openDialog(welcome);});
 $('directoryButton').addEventListener('click',requestDirectory);
 $('welcomeDirectory').addEventListener('click',()=>{if(!ready)return;opening.finish();opening.openBook();renderDirectory();openDialog(directory);});
@@ -195,12 +213,15 @@ if(saved.reduceMotion===undefined)$('reduceMotion').checked=matchMedia('(prefers
 for(const source of SOURCES){const a=document.createElement('a');a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=source.title;const small=document.createElement('small');small.textContent=source.note;$('sources').append(a,small);}
 
 addEventListener('keydown',e=>{
-  if(e.target.matches('input,select,textarea'))return;
+  if(e.target.matches('input,select,textarea')||e.target.closest('dialog')||e.code==='Space'&&e.target.matches('button'))return;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
   if(e.repeat){keys.add(e.code);return;}
   if(e.code==='KeyM'){if(directory.open)closeDialog(directory);else requestDirectory();return;}
   if(e.code==='KeyC'){if(characters.open)closeDialog(characters);else{renderCharacters();openDialog(characters);}return;}
   if(paused())return;
+  if(e.code==='KeyH'){toggleControls();return;}
+  if(opening.focus&&e.code==='Space'){e.preventDefault();toggleControls();return;}
+  revealControls();
   if(e.code==='KeyV'){toggleView();return;}
   keys.add(e.code);if(e.code==='KeyE')use();if(e.code==='KeyF')toggleTorch();if(e.code==='Space')jumpQueued=true;
   if(e.code==='Escape')openDialog(welcome);
@@ -209,7 +230,7 @@ addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',()=>{ke
 document.addEventListener('visibilitychange',()=>{keys.clear();stick.x=stick.y=0;if(document.hidden&&audio.context)audio.context.suspend().catch(()=>{});else if(started&&!paused())audio.start();});
 
 let lookPointer=null,lookStart=null,lookTravel=0,jumpQueued=false;
-canvas.addEventListener('pointerdown',e=>{if(paused())return;if(e.pointerType==='touch'&&e.clientX<innerWidth*.32)return;lookPointer=e.pointerId;lookStart={x:e.clientX,y:e.clientY};lookTravel=0;canvas.setPointerCapture(e.pointerId);});
+canvas.addEventListener('pointerdown',e=>{if(paused())return;if(opening.focus){toggleControls();return;}if(e.pointerType==='touch'&&e.clientX<innerWidth*.32)return;lookPointer=e.pointerId;lookStart={x:e.clientX,y:e.clientY};lookTravel=0;canvas.setPointerCapture(e.pointerId);});
 canvas.addEventListener('pointermove',e=>{
   if(paused())return;
   let dx=0,dy=0;
@@ -282,7 +303,7 @@ function frame(){
     // Bound movement substeps prevent thin rail/door tunneling after slow frames.
     // The jump impulse belongs to one substep only, or it is applied N times.
     const count=Math.max(1,Math.ceil(dt/(1/120))),wasAirborne=!body.grounded;
-    for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders,{jump:jumpQueued&&i===0});
+    for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders,{jump:jumpQueued&&!opening.focus&&i===0});
     if(jumpQueued&&body.velocity.y>.5)audio.jump();
     jumpQueued=false;
     if(wasAirborne&&body.grounded&&body.landingImpact>.05)audio.land(body.landingImpact);
@@ -295,8 +316,10 @@ function frame(){
     const p=topPoint(...CAFETERIA_START);camera.position.copy(topPoint(0,1.85,10));camera.lookAt(topPoint(0,3.2,39));world.update(dt,p);population.update(dt,body,false,cast.selected);
   }else{world.update(dt,body.position);cast?.update(0,body,started);}
   audio.setStoryPaused?.(document.hidden||(opening?.watching&&paused()));
+  updateInterface(time);
   if(time-lastHUD>.25){updateHUD();lastHUD=time;}
   world.surface.renderFeed(renderer,time);
+  if(world.special&&!opening?.focus)world.underground.waterSurface.update(renderer,scene,camera,time);
   if(cleanWasRunning!==world.surface.cleaning){if(world.surface.cleaning)audio.scrubStart();else{audio.scrubStop();notify('Camera lens clean. The outside view is clear on the cafeteria screens.');}}cleanWasRunning=world.surface.cleaning;
   if(outsideTarget&&lastScreen!==world.screens[0]){for(const screen of world.screens){screen.material.map=outsideTarget.texture;screen.material.color.setHex(0xffffff);screen.material.needsUpdate=true;}lastScreen=world.screens[0];}
   torch.position.copy(camera.position);camera.getWorldDirection(direction);torch.target.position.copy(camera.position).addScaledVector(direction,15);torch.visible=torchOn&&started;
