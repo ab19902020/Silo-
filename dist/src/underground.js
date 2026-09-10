@@ -1,6 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit, random, addSign, railing, fixture } from './kit.js';
-import { wallGauge } from './environment-details.js';
+import { buildMineNetwork } from './mine-network.js';
 import { VOID, voidLedgeGaps, buildVoidAccess } from './void-access.js';
 import { voidWaterGeometry } from './void-surfaces.js';
 import { projectMaterial } from './materials.js';
@@ -63,36 +63,34 @@ export function buildUnderground(m) {
   const access=buildVoidAccess(m);root.add(access.root);solids.push(...access.solids);walkways.push(...access.walkways);interactions.push(...access.interactions);
   // Mine workings are above the void, outside its upper rim. They are a
   // separate, inferred network reached by the Mechanical maintenance hatch.
-  const mines=new THREE.Group();mines.position.set(105,48,0);root.add(mines);const mk=new Kit(m);
-  const mineFloor={x:105,z:0,w:7.8,d:64,y:48};walkways.push({kind:'box',...mineFloor});
-  mk.box('rock',0,-.3,0,8,.6,64);mk.box('rock',0,4.8,0,9,1.2,64);mk.box('rock',-4.5,2,0,1.3,5.4,64);mk.box('rock',4.5,2,0,1.3,5.4,64);
-  solids.push({x:100.5,z:0,w:1.3,d:64,y0:47.5,y1:54},{x:109.5,z:0,w:1.3,d:64,y0:47.5,y1:54});
-  for(let z=-30;z<=30;z+=4){for(const x of [-3.65,3.65])mk.box('wood',x,2,z,.4,4.2,.4);mk.box('wood',0,4,z,7.7,.5,.5);fixture(mk,0,3.9,z,1,false);for(let x=-1.5;x<=1.5;x+=3)mk.box('metal',x,.16,z, .09,.14,4.15);}
-  for(let z=-31;z<32;z+=.8)mk.box('wood',0,.05,z,3.8,.1,.17);
-  for(let z=-30;z<=30;z+=4){
-    for(const x of [-3.65,3.65]){
-      for(const y of [.25,3.8]){mk.box('darkMetal',x,y,z-.225,.46,.26,.035);for(const dx of [-.14,.14])mk.cylinder('brass',x+dx,y,z-.251,.023,.037,Math.PI/2);}
-      mk.box('darkMetal',x,3.31,z,.13,.16,.18);
-    }
-    for(const x of [-1.5,1.5])for(const dz of [-.7,0,.7])mk.box('rust',x,.195,z+dz,.22,.025,.10);
-  }
-  for(const x of [-3.72,-3.61,-3.5])mk.cylinder('black',x,3.27,0,.025,62,Math.PI/2);
-  for(const z of [-8,7,21]){
-    mk.box('rust',0,1.1,z,2.2,1.6,3);mk.box('black',0,1.94,z,1.9,.05,2.7);for(const x of [-1.1,1.1])for(const dz of [-1.05,1.05])mk.cylinder('darkMetal',x,.44,z+dz,.38,.18,0,0,Math.PI/2);
-    for(let i=0;i<12;i++)mk.sphere('rock',(rng()-.5)*1.7,2+rng()*.2,z+(rng()-.5)*2.5,.25+rng()*.25,.3,.3);
-    solids.push({x:105,z,w:2.4,d:3.1,y0:48,y1:50.4});
-  }
-  for(let i=0;i<60;i++){const side=i%2?1:-1;mk.sphere('rock',side*(3.2+rng()*.6),rng()*3.8,-30+rng()*60,.5+rng()*.5,.5,.7);}
-  mk.box('rock',0,2.1,32,8,4.8,1);mk.box('rock',0,2.1,-32,8,4.8,1);solids.push({x:105,z:32,w:8,d:1,y0:48,y1:54},{x:105,z:-32,w:8,d:1,y0:48,y1:54});
-  mk.cylinder('yellow',2.5,1.3,29,.4,2,Math.PI/2);mk.cylinder('metal',2.5,1.3,30.3,.13,1.2,Math.PI/2);
-  for(let z=28.1;z<30;z+=.2)mk.torus('metal',2.5,1.3,z,.405,.025);
-  wallGauge(mk,2.5,1.95,28.5,.15);for(let j=0;j<7;j++){const z=27.6+j*.4;mk.torus('black',2.6,.12,z,.22,.028,Math.PI/2);}
-  addSign(mines,'MINING · ORE WORKING 18',[0,3.2,-28],5,.7);addSign(mines,'MECHANICAL ↑',[0,2.5,-31.4],4,.65);
-  interactions.push({position:[105,49,-29],label:'Return to Mechanical',destination:144},{position:[107,49,28],label:'Inspect the rock drill',action:'mines'});
-  mines.add(mk.group());
-  const mineLights=[];for(const z of [-26,-10,6,22]){const light=new THREE.PointLight(0xe1c392,72,20,1.8);light.position.set(0,3.7,z);mines.add(light);mineLights.push(light);}
+  const mineNetwork=buildMineNetwork(m),mines=mineNetwork.root;
+  mines.position.set(105,48,0);root.add(mines);
+  const shiftBox=b=>({...b,local:false,x:b.x+105,y0:b.y0+48,y1:b.y1+48});
+  const mineSpace={...mineNetwork,
+    solids:mineNetwork.solids.map(shiftBox),
+    walkways:mineNetwork.walkways.map(f=>({...f,local:false,x:f.x+105,y:f.y+48})),
+    interactions:mineNetwork.interactions.map(i=>({...i,position:[i.position[0]+105,i.position[1]+48,i.position[2]]})),
+  };
+  // This panel joins the new deep face to the independently loaded pressure gallery.
+  const hatch=new Kit(m);hatch.bevel('darkMetal',-2.5,1.25,54.75,1.4,2.5,.12);
+  hatch.box('red',-3.04,1.25,54.65,.08,2.3,.05);hatch.box('brass',-2.02,1.25,54.58,.08,.24,.09);
+  mines.add(hatch.group());addSign(mines,'18 / SERVICE',[-2.5,2.95,54.68],1.7,.35,Math.PI);
+  mineSpace.interactions.push({position:[102.5,49.3,54.1],label:'Open the red-line service hatch',destination:'pipe-gallery'});
+  const mineLights=mineNetwork.lights,mineLocal=new THREE.Vector3();
+  // Fixed fixtures with a bounded set of active lights. Hysteresis keeps lamps
+  // stable near chamber boundaries; inactive fittings retain emissive lenses.
+  let lampTick=0;
+  mineNetwork.update(0,0,null,'balanced');
+  const updateMine=(dt,time,position,quality)=>{
+    mineLocal.copy(position).sub(mines.position);mineNetwork.update(dt,time,mineLocal,quality);
+    lampTick-=dt;if(lampTick>0)return;lampTick=.3;
+    const budget=quality==='low'?4:quality==='high'?10:6;
+    const score=l=>l.position.distanceToSquared(mineLocal)*(l.visible?.7:1);
+    const ranked=mineLights.slice().sort((a,b)=>score(a)-score(b));
+    for(let i=0;i<ranked.length;i++)ranked[i].visible=i<budget;
+  };
   const tunnel=access.tunnel;root.add(k.group());
   const lights=[new THREE.PointLight(0xb8d2c7,550,100,1.7),new THREE.PointLight(0xd8a65f,450,100,1.6)];lights[0].position.set(28,42,16);lights[1].position.set(-28,24,-10);root.add(...lights);
   const refreshMaterials=()=>{for(const key of ['map','normalMap','roughnessMap'])rockMat[key]=m.rock[key];rockMat.normalScale.set(.65,.65);rockMat.color.setHex(0x969d98);rockMat.roughness=.92;rockMat.envMapIntensity=.45;projectMaterial(rockMat,2.8);};
-  return {root,solids,interactions,walkways,water,waterSurface,refreshMaterials,mines,tunnel,lights,mineLights,entry,camp:access.camp,ladders:access.ladders,access};
+  return {root,solids,interactions,walkways,water,waterSurface,refreshMaterials,mines,mineSpace,updateMine,tunnel,lights,mineLights,entry,camp:access.camp,ladders:access.ladders,access};
 }

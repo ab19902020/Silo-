@@ -49,11 +49,14 @@ export function projectMaterial(material,metres=1.8){
         float wall=1.-smoothstep(.45,.85,normalize(siloSurfaceNormal).y);
         float foot=exp(-mod(siloSurfacePoint.y+1000.,10.)*2.2);
         float damp=.5+.5*sin(siloSurfacePoint.x*.31+siloSurfacePoint.z*.47+sin(siloSurfacePoint.y*.35));
-        diffuseColor.rgb*=1.-siloPatina*wall*(foot*.55+damp*.25);
+        float deep=1.-smoothstep(400.,1050.,siloSurfacePoint.y);
+        vec3 ageTint=mix(vec3(.92,.98,1.),vec3(1.,.91,.79),deep);
+        float drips=pow(.5+.5*sin(siloSurfacePoint.x*3.7+siloSurfacePoint.z*4.1),18.)*smoothstep(3.,8.,mod(siloSurfacePoint.y,10.));
+        diffuseColor.rgb*=mix(vec3(1.),ageTint,wall*.7)*(1.-siloPatina*wall*(foot*.55+damp*.25+drips*.3));
       `);
     }
   };
-  material.customProgramCacheKey=()=>`silo-metre-surface-v3:${metres}:${material.userData.patina||0}:${!!material.userData.bareSteel}:${!!material.userData.voidStrata}`;
+  material.customProgramCacheKey=()=>`silo-metre-surface-v4:${metres}:${material.userData.patina||0}:${!!material.userData.bareSteel}:${!!material.userData.voidStrata}`;
   material.needsUpdate=true;return material;
 }
 

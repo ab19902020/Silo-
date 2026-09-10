@@ -13,6 +13,7 @@ export const levelAt = y => Math.max(1, Math.min(144, Math.round((levelY(1) - y)
 export const zoneFor = n => n < 50 ? 'UP TOP' : n <= 100 ? 'THE MIDS' : 'DOWN DEEP';
 
 export const SOURCES = [
+  {title:'Mystery adventure · reconstruction notes',url:'./docs/mystery-expansion.html',note:'Relic placement, service gallery, escape, Silo 0 and exterior coordinates are game adaptations; no exact surveyed site map is claimed.'},
   {title:'Apple TV · Silo cast and crew',url:'https://www.apple.com/tv-pr/originals/silo/cast-crew/',note:'Character names and cast identification for the added Silo 18 ensemble.'},
   {title:'Apple TV · episode production stills',url:'https://www.apple.com/tv-pr/originals/silo/episodes-images/',note:'Season 1 and 2 costume and character references; the new game models are original approximations.'},
   {title:'Charlotte Morris · Silo costume design',url:'https://charlotte-morris.com/portfolio/silo-copy-1',note:'Workwear, repaired clothing, fabrics and the visual differences between the silo’s social levels.'},

@@ -14,10 +14,9 @@
   <header id="hud">
     <button class="brand" id="home" aria-label="Pause exploration"><span class="brand-ring">18</span><span>SILO <b>18</b><small id="zone">UP TOP</small></span></button>
     <div class="location"><span class="eyebrow" id="levelLabel">LEVEL 001</span><strong id="locationName">The central staircase</strong><small id="depthLabel">0 m below the upper landing</small></div>
-    <nav aria-label="Exploration controls"><button id="directoryButton" class="nav-button"><span>☷</span> Directory</button><button id="characterButton" class="nav-button" aria-label="Choose character">Character</button><button id="settingsButton" class="icon-button" aria-label="Settings">⚙</button></nav>
+    <nav aria-label="Exploration controls"><button id="directoryButton" class="nav-button"><span>☷</span> Directory</button><button id="characterButton" class="nav-button" aria-label="Choose character">Character</button><button id="journalButton" class="nav-button">Journal</button><button id="settingsButton" class="icon-button" aria-label="Settings">⚙</button></nav>
   </header>
-  <div id="crosshair" aria-hidden="true"></div>
-  <button id="interaction" hidden><kbd>E</kbd><span>Open door</span></button>
+  <button id="interaction" hidden><kbd>E</kbd><span id="interactionLabel">Open door</span><small id="interactionHint"></small></button>
   <aside id="levelRail" aria-hidden="true"><span>001</span><div><i id="depthMarker"></i></div><span>144</span></aside>
   <div class="bottom-hud" id="bottomHud"><div><span class="mode-dot"></span><span id="modeLabel">ON FOOT</span></div><p id="controlHint"><kbd>W A S D</kbd> Move <span>·</span> Drag to look <span>·</span> <kbd>E</kbd> Use <span>·</span> <kbd>M</kbd> Directory</p><button id="viewButton" aria-label="Switch first or third person">View: third person</button><button id="torchButton" aria-label="Toggle torch">☀ <span>Torch</span></button></div>
   <div id="touchControls"><div id="joystick" aria-label="Move"><i></i></div><div class="touch-actions"><button id="runButton" aria-label="Toggle running">Run</button><button id="jumpButton" aria-label="Jump">Jump</button><button id="touchUse" aria-label="Interact">Use</button></div><span id="lookHint">Drag the right side to look</span></div>
@@ -29,11 +28,11 @@
   </aside>
 
   <div id="cinemaControls"><button id="focusScreenButton" hidden>Back to cafeteria</button><button id="skipOpening" hidden>Skip</button></div>
-  <dialog id="conversation" class="panel conversation-panel" aria-labelledby="speakerName"><div class="panel-head"><div><span id="speakerRole" class="eyebrow accent"></span><h2 id="speakerName"></h2></div><button class="close" data-close aria-label="Leave conversation">×</button></div><p id="dialogueLine" aria-live="polite"></p><div id="dialogueChoices"></div><button id="leaveConversation" class="secondary wide">Leave conversation</button></dialog>
+  <dialog id="conversation" class="panel conversation-panel" aria-labelledby="speakerName"><div class="panel-head"><div><span id="speakerRole" class="eyebrow accent"></span><h2 id="speakerName"></h2></div><button class="close" data-close aria-label="Leave conversation">×</button></div><p id="dialogueLine" aria-live="polite"></p><div id="dialogueChoices"></div><p id="dialogueHint" class="help"><kbd>1</kbd>–<kbd>4</kbd> ask <span>·</span> <kbd>E</kbd> or <kbd>Esc</kbd> step away</p><button id="leaveConversation" class="secondary wide">Step away</button></dialog>
 
   <dialog id="welcome" class="welcome">
     <div class="welcome-top"><span class="eyebrow">AN UNDERGROUND WORLD</span><span class="edition">CHAPTER ONE · THE CLEANING</span></div>
-    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>A book waits on a cafeteria table.<br>Today, Holston is going outside.</p><div class="welcome-actions"><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="exploreButton" class="secondary">Explore the silo <span>↗</span></button><button id="welcomeDirectory" class="secondary">Open the directory</button><button id="replayOpening" class="secondary">Replay cafeteria opening</button></div><p id="modeNote" class="help">New game runs the story: the cleaning, then the relics, then the way out. Explore opens every door and every character.</p><div class="welcome-meta"><span>20 PLAYABLE CHARACTERS</span><span>TOUCH & KEYBOARD</span><span>A LIVING SILO</span></div></div>
+    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>A book waits on a cafeteria table.<br>Today, Holston is going outside.</p><div class="welcome-actions"><button id="resumeButton" class="primary" hidden>Continue game</button><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="exploreButton" class="secondary">Explore the silo <span>↗</span></button><button id="welcomeDirectory" class="secondary">Open the directory</button><button id="replayOpening" class="secondary">Replay cafeteria opening</button></div><p id="modeNote" class="help">New game runs the story: the cleaning, then the relics, then the way out. Explore opens every door and every character.</p><div class="welcome-meta"><span>20 PLAYABLE CHARACTERS</span><span>TOUCH & KEYBOARD</span><span>A LIVING SILO</span></div></div>
     <footer><span>A reconstruction of the television world.</span><button id="aboutButton">Research & accuracy</button></footer>
   </dialog>
 
@@ -60,13 +59,23 @@
 
   <dialog id="satchel" class="panel compact">
     <div class="panel-head"><div><span class="eyebrow accent" id="satchelCount">NOTHING YET</span><h2>What you are carrying</h2></div><button class="close" data-close aria-label="Close">×</button></div>
-    <div class="about-content" id="satchelList"></div>
+    <p id="satchelObjective" class="help"></p><div class="about-content" id="satchelList"></div>
   </dialog>
 
   <div id="crosshair" hidden aria-hidden="true"></div>
-  <button id="fireButton" hidden>FIRE</button>
+  <button id="fireButton" hidden>FIRE</button><button id="reloadButton" hidden>RELOAD</button>
   <div id="weaponHud" hidden aria-live="polite"><span id="weaponName">—</span><b id="weaponAmmo">0 / 0</b></div>
 
+  <dialog id="georgeTerminal" class="panel terminal-panel" aria-labelledby="terminalHeading">
+    <div class="panel-head"><div><span class="eyebrow">WILKINS / PERSONAL WORKSTATION</span><h2 id="terminalHeading">External storage</h2></div><button class="close" data-close aria-label="Leave computer">×</button></div>
+    <div class="terminal-content">
+      <p id="terminalStatus" role="status"></p><div class="terminal-controls"><button id="terminalInsert">Insert Hard Drive 18</button><button id="terminalBoot">Boot device</button><button id="terminalEject">Eject drive</button><button id="terminalBack">Back</button></div>
+      <p id="terminalPath"></p><form id="terminalSearch"><label for="terminalQuery">Search storage</label><div class="terminal-search-row"><input id="terminalQuery" maxlength="80" autocomplete="off" spellcheck="false"><button type="submit">Search</button></div></form>
+      <div id="terminalRows"></div><section id="terminalBlueprint" hidden><h3 id="blueprintTitle"></h3><p id="blueprintProvenance"></p>
+      <svg viewBox="0 0 640 180" role="img" aria-label="Service pipe: supply passes through isolation wheel, split collar and pressure telltale" class="pipe-schematic"><path d="M30 100 H610 M145 100 V60 M495 100 V60"/><circle cx="145" cy="45" r="20"/><path d="M310 75 V125 M334 75 V125 M310 75 H334 M310 125 H334"/><rect x="477" y="24" width="36" height="36"/><path d="M495 50 L505 32"/><text x="28" y="156">SUPPLY</text><text x="100" y="156">ISOLATE</text><text x="288" y="156">COLLAR</text><text x="455" y="156">PRESSURE</text></svg>
+      <ol id="blueprintRoute"></ol></section>
+    </div>
+  </dialog>
   <dialog id="settings" class="panel compact">
     <div class="panel-head"><div><span class="eyebrow accent">EXPLORATION</span><h2>Settings</h2></div><button class="close" data-close aria-label="Close settings">×</button></div>
     <div class="settings-content"><label>Brightness <output id="brightnessValue">100%</output><input id="brightness" type="range" min="65" max="180" value="100"></label><label>Look sensitivity <output id="sensitivityValue">100%</output><input id="sensitivity" type="range" min="35" max="180" value="100"></label><label>Rendering detail<select id="quality"><option value="balanced">Balanced</option><option value="high">High</option><option value="low">Battery saver</option></select></label><label>Outside sky<select id="timeOfDay"><option value="day">Day</option><option value="night">Night · stars</option><option value="cycle">Day / night cycle</option></select></label><label>Music <output id="musicValue">65%</output><input id="music" type="range" min="0" max="100" value="65"></label><label class="toggle">Sound <input id="sound" type="checkbox" checked></label><label class="toggle">Reduce camera motion <input id="reduceMotion" type="checkbox"></label><button id="fullscreen" class="secondary wide">Enter fullscreen</button><button id="resetPosition" class="secondary wide">Return to nearest landing</button><p class="help">Move: WASD / arrow keys. Look: drag or click to capture the mouse. E: interact. F: torch. V: change view. C: character. H: show controls. Shift: run. M: directory. Esc: pause.<br><br>On a phone, use the left stick to walk and drag the right side to look. Tap ☰ for the menu. Controls fade when idle. During the cleaning, tap the picture to show playback controls.</p></div>

@@ -1,3 +1,18 @@
+# Current residents, conversation and cleaning work — 9 September 2026
+
+The head is one sculpted surface instead of two dozen intersecting primitives,
+which is what was tearing the faces apart. Residents walk routines on every
+floor. Talking is a live panel over a running silo with the speaker turned to
+face you, not a modal over a paused one. The cleaning is staged where the
+sensor can see it, with a helmet that reads as a helmet. The book is on a front
+table and does not force the camera into the screen. The crater has a rim and
+the tree is grown. See [the notes](docs/residents-and-the-cleaning.md).
+
+## Verify
+
+`npm test` — 93 passing, three cases added and one rewritten.
+`npm run validate` for the module graph.
+
 # Story mode — 9 September 2026
 
 **Note for Astra.** The game now has two modes and a progression. Nothing that

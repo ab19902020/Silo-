@@ -53,7 +53,7 @@ test('the opening starts at an accessible book, plays once, releases the directo
   const world=new SiloWorld(new THREE.Scene());world.setLevel(1);const opening=new CafeteriaOpening(world),start=topPoint(...CAFETERIA_START),book=topPoint(...BOOK_POSITION),eye=start.clone().add(new THREE.Vector3(0,1.6,0));world.update(0,start);
   assert.ok(!world.colliders.contains(start.x,start.z,.3,start.y+.02,start.y+1.8));assert.ok(eye.distanceTo(book)<3);assert.equal(world.nearestInteraction(eye,book.clone().sub(eye).normalize()).action,'opening-book');
   assert.equal(opening.openBook(),false);assert.equal(opening.takeBook(),true);assert.equal(opening.takeBook(),false);
-  const phases=new Set();let previous=cleaningSample(0).position,reach=0,blanks=0,covered=false;
+  const phases=new Set();let previous=cleaningSample(0).position,reach=Infinity,blanks=0,covered=false;
   const camera=world.surface.camera,corner=new THREE.Vector3();
   for(let i=0;i<OPENING_DURATION*30;i++){
     opening.update(1/30);const s=cleaningSample(opening.time);phases.add(s.phase);assert.ok(s.position.distanceTo(previous)<.08,'Holston teleported');assert.ok(Math.abs(s.position.y-surfaceY(s.position.x,s.position.z))<1e-6,'Holston left the ground');previous=s.position;
@@ -63,7 +63,7 @@ test('the opening starts at an accessible book, plays once, releases the directo
       // lens close enough to fill the whole frame — that momentary blackout on
       // the cafeteria screen is the only thing that reads as contact from
       // inside the silo.
-      reach=Math.max(reach,opening.cleaners[0].motion.bones.HandR.getWorldPosition(new THREE.Vector3()).distanceTo(world.surface.cleaningPoint));
+      reach=Math.min(reach,opening.cleaners[0].motion.bones.HandR.getWorldPosition(new THREE.Vector3()).distanceTo(world.surface.cleaningPoint));
       const cloth=opening.cleaners[0].cloth;cloth.updateWorldMatrix(true,false);camera.updateMatrixWorld(true);
       let left=1,right=-1,down=1,up=-1,behind=false;
       for(const x of [-.5,.5])for(const y of [-.5,.5])for(const z of [-.5,.5]){
@@ -75,7 +75,9 @@ test('the opening starts at an accessible book, plays once, releases the directo
       if(blanks)covered=true;
     }
   }
-  assert.ok(reach<.62,`the wiping hand strayed ${reach.toFixed(2)} m from the sensor`);
+  // He steps in to the glass and back out again, so what matters is that the
+  // hand reaches it, not that it is never further away than arm's length.
+  assert.ok(reach<.42,`the wiping hand never came within ${reach.toFixed(2)} m of the sensor`);
   assert.ok(covered,'the rag never covers the lens, so the cafeteria screen never blanks during the clean');
   assert.ok(blanks>12&&blanks<150,`the screen is blanked on ${blanks} of 240 frames; it should flick out on each pass, not stay dark`);
   assert.deepEqual([...phases],['emerge','approach','clean','turn','walk','helmet','crawl','rest']);assert.equal(opening.state,'read-book');assert.equal(opening.surface.cleanliness,1);assert.equal(opening.surface.storyActive,false);assert.ok(opening.helmet.visible);assert.equal(opening.openBook(),true);assert.equal(opening.state,'explore');
@@ -131,4 +133,49 @@ test('generator and mine workers have supported routes and fixed practical light
     for(const actor of population.actors.values())assert.ok(!world.colliders.contains(actor.root.position.x,actor.root.position.z,.22,actor.root.position.y+.04,actor.root.position.y+1.5));
     world.update(.03,body.position.clone().add(new THREE.Vector3(1,0,1)));assert.ok(lamps.every((l,i)=>l.position.equals(places[i])));
   }
+});
+
+// Residents used to stand on one spot for the whole game, apart from twelve
+// porters orbiting the gallery for ever. A routine is a ring of stops with
+// something to do at each one, so the floor has to actually change.
+test('residents on a numbered level walk a routine rather than standing still',()=>{
+  const world=new SiloWorld(new THREE.Scene()),population=new Population(world.scene,world),body=new CharacterBody();
+  for(const level of [37,50,112]){
+    const d=world.destination(level);world.setLevel(level);body.teleport(...d.position.toArray());world.update(0,body.position);
+    population.update(.1,body);
+    const start=new Map([...population.actors].map(([id,a])=>[id,a.root.position.clone()]));
+    for(let i=0;i<1200;i++)population.update(1/30,body);
+    const together=[...population.actors].filter(([id])=>start.has(id));
+    const moved=together.filter(([id,a])=>a.root.position.distanceTo(start.get(id))>2.5);
+    assert.ok(moved.length>=6,`level ${level}: only ${moved.length} of ${together.length} residents went anywhere`);
+    // and none of them walked into the furniture or off the gallery on the way
+    for(const a of population.actors.values()){
+      const p=a.root.position;
+      assert.ok(p.toArray().every(Number.isFinite),`level ${level}: a resident left the world`);
+      assert.ok(!world.colliders.contains(p.x,p.z,.22,p.y+.05,p.y+1.5),`level ${level}: a resident is standing inside something`);
+    }
+  }
+});
+
+// Talking used to be a modal panel over a paused silo, and whoever you had
+// addressed carried on walking away up the gallery. Being talked to has to
+// stop them and turn them round, or there is no way to tell who heard you.
+test('the resident you are talking to stops and turns to face you',()=>{
+  const world=new SiloWorld(new THREE.Scene()),population=new Population(world.scene,world),body=new CharacterBody();
+  const d=world.destination(50);world.setLevel(50);body.teleport(...d.position.toArray());world.update(0,body.position);
+  population.update(.1,body);
+  for(let i=0;i<200;i++)population.update(1/30,body);
+  const near=[...population.actors].map(([id,a])=>[id,a]).sort((a,b)=>a[1].root.position.distanceTo(body.position)-b[1].root.position.distanceTo(body.position))[0];
+  assert.ok(near,'nobody to talk to');
+  const [id,actor]=near;
+  const prompt=world.residentInteractions.find(i=>i.actor===id);
+  assert.ok(prompt&&prompt.hint,'the prompt has to say who they are as well as their name');
+  population.talkingTo=id;
+  const before=actor.root.position.clone();
+  for(let i=0;i<120;i++)population.update(1/30,body);
+  assert.ok(actor.root.position.distanceTo(before)<.35,'they walked off mid-conversation');
+  const want=Math.atan2(body.position.x-actor.root.position.x,body.position.z-actor.root.position.z);
+  const off=Math.abs(Math.atan2(Math.sin(want-actor.root.rotation.y),Math.cos(want-actor.root.rotation.y)));
+  assert.ok(off<.25,`they are facing ${(off*180/Math.PI).toFixed(0)}° away from you`);
+  population.talkingTo=null;
 });

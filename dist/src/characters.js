@@ -63,7 +63,12 @@ export class CharacterCast{
       a.root.updateMatrixWorld(true);a.feed.visible=selected&&this.world.outside&&started;
       if(a.feed.visible){a.feed.position.copy(a.root.position);a.feed.quaternion.copy(a.root.quaternion);for(let i=0;i<a.bones.length;i++){const b=a.bones[i],f=a.feedBones[i];f.position.copy(b.position);f.quaternion.copy(b.quaternion);f.scale.copy(b.scale);}a.feed.updateMatrixWorld(true);}
     }
-    if(this.relic){this.relic.visible=!this.world.special&&this.world.activeLevel===144;if(this.relic.visible)this.world.actorInteractions.push({position:this.relic.position.clone(),label:'Inspect the hard-drive relic',action:'hard-drive'});}
+    if(this.relic){
+      const story=this.world.story;
+      if(story?.story){this.relic.position.set(68.5,12.92,6.6);this.relic.visible=this.world.special==='excavator'&&story.visible('harddrive');}
+      else {this.relic.position.copy(roomPoint(144,1,-5.28,5.48));this.relic.position.y+=.863;this.relic.visible=!this.world.special&&this.world.activeLevel===144;}
+      if(this.relic.visible)this.world.actorInteractions.push({position:this.relic.position.clone(),label:story?.story?'Take Hard Drive 18':'Inspect the hard-drive relic',action:'hard-drive'});
+    }
   }
   setCamera(camera,body,yaw,pitch,bob=0){
     camera.rotation.set(pitch,yaw,0,'YXZ');const eye=body.position.clone().add(new THREE.Vector3(0,body.eyeHeight+bob,0));

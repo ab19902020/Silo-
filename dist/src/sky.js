@@ -11,7 +11,10 @@ export class ExteriorSky{
       float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       void main(){
         vec3 d=normalize(vDirection);float elevation=max(0.,d.y);
-        vec3 daylight=mix(vec3(.39,.45,.46),vec3(.18,.29,.36),smoothstep(0.,.85,elevation));
+        // A band of dust sits on the horizon and the crest dissolves into it.
+        // A clean gradient straight to blue drew a hard line along every ridge.
+        vec3 daylight=mix(vec3(.39,.45,.46),vec3(.16,.26,.34),smoothstep(0.,.85,elevation));
+        daylight=mix(vec3(.565,.605,.615),daylight,smoothstep(0.,.20,elevation));
         vec3 night=mix(vec3(.021,.031,.045),vec3(.002,.006,.018),smoothstep(0.,.65,elevation));
         vec3 color=mix(night,daylight,day);
         vec2 uv=vec2(atan(d.z,d.x)/6.2831853+.5,asin(d.y)/3.14159265+.5),grid=uv*vec2(900.,450.);

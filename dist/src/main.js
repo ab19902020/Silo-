@@ -15,12 +15,16 @@ import { Story, COLLECTABLES, RELICS } from './story.js';
 import { Firearms } from './firearms.js';
 import { WEAPONS } from './weapons.js';
 import { updateRangeTargets } from './gun-range.js';
+import { GeorgeTerminal } from './george-terminal.js';
+import { GEORGE_TERMINAL_POINT } from './mystery-spaces.js';
 import { StoryProps, Drone } from './relics.js';
 
-const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel');
-const dialogs=[welcome,directory,settings,about,characters,relic,conversation,satchel],coarse=matchMedia('(pointer:coarse)').matches;
+const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel'),terminalDialog=$('georgeTerminal');
+const dialogs=[welcome,directory,settings,about,characters,relic,conversation,satchel,terminalDialog],coarse=matchMedia('(pointer:coarse)').matches;
 let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
-let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null;
+let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null,talking=null;
+let terminal=new GeorgeTerminal(),workAction=null;
+const pausingDialogs=dialogs.filter(d=>d!==conversation);
 let story=null,props=null,drone=null,wasOutside=false,lastChapter=null;
 let yaw=Math.PI/2,pitch=0,lookSensitivity=1,running=false,torchOn=false,quality='balanced';
 const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3}),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,2300),audio=new SiloAudio();
@@ -31,8 +35,8 @@ const torch=new THREE.SpotLight(0xffe7b4,65,40,.5,.7,1.6);torch.visible=false;sc
 const saved=(()=>{try{return JSON.parse(localStorage.getItem('silo18-settings')||'{}');}catch{return {};}})();
 const openingComplete=(()=>{try{return localStorage.getItem('silo18-opening-complete')==='1';}catch{return false;}})();
 const savedStory=(()=>{try{return JSON.parse(localStorage.getItem('silo18-story')||'null');}catch{return null;}})();
-function saveStory(){try{localStorage.setItem('silo18-story',JSON.stringify(story.save()));}catch{}}
-const paused=()=>dialogs.some(d=>d.open)||!started||traveling;
+function saveStory(){if(!story?.story)return;try{localStorage.setItem('silo18-story',JSON.stringify({...story.save(),terminal:terminal.save(),checkpoint:{level:world.activeLevel,special:world.special,position:body.position.toArray(),yaw}}));}catch{}}
+const paused=()=>pausingDialogs.some(d=>d.open)||(conversation.open&&!talking)||!started||traveling;
 function notify(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4600);}
 function revealControls(){touchUntil=performance.now()+3500;}
 function toggleControls(){hudOpen=!hudOpen;document.body.classList.toggle('hud-open',hudOpen);$('controlsButton').setAttribute('aria-expanded',String(hudOpen));revealControls();}
@@ -43,20 +47,70 @@ function updateInterface(time){
   $('controlsButton').hidden=!started||paused();
   document.body.classList.toggle('screen-focused',!!opening?.focus);
 }
-function startConversation(person){
-  const text=person===ALGORITHM?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name});$('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;$('dialogueChoices').replaceChildren();
-  for(const topic of text.topics){const b=document.createElement('button');b.textContent=topic.label;b.addEventListener('click',()=>{$('dialogueLine').textContent=topic.reply;for(const other of $('dialogueChoices').children)other.setAttribute('aria-pressed',String(other===b));});$('dialogueChoices').append(b);}
-  audio.click();openDialog(conversation);
+function askTopic(button){
+  if(!button)return;
+  $('dialogueLine').textContent=button.dataset.reply;
+  for(const other of $('dialogueChoices').children)other.setAttribute('aria-pressed',String(other===button));
+  audio.click();
+}
+function startConversation(person,actor=null){
+  if(person.id==='billings'&&story?.story){billingsConversation();return;}
+  const text=person===ALGORITHM?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name});
+  $('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;$('dialogueChoices').replaceChildren();
+  text.topics.forEach((topic,i)=>{
+    const b=document.createElement('button');b.dataset.reply=topic.reply;b.setAttribute('aria-pressed','false');
+    const key=document.createElement('kbd');key.textContent=String(i+1);
+    b.append(key,document.createTextNode(topic.label));
+    b.addEventListener('click',()=>askTopic(b));$('dialogueChoices').append(b);
+  });
+  // The panel is shown, not modalled: the silo keeps running behind it, the
+  // person turns to face you and the camera settles on them while you talk.
+  hudOpen=false;document.body.classList.remove('hud-open');
+  for(const d of pausingDialogs)if(d.open)d.close();
+  talking={actor,name:text.name};population.talkingTo=actor;
+  if(!conversation.open)conversation.show();
+  document.body.classList.add('talking');audio.click();syncPause();
+}
+function endConversation(){
+  if(!talking)return;
+  talking=null;population.talkingTo=null;conversation.close();
+  document.body.classList.remove('talking');syncPause();if(started)canvas.focus();
+}
+function billingsConversation(){
+  $('speakerName').textContent='Officer Paul Billings';$('speakerRole').textContent='SHERIFF’S STATION';
+  $('dialogueLine').textContent=story.hasFlag('billings-helped')?'I have put my name against that weapon. Get your suit, and come back with something we can believe.':'There are rules about the things you have been carrying. Tell me why I should hear you out.';
+  const choices=$('dialogueChoices');choices.replaceChildren();
+  const add=(label,run)=>{const b=document.createElement('button');b.textContent=label;b.onclick=run;choices.append(b);};
+  if(story.has('georgia'))add('Place the Atlanta page on his desk',()=>{
+    $('dialogueLine').textContent='He unfolds the page carefully. “A city. Roads. People living under an open sky. Where did George find this?”';choices.replaceChildren();
+    add('Explain the concealed gas line',()=>{
+      if(!story.hasFlag('pipe-capped')){$('dialogueLine').textContent='“Then make certain it cannot be used. I will not leave everyone here defenceless on the strength of a picture.”';return;}
+      $('dialogueLine').textContent='You show him the pressure readings and the sealed line. Billings looks from the figures to the book, then toward the locked racks.';choices.replaceChildren();
+      add('Ask him for a chance to bring back the truth',()=>{const result=story.speakToBillings();$('dialogueLine').textContent=result.message;choices.replaceChildren();if(result.helped){if(!story.has('shotgun'))takeRelic('shotgun');else takeWeapon('armoryShotgun02');add('Keep the book and leave',()=>closeDialog(conversation));}syncStoryHud(true);});
+    });
+  });
+  else add('Ask what would convince him',()=>{$('dialogueLine').textContent='“Evidence. Something the screen did not give you.” A discarded returns slip on his desk bears Medical’s stamp: 062.';});
+  if(story.has('shotgun'))add('Ready the issued shotgun',()=>takeWeapon('armoryShotgun02'));
+  openDialog(conversation);
+}
+function renderTerminal(){
+  const v=terminal.view;$('terminalStatus').textContent=v.status;$('terminalPath').textContent=`DEVICE 18 : ${v.breadcrumb.join('/').replace(/^\/\//,'/')}`;
+  $('terminalInsert').disabled=v.driveInserted;$('terminalBoot').disabled=false;$('terminalEject').disabled=!v.driveInserted;$('terminalBack').disabled=!terminal.mounted||(!terminal.file&&terminal.path==='/');
+  $('terminalSearch').hidden=!v.canSearch;const body=$('terminalRows');body.replaceChildren();
+  for(const row of v.rows){const b=document.createElement('button');b.type='button';b.textContent=`${row.kind==='dir'?'DIR':'FILE'}   ${row.name}`;b.onclick=()=>{terminal.open(row.id);if(terminal.view.blueprint)story.terminalDiscovered();renderTerminal();syncStoryHud(true);saveStory();};body.append(b);}
+  if(!v.rows.length){const p=document.createElement('p');p.textContent=v.blueprint?'SCHEMATIC RECOVERED':v.body||v.status;body.append(p);}
+  const paper=$('terminalBlueprint');paper.hidden=!v.blueprint;
+  if(v.blueprint){$('blueprintTitle').textContent=v.blueprint.title;$('blueprintProvenance').textContent=v.blueprint.sourceStatus;$('blueprintRoute').replaceChildren();for(const text of [...v.blueprint.route.map(r=>r.clue),...v.blueprint.tools,...v.blueprint.warnings]){const li=document.createElement('li');li.textContent=text;$('blueprintRoute').append(li);}}
 }
 function syncPause(){document.body.classList.toggle('paused',paused());$('hud').classList.toggle('hidden',welcome.open);keys.clear();stick.x=stick.y=0;$('joystick').firstElementChild.style.transform='';if(paused()&&document.pointerLockElement)document.exitPointerLock();}
-function openDialog(d){hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');for(const x of dialogs)if(x.open)x.close();d.showModal();syncPause();}
+function openDialog(d){if(talking)endConversation();hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');for(const x of dialogs)if(x.open)x.close();d.showModal();syncPause();}
 function closeDialog(d){d.close();if(!started&&d!==welcome)welcome.showModal();syncPause();if(started)canvas.focus();}
 function saveSettings(){try{localStorage.setItem('silo18-settings',JSON.stringify({brightness:$('brightness').value,sensitivity:$('sensitivity').value,quality,timeOfDay:$('timeOfDay').value,sound:$('sound').checked,music:$('music').value,reduceMotion:$('reduceMotion').checked,character:cast?.selected||saved.character||'juliette',thirdPerson:cast?.thirdPerson??saved.thirdPerson??true}));}catch{}}
 function updateSettings(){
   if(renderer)renderer.toneMappingExposure=Number($('brightness').value)/100;
   $('brightnessValue').textContent=`${$('brightness').value}%`;$('sensitivityValue').textContent=`${$('sensitivity').value}%`;lookSensitivity=Number($('sensitivity').value)/100;
   $('musicValue').textContent=`${$('music').value}%`;audio.setEnabled($('sound').checked);audio.setMusicVolume(Number($('music').value)/100);quality=$('quality').value;if(world)world.surface.setTimeOfDay($('timeOfDay').value);
-  if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?2:quality==='low'?1:1.5));renderer.setSize(innerWidth,innerHeight,false);renderer.shadowMap.enabled=quality!=='low';if(world){world.quality=quality;world.keyLight.castShadow=quality!=='low';world.underground.waterSurface.setQuality(quality);world.surface.setQuality(quality);}if(rendering){rendering.enabled=true;rendering.setQuality(quality);rendering.resize();}}
+  if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?2:quality==='low'?1:1.5));renderer.setSize(innerWidth,innerHeight,false);renderer.shadowMap.enabled=quality!=='low';if(world){world.quality=quality;world.keyLight.castShadow=quality!=='low';world.underground.waterSurface.setQuality(quality);world.silo17.waterSurface.setQuality(quality);world.surface.setQuality(quality);}if(rendering){rendering.enabled=true;rendering.setQuality(quality);rendering.resize();}}
   saveSettings();
 }
 function syncCharacterUI(){
@@ -86,10 +140,10 @@ function showObjective(title,text,linger=7000){
 }
 function syncStoryHud(force=false){
   if(!story)return;
-  $('satchelButton').hidden=!story.story||story.held.size===0;
-  document.body.classList.toggle('armed',!!(story.armed&&drone?.active));
-  $('fireButton').hidden=!(story.armed&&drone?.active&&coarse);
-  $('crosshair').hidden=!(story.armed&&drone?.active);
+  $('satchelButton').hidden=!story.story;
+  document.body.classList.toggle('armed',!!firearms.held);
+  $('fireButton').hidden=!(firearms.held&&coarse);
+  $('crosshair').hidden=!firearms.held;
   if(!story.story)return;
   if(force||lastChapter!==story.chapter){
     lastChapter=story.chapter;
@@ -98,10 +152,11 @@ function syncStoryHud(force=false){
   }
 }
 function renderSatchel(){
+  $('satchelObjective').textContent=story.objective;
   const held=COLLECTABLES.filter(c=>story.has(c.id));
-  $('satchelCount').textContent=held.length?`${held.length} OF ${COLLECTABLES.length} · ${RELICS.filter(r=>story.has(r.id)).length} RELICS`:'NOTHING YET';
+  $('satchelCount').textContent=held.length?`${held.length} ITEMS · ${RELICS.filter(r=>story.has(r.id)).length} RELICS`:'NOTHING YET';
   const list=$('satchelList');list.replaceChildren();
-  for(const item of COLLECTABLES){
+  for(const item of held){
     const has=story.has(item.id),row=document.createElement('div');row.className='satchel-item';
     const tick=document.createElement('span');tick.className='tick';tick.textContent=has?'✓':'·';
     const copy=document.createElement('div');
@@ -119,17 +174,21 @@ function takeRelic(id){
   showObjective(item.name,item.blurb,9000);
   notify(story.story?story.objective:`${item.name} — in your satchel.`);
   if(id==='suit')notify('The suit is on. The airlock will let you through now.');
-  if(id==='shotgun')notify('Loaded. Whatever comes over the crest, do not let it get close.');
+  if(id==='shotgun'){takeWeapon('armoryShotgun02');notify('Billings’ shotgun is loaded. G or FIRE shoots; R reloads.');}
   syncStoryHud(true);
 }
 function openingChanged(state){
   syncMusicGate();
-  const watching=state==='watch',reading=state==='read-book';chapterUntil=performance.now()+(state==='find-book'?6500:reading?5000:0);if(watching&&lastOpeningState!=='watch'){opening.focus=true;hudOpen=false;document.body.classList.remove('hud-open');keys.clear();stick.x=stick.y=0;jumpQueued=false;}lastOpeningState=state;
+  // Picking the book up used to snap the camera into the screen. You are in a
+  // room full of people watching a cleaning; you stay in it, free to look
+  // around and walk, and Focus on screen is there if you want the whole wall.
+  const watching=state==='watch',reading=state==='read-book';chapterUntil=performance.now()+(state==='find-book'?6500:reading?5000:0);if(watching&&lastOpeningState!=='watch'){hudOpen=false;document.body.classList.remove('hud-open');}lastOpeningState=state;
   $('chapterHud').hidden=state==='explore';$('chapterTitle').textContent=state==='find-book'?'A book on the table':watching?'Holston’s cleaning':'The room falls quiet';
-  $('chapterObjective').textContent=state==='find-book'?'Find the directory book on the table ahead.':watching?'Holston is outside.':'Your directory is ready.';
+  $('chapterObjective').textContent=state==='find-book'?'The directory book is on the table in front of you.':watching?'Holston is outside. Watch from the room, or focus on the screen.':'Your directory is ready.';
   $('focusScreenButton').hidden=!watching;$('skipOpening').hidden=!watching;$('openBookButton').hidden=!reading;
   $('focusScreenButton').textContent=opening?.focus?'Back to cafeteria':'Focus on screen';
   document.body.classList.toggle('screen-focused',!!opening?.focus);
+  if(reading||state==='explore'){story?.beginSearch();if(story?.story)syncStoryHud(true);saveStory();}
   if(reading||state==='explore')try{localStorage.setItem('silo18-opening-complete','1');}catch{}
 }
 function requestDirectory(){
@@ -161,14 +220,17 @@ function setDirectoryMode(all){showAll=all;for(const [id,active]of [['allLevelsT
 
 async function travel(id){
   if(!ready||traveling)return;
+  let blocked=story?.travelAllowed(id);if(story?.story&&typeof id==='string'&&id.startsWith('room:')){const [,n,w]=id.split(':').map(Number);const sealed=story.sealed(n,w,roomType(n,w));if(sealed)blocked=sealed.reason;}if(blocked){notify(blocked);return;}
   const dest=world.destination(id);if(!Number.isInteger(dest.level)||dest.level<1||dest.level>144)return;
   if(opening&&!opening.directoryReady)opening.finish();if(opening)opening.focus=false;
+  workAction=null;if(talking)endConversation();
   traveling=true;audio.start();audio.travel();for(const d of dialogs)if(d.open)d.close();syncPause();$('fade').classList.add('show');
   await new Promise(r=>setTimeout(r,240));
   world.setLevel(dest.level,dest.special||null);body.teleport(dest.position.x,dest.position.y,dest.position.z);yaw=dest.yaw;pitch=0;started=true;audio.start();
   await new Promise(r=>requestAnimationFrame(r));
+  if(story?.story)saveStory();
   $('fade').classList.remove('show');traveling=false;syncPause();updateHUD();
-  const name=SPECIALS.find(s=>s.id===id)?.name||(typeof id==='string'&&id.startsWith('room:')?`${LEVELS[dest.level-1].name} · Wing ${String.fromCharCode(65+Number(id.split(':')[2]))}`:LEVELS[dest.level-1].name);notify(name);canvas.focus();
+  const name=SPECIALS.find(s=>s.id===id)?.name||(typeof id==='string'&&id.startsWith('room:')?`${LEVELS[dest.level-1].name} · Wing ${String.fromCharCode(65+Number(id.split(':')[2]))}`:LEVELS[dest.level-1].name);notify(name||id);canvas.focus();
 }
 // Stepping out of the airlock. Without a suit you are stopped at the lip; with
 // one, something launches from over the crest and comes to look at you.
@@ -179,43 +241,39 @@ function stepOutside(eye){
     if(verdict?.stop){
       notify(verdict.message);
       const back=world.destination('airlock');body.teleport(back.position.x,back.position.y,back.position.z);
-      wasOutside=false;return;
+      world.outside=false;wasOutside=false;return;
     }
     if(verdict?.drone){
+      world.surface.setTimeOfDay('day');$('timeOfDay').value='day';if(firearms.key!=='armoryShotgun02')takeWeapon('armoryShotgun02');firearms.resupply();
       const from=topPoint(60,groundY(60,40)+16,40);
       drone.launch(from);audio.travel?.();
       syncStoryHud(true);
       notify(story.armed?'Something has come over the crest. Put it down.':'Something has come over the crest, and you have nothing to answer it with.');
     }
   }
-  if(!outside&&drone.active&&story.chapter==='drone'){drone.reset();story.killedByDrone();syncStoryHud(true);}
+  if(!outside&&drone.active&&story.chapter==='drone'){drone.reset();story.killedByDrone();syncStoryHud(true);saveStory();}
   wasOutside=outside;
 }
 function droneKill(){
   drone.reset();story.killedByDrone();saveStory();
   const back=world.destination('airlock');
   world.setLevel(back.level);body.teleport(back.position.x,back.position.y,back.position.z);yaw=back.yaw;
-  syncStoryHud(true);
+  world.outside=false;wasOutside=false;firearms.resupply();syncStoryHud(true);
   notify('It fired. You woke on the airlock floor with the taste of blood in your mouth — go back out armed.');
 }
 function fire(){
   if(paused())return;
-  // A weapon in hand is fired at whatever is in front of it. The drone still
-  // has its own path below, because that shot is scripted and the story turns
-  // on it — it is not a round going downrange at a steel plate.
-  if(firearms.held){
-    const hit=firearms.fire(performance.now()/1000,camera);
-    const state=firearms.status();
-    if(state?.empty&&!state.reloading)notify('Empty. Press R to reload.');
-    if(hit?.target)rangeHits++;
-    return;
+  if(!firearms.held)return;
+  const before=firearms.ammo?.magazine||0,hit=firearms.fire(performance.now()/1000,camera);
+  if(hit?.target)rangeHits++;
+  if(drone?.active&&firearms.held.family==='shotgun'&&(firearms.ammo?.magazine||0)<before){
+    const eye=camera.getWorldPosition(new THREE.Vector3());camera.getWorldDirection(direction);
+    const floor=world.surface.floorAt(drone.group.position.x,drone.group.position.z,.4,drone.group.position.y);
+    const hits=drone.hits,down=drone.shoot(eye,direction,Number.isFinite(floor)?floor:body.position.y);
+    notify(down?'The rotors stop. It is falling.':drone.hits>hits?'A rotor sparks. One more clear shot.':'The shot misses. Keep the drone in the crosshair.');
   }
-  if(!story?.armed||!drone?.active)return;
-  audio.click();
-  const eye=body.position.clone();eye.y+=body.eyeHeight;camera.getWorldDirection(direction);
-  const floor=world.colliders.floorAt(drone.group.position.x,drone.group.position.z,.4,drone.group.position.y)||body.position.y;
-  if(drone.shoot(eye,direction.clone(),floor))notify('Hit. It is coming down.');
-  else notify('You are firing at the sky. Let it come closer.');
+  updateWeaponHud();
+  if(firearms.status()?.empty)notify(coarse?'Empty. Tap RELOAD.':'Empty. Press R to reload.');
 }
 let rangeHits=0,hudTick=-1,wading=false,wadeStep=0;
 // Standing in the water at the bottom of the void.
@@ -227,15 +285,15 @@ let rangeHits=0,hudTick=-1,wading=false,wadeStep=0;
 // surface look like it is being walked through rather than merely disturbed.
 const WATER=Object.freeze({surfaceY:5,bedY:4.35,radius:79});
 function updateWading(dt){
-  const water=world?.underground?.waterSurface;
+  const water=world?.special==='silo17'?world.silo17.waterSurface:world?.underground?.waterSurface;
   if(!water||!started){if(wading)leaveWater();return;}
-  const inVoid=world.special==='excavator'||world.special==='tunnel';
+  const inVoid=['excavator','tunnel','silo17'].includes(world.special),basin=world.special==='silo17'?{surfaceY:.65,bedY:0,radius:18}:WATER;
   let inside=false,speed=0;
   if(inVoid){
     // Test in the sheet's own space, so any transform on the void root is
     // accounted for rather than assumed away.
     const local=water.mesh.worldToLocal(body.position.clone());
-    inside=local.y<WATER.surfaceY-.04&&local.y>WATER.bedY-1.2&&Math.hypot(local.x,local.z)<WATER.radius;
+    inside=local.y<basin.surfaceY-.04&&local.y>basin.bedY-1.2&&Math.hypot(local.x,local.z)<basin.radius;
     speed=body.horizontalSpeed||0;
     if(inside){
       water.setWade(body.position.x,body.position.z,Math.min(1,speed/2.6));
@@ -258,13 +316,15 @@ function leaveWater(){
   wading=false;
   audio.wadeStop?.();
   audio.setSurface(null);
-  world?.underground?.waterSurface?.setWade(0,0,0);
+  world?.underground?.waterSurface?.setWade(0,0,0);world?.silo17?.waterSurface?.setWade(0,0,0);
 }
 async function takeWeapon(key){
+  if(story?.story&&!story.hasFlag('billings-helped')){notify('The armoury is locked. Only Billings can release a weapon.');return;}
+  if(story?.story&&key!=='armoryShotgun02'){notify('Billings issued the riot shotgun. The remaining racks stay locked.');return;}
   const spec=WEAPONS[key];if(!spec)return;
   audio.pickup(spec.family==='blade'?'metal':'metal');
   await firearms.equip(key);
-  updateWeaponHud();
+  updateWeaponHud();syncStoryHud();
   notify(`${spec.name}. Fire with ${coarse?'the FIRE button':'left mouse or G'}, reload with R.`);
 }
 // The ammunition line under the crosshair. Hidden entirely when empty-handed,
@@ -272,7 +332,7 @@ async function takeWeapon(key){
 function updateWeaponHud(){
   const state=firearms.status(),hud=$('weaponHud');
   if(!hud)return;
-  hud.hidden=!state;
+  hud.hidden=!state;$('reloadButton').hidden=!(state&&coarse);
   if(!state)return;
   $('weaponName').textContent=state.name;
   $('weaponAmmo').textContent=state.reloading?'RELOADING':state.text;
@@ -281,11 +341,13 @@ function updateWeaponHud(){
 function begin(mode){
   if(!ready)return;
   if(mode){
-    story=new Story(mode);world.story=story;lastChapter=null;drone?.reset();
+    story=new Story(mode);terminal=new GeorgeTerminal();world.story=story;lastChapter=null;drone?.reset();firearms.holster();workAction=null;wasOutside=false;world.resetStoryWorld();world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;
     if(mode==='story'&&opening.state!=='find-book')opening.reset();
     if(mode==='explore'&&opening.state==='find-book')opening.finish();
     saveStory();
   }
+  if(story.armed&&!firearms.held)takeWeapon('armoryShotgun02');
+  world.surface.setNetworkVisible(!story.story||story.complete);world.rebuildCollision();
   started=true;welcome.close();syncPause();audio.start();syncMusicGate();canvas.focus();openingChanged(opening.state);syncStoryHud(true);
   notify(story.story&&opening.state==='find-book'?'There’s a book on the table ahead. Approach it and press Use / E.'
     :coarse?'Left stick to walk. Drag on the right to look.':'WASD to move. Drag to look, or click to capture the mouse.');
@@ -296,15 +358,15 @@ function updateHUD(){
   let name=r<SILO.stairRadius+.6?'The central staircase':r<SILO.deckOuter?'The gallery':TYPE_NAMES[roomType(n,wing)].toLowerCase();name=name[0].toUpperCase()+name.slice(1);
   if(n===1&&!world.special){const p=topLocal(body.position);if(p.z>=108)name='Surface · exterior camera';else if(p.z>=64)name='Cleaning ramp';else if(p.z>=54)name='Cleaning airlock';else if(p.z>=44&&p.x>14)name='Holding 3 & preparation';else if(p.x>18&&p.z>24)name='Sheriff’s station';else if(wing===0&&r>SILO.deckOuter)name='Cafeteria · outside screen';}
   if(n!==1&&!world.special&&r>=52)name='Service gallery · connecting wings';
-  if(world.special)name=SPECIALS.find(x=>x.id===world.special)?.name||name;
+  if(world.special==='silo17')name='Silo 17 · flooded galleries';else if(world.special==='pipe-gallery')name='Abandoned pressure gallery';else if(world.special)name=SPECIALS.find(x=>x.id===world.special)?.name||name;
   if(world.special==='excavator'||world.special==='tunnel'){
     const p=world.underground.tunnel.worldToLocal(body.position.clone());
     name=p.z>0&&p.z<36&&Math.abs(p.x)<2.6?'The hidden tunnel':'The excavator & void';
     if(body.climbing)name='Ladder to the water';
   }
-  $('zone').textContent=world.outside?'THE SURFACE':world.special?'LOWER ACCESS':data.zone;$('levelLabel').textContent=world.outside?'OUTSIDE':world.special?'BELOW MECHANICAL':`LEVEL ${String(n).padStart(3,'0')}`;$('locationName').textContent=name;
-  $('depthLabel').textContent=`${Math.max(0,Math.round(levelY(1)-body.position.y)).toLocaleString()} m below the upper landing`;$('depthMarker').style.top=`${(n-1)/143*94}%`;
-  $('modeLabel').textContent=`${cast?.active?.definition.short||'ON FOOT'}${body.climbing?' · CLIMBING':running?' · RUNNING':''}`;audio.setLocation(world.outside?'surface':world.special||roomType(n,wing));
+  $('zone').textContent=world.special==='silo17'?'ABANDONED':world.outside?'THE SURFACE':world.special?'LOWER ACCESS':data.zone;$('levelLabel').textContent=world.special==='silo17'?'SILO 17':world.outside?'OUTSIDE':world.special?'BELOW MECHANICAL':`LEVEL ${String(n).padStart(3,'0')}`;$('locationName').textContent=name;
+  $('depthLabel').textContent=world.special==='silo17'?'Surviving upper galleries':`${Math.max(0,Math.round(levelY(1)-body.position.y)).toLocaleString()} m below the upper landing`;$('depthMarker').style.top=`${(n-1)/143*94}%`;
+  $('modeLabel').textContent=`${cast?.active?.definition.short||'ON FOOT'}${body.climbing?' · CLIMBING':running?' · RUNNING':''}`;audio.setLocation(world.outside?'surface':world.special==='silo17'?'tunnel':world.special==='pipe-gallery'?'mines':world.special||roomType(n,wing));
   // The great stairway is open steel and runs through every level, so the floor
   // underfoot there is not the floor of the room the level counter is reporting.
   // Wading owns the surface while it lasts, or this would clear it four times
@@ -312,6 +374,9 @@ function updateHUD(){
   audio.setSurface(wading?'wet':!world.outside&&!world.special&&r<SILO.stairRadius+.6?'grating':null);
 }
 const inspectionText={
+  'terminal-note':'A note under the unplugged cable: “The directory is not the collection. Ask for the whole library.” Nothing else is written.',
+  'silo17-log':'LAST PUMP SHIFT / The lower galleries are lost. We moved the stores above the high-water band. Three landings still have emergency power. Nobody answered 18.',
+  'silo17-crate':'Tools are wrapped in oilcloth above ruined ration packets. Someone kept preparing for a repair crew long after the voices stopped.',
   generator:'Six removable panels protect the turbine. The rear panel is held open for inspection; the rotor, gantry and crane can be seen around the housing.',
   water:'Filter vessels, treatment lines and pump controls keep water circulating through the silo. This department is associated with Level 55.',
   'it-servers':'The server room is behind this door and only IT opens it. Level 19 is the department’s floor in the published material; the room plan beyond that is inferred.',
@@ -321,17 +386,22 @@ const inspectionText={
   workshop:'Salvaged electronics, analogue test equipment and spare parts. Almost everything here has to be repaired and used again.',
   airlock:'Cycle the inner door, enter the chamber, then cycle the outer door. The other door closes before the selected door opens. The ramp leads up to the surface.',
   chute:'The refuse chute carries discarded material down for recovery. It is not a passenger route.',
-  mines:'An inferred mining working with ore carts, timber supports and a rock drill. A complete filmed mine plan was not available in the sources.',
+  mines:'The working galleries branch around an abandoned pump chamber and meet again at the deep ore face. Red service bands continue past the drill.',
   tunnel:'A sealed lower passage beneath the silo. This build does not invent an open route into another silo.',
   breach:'A routine bulkhead notice, screwed to newer blockwork than the wall around it. Whoever filled this opening in did not want it found, and whoever came after had already broken back through.',
   camp:'George and Juliette’s secluded hideout beside the excavation: a bed, a table and salvaged relics. The ladder outside the open side descends to the water. The room’s exact dimensions and position remain reconstructed from the available references.',
   relics:'Tins, bottles, books and wound cable carried down from the levels above and kept where a sweep would not find them. Possession of relics from before is an offence under the Pact.',
 };
 function use(){
+  if(talking){endConversation();return;}
   if(opening?.state==='read-book'&&!interaction&&!paused()){requestDirectory();return;}
-  if(!interaction||paused()||body.climbing)return;
+  if(!interaction||paused()||body.climbing||workAction)return;
   if(interaction.action==='opening-book'){audio.click();audio.playOpeningTheme();opening.takeBook();return;}
-  if(interaction.resident){startConversation(interaction.resident);return;}
+  if(interaction.action==='billings'){billingsConversation();return;}
+  if(interaction.action==='george-terminal'){story.reachGeorgeHome();renderTerminal();openDialog(terminalDialog);syncStoryHud();return;}
+  if(interaction.action==='enter-silo17'){travel('silo17');return;}
+  if(interaction.action?.startsWith('pipe-')){const step=interaction.action.slice(5);if(story.story&&(!story.has('crowbar')||!story.has('pipekit'))){notify('Bring the crowbar and Water Filtration’s service kit before opening the line.');return;}workAction={until:performance.now()+2400,step};notify(step==='cover'?'Levering the inspection cover…':step==='isolate'?'Turning the isolation wheel…':step==='collar'?'Seating the split collar…':'Tightening the collar to the witness mark…');return;}
+  if(interaction.resident){startConversation(interaction.resident,interaction.actor||null);return;}
   if(interaction.action==='algorithm'){startConversation(ALGORITHM);return;}
   if(interaction.ladder){
     const ladder=world.underground.ladders.find(l=>l.id===interaction.ladder);
@@ -339,15 +409,17 @@ function use(){
     else notify('Move closer to the ladder.');
     return;
   }
-  if(interaction.action==='hard-drive'){if(story?.story&&!story.has('harddrive'))takeRelic('harddrive');else{audio.click();openDialog(relic);}return;}
+  if(interaction.action==='hard-drive'){if(story?.story&&!story.has('harddrive')&&world.special==='excavator')takeRelic('harddrive');else{if(!story.has('harddrive'))story.take('harddrive');audio.click();openDialog(relic);}return;}
   if(interaction.action?.startsWith('relic:')){takeRelic(interaction.action.slice(6));return;}
   if(interaction.action?.startsWith('rack:')){takeWeapon(interaction.action.slice(5));return;}
   if(interaction.action==='range-resupply'){
+    if(story.story&&!story.hasFlag('billings-helped')){notify('The ammunition cabinet is locked. Ask Billings.');return;}
     audio.pickup('metal');firearms.resupply();
     notify(firearms.held?`${firearms.held.name} resupplied.`:'Take a weapon off the rack first.');
     return;
   }
   if(interaction.action==='range-rack'){
+    if(story.story&&story.armed){notify('Keep Billings’ shotgun with you until you are clear of the drone.');return;}
     if(!firearms.held){audio.click();notify('You are not carrying anything.');return;}
     const name=firearms.held.name;firearms.holster();audio.drop('metal');
     updateWeaponHud();notify(`${name} racked.`);
@@ -357,24 +429,33 @@ function use(){
   if(interaction.action==='clean-camera'){audio.click();world.surface.beginCleaning();notify('Cleaning the camera lens. The cafeteria feed clears as you wipe.');return;}
   if(interaction.action?.startsWith('airlock-')){audio.airlock();world.cycleAirlock(interaction.action.slice(8));return;}
   if(interaction.action==='breach'){
-    world.openBreach();audio.door(true);
+    if(story.story){const check=story.inspectVoidDoor();if(!check.open&&!story.pryHideout()){notify(check.message);syncStoryHud(true);return;}}
+    world.openBreach();saveStory();audio.door(true);
     notify('A broken opening was hidden behind the sign. Walk through it.');
     return;
   }
   if(interaction.door){interaction.door.open=!interaction.door.open;audio.door(interaction.door.open);}
   else if(interaction.destination!==undefined){audio.click();travel(interaction.destination);}
-  else{audio.click();notify(inspectionText[interaction.action]||interaction.label);}
+  else{audio.click();notify(interaction.text||inspectionText[interaction.action]||interaction.label);}
 }
 function toggleTorch(){torchOn=!torchOn;audio.torch(torchOn);torch.visible=torchOn;$('torchButton').classList.toggle('active',torchOn);$('torchButton').setAttribute('aria-pressed',String(torchOn));}
 
-for(const d of dialogs){d.addEventListener('cancel',e=>{e.preventDefault();if(d===welcome&&ready){if(started){d.close();syncPause();}else begin(story?.mode||'story');}else closeDialog(d);});d.querySelector('[data-close]')?.addEventListener('click',()=>closeDialog(d));}
+for(const d of dialogs){d.addEventListener('cancel',e=>{e.preventDefault();if(d===welcome&&ready){if(started){d.close();syncPause();}else begin();}else closeDialog(d);});d.querySelector('[data-close]')?.addEventListener('click',()=>closeDialog(d));}
+$('terminalInsert').addEventListener('click',()=>{if(!terminal.insertDrive(story.has('harddrive')))notify('The cable needs an external drive.');renderTerminal();saveStory();});
+$('terminalBack').addEventListener('click',()=>{terminal.back();renderTerminal();saveStory();});
+$('terminalBoot').addEventListener('click',()=>{terminal.boot();renderTerminal();saveStory();});
+$('terminalEject').addEventListener('click',()=>{terminal.ejectDrive();renderTerminal();saveStory();});
+$('terminalSearch').addEventListener('submit',e=>{e.preventDefault();terminal.search($('terminalQuery').value);renderTerminal();saveStory();});
 $('controlsButton').addEventListener('click',toggleControls);$('leaveConversation').addEventListener('click',()=>closeDialog(conversation));
+conversation.addEventListener('close',()=>{if(talking)endConversation();});
 addEventListener('pointerdown',revealControls,{passive:true});
 $('enterButton').addEventListener('click',()=>begin('story'));
+$('resumeButton').addEventListener('click',()=>begin());
 $('exploreButton').addEventListener('click',()=>begin('explore'));
-$('satchelButton').addEventListener('click',()=>{renderSatchel();openDialog(satchel);});$('home').addEventListener('click',()=>{if(started){$('enterButton').textContent='Resume exploration';}openDialog(welcome);});
+$('journalButton').addEventListener('click',()=>{renderSatchel();openDialog(satchel);});
+$('satchelButton').addEventListener('click',()=>{renderSatchel();openDialog(satchel);});$('home').addEventListener('click',()=>{if(started){$('resumeButton').hidden=false;}openDialog(welcome);});
 $('directoryButton').addEventListener('click',requestDirectory);
-$('welcomeDirectory').addEventListener('click',()=>{if(!ready)return;opening.finish();opening.openBook();renderDirectory();openDialog(directory);});
+$('welcomeDirectory').addEventListener('click',()=>{if(!ready)return;requestDirectory();});
 $('replayOpening').addEventListener('click',replayOpening);
 $('focusScreenButton').addEventListener('click',()=>{opening.focus=!opening.focus;$('focusScreenButton').textContent=opening.focus?'Back to cafeteria':'Focus on screen';document.body.classList.toggle('screen-focused',opening.focus);keys.clear();stick.x=stick.y=0;});
 $('skipOpening').addEventListener('click',()=>opening.finish());$('openBookButton').addEventListener('click',requestDirectory);
@@ -382,7 +463,7 @@ $('characterButton').addEventListener('click',()=>{renderCharacters();openDialog
 $('settingsButton').addEventListener('click',()=>openDialog(settings));$('aboutButton').addEventListener('click',()=>openDialog(about));
 for(const button of document.querySelectorAll('[data-travel]'))button.addEventListener('click',()=>travel(button.dataset.travel));
 $('landmarksTab').addEventListener('click',()=>setDirectoryMode(false));$('allLevelsTab').addEventListener('click',()=>setDirectoryMode(true));$('search').addEventListener('input',renderDirectory);
-$('fireButton').addEventListener('click',fire);
+$('fireButton').addEventListener('click',fire);$('reloadButton').addEventListener('click',()=>{firearms.reload();updateWeaponHud();});
 $('interaction').addEventListener('click',use);$('touchUse').addEventListener('click',use);$('jumpButton').addEventListener('click',()=>{jumpQueued=true;});$('runButton').addEventListener('click',()=>{running=!running;$('runButton').classList.toggle('active',running);});$('torchButton').addEventListener('click',toggleTorch);
 $('fullscreen').addEventListener('click',async()=>{
   try{
@@ -410,19 +491,26 @@ if(saved.reduceMotion===undefined)$('reduceMotion').checked=matchMedia('(prefers
 for(const source of SOURCES){const a=document.createElement('a');a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=source.title;const small=document.createElement('small');small.textContent=source.note;$('sources').append(a,small);}
 
 addEventListener('keydown',e=>{
-  if(e.target.matches('input,select,textarea')||e.target.closest('dialog')||e.code==='Space'&&e.target.matches('button'))return;
+  // The conversation panel is not modal, so it holds focus while the silo runs.
+  // Bailing out on any dialog ancestor meant 1-4 and Esc died inside it.
+  const inPanel=e.target.closest('dialog');
+  if(e.target.matches('input,select,textarea')||inPanel&&inPanel!==conversation||e.code==='Space'&&e.target.matches('button'))return;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
   if(e.repeat){keys.add(e.code);return;}
   if(e.code==='KeyM'){if(directory.open)closeDialog(directory);else requestDirectory();return;}
   if(e.code==='KeyC'){if(characters.open)closeDialog(characters);else{renderCharacters();openDialog(characters);}return;}
   if(paused())return;
+  if(talking){
+    if(/^Digit[1-9]$/.test(e.code)){askTopic($('dialogueChoices').children[Number(e.code.slice(5))-1]);return;}
+    if(e.code==='Escape'||e.code==='KeyE'){endConversation();return;}
+  }
   if(e.code==='KeyH'){toggleControls();return;}
   if(opening.focus&&e.code==='Space'){e.preventDefault();toggleControls();return;}
   revealControls();
   if(e.code==='KeyV'){toggleView();return;}
   keys.add(e.code);if(e.code==='KeyE')use();if(e.code==='KeyF')toggleTorch();if(e.code==='Space')jumpQueued=true;if(e.code==='KeyG')fire();
   if(e.code==='KeyR'&&firearms.held){if(firearms.reload())updateWeaponHud();}
-  if(e.code==='KeyH'&&firearms.held){const name=firearms.held.name;firearms.holster();updateWeaponHud();notify(`${name} slung.`);}if(e.code==='KeyB'&&story?.story&&story.held.size){renderSatchel();openDialog(satchel);}
+  if(e.code==='KeyX'&&firearms.held&&!story.story){const name=firearms.held.name;firearms.holster();updateWeaponHud();notify(`${name} slung.`);}if(e.code==='KeyB'&&story?.story){renderSatchel();openDialog(satchel);}
   if(e.code==='Escape')openDialog(welcome);
 });
 addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',()=>{keys.clear();stick.x=stick.y=0;});
@@ -485,7 +573,7 @@ function applyPad(dt){
     if(tapped(PAD.CROSS)&&welcome.open&&ready)begin();
     return;
   }
-  if(tapped(PAD.CROSS))jumpQueued=true;
+  if(tapped(PAD.CROSS))jumpQueued=true;if(tapped(PAD.R2))fire();if(tapped(PAD.L1)&&firearms.held)firearms.reload();
   if(tapped(PAD.SQUARE)||tapped(PAD.R1))use();
   if(tapped(PAD.TRIANGLE))toggleTorch();
   if(tapped(PAD.R3))toggleView();
@@ -507,28 +595,45 @@ function frame(){
     const forward=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-stick.y-pad.move.y;
     const right=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0)+stick.x+pad.move.x;
     const speed=(running||pad.run||keys.has('ShiftLeft')||keys.has('ShiftRight'))?3.8:1.45;
-    desired.set(-Math.sin(yaw)*forward+Math.cos(yaw)*right,0,-Math.cos(yaw)*forward-Math.sin(yaw)*right);if(desired.length()>1)desired.normalize();desired.multiplyScalar(opening.focus?0:speed);
+    desired.set(-Math.sin(yaw)*forward+Math.cos(yaw)*right,0,-Math.cos(yaw)*forward-Math.sin(yaw)*right);if(desired.length()>1)desired.normalize();desired.multiplyScalar(opening.focus||workAction||talking?0:speed);
+    if(workAction&&performance.now()>=workAction.until){const step=workAction.step;workAction=null;const result=step==='cover'?{complete:story.openPipeCover()}:story.capPipe(step);audio.door(true);notify(result.message||(step==='cover'?'Cover released. The isolation wheel is to the left.':story.hasFlag('pipe-capped')?'The telltale holds at zero. The service line is sealed.':'The fitting holds. Check the next point on the schematic.'));syncStoryHud(true);saveStory();}
 
     // Bound movement substeps prevent thin rail/door tunneling after slow frames.
     // The jump impulse belongs to one substep only, or it is applied N times.
     const count=Math.max(1,Math.ceil(dt/(1/120))),wasAirborne=!body.grounded;
-    for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders,{jump:jumpQueued&&!opening.focus&&i===0});
+    for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders,{jump:jumpQueued&&!opening.focus&&!talking&&!workAction&&i===0});
     if(jumpQueued&&body.velocity.y>.5)audio.jump();
     jumpQueued=false;
     if(wasAirborne&&body.grounded&&body.landingImpact>.05)audio.land(body.landingImpact);
     if(body.position.y<2&&!world.special){const p=world.spawn(world.activeLevel);body.teleport(p.x,p.y,p.z);notify('Returned to the nearest safe landing.');}
     const bob=$('reduceMotion').checked?0:Math.sin(body.distanceWalked*8)*.018*Math.min(1,body.horizontalSpeed);
-    world.update(dt,body.position);const passage=world.transitionAt(body.position);if(passage)travel(passage);opening.update(dt);population.update(dt,body,opening.watching,cast.selected);population.separatePlayer(body);cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;
+    world.update(dt,body.position);const passage=world.transitionAt(body.position);if(passage)travel(passage);opening.update(dt);population.update(dt,body,opening.watching,cast.selected);population.separatePlayer(body);
+    // While you are talking the camera settles on whoever you are talking to,
+    // so the conversation has a face in it and it is obvious who heard you.
+    if(talking?.actor){
+      const at=population.actorPosition(talking.actor);
+      if(at){
+        at.y+=1.52;const to=at.sub(body.position);to.y-=body.eyeHeight;
+        const want=Math.atan2(-to.x,-to.z),lift=Math.atan2(to.y,Math.hypot(to.x,to.z));
+        yaw+=Math.atan2(Math.sin(want-yaw),Math.cos(want-yaw))*(1-Math.exp(-5*dt));
+        pitch+=(lift-pitch)*(1-Math.exp(-5*dt));
+      }else endConversation();
+    }
+    cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;
+    if(talking?.actor){const at=population.actorPosition(talking.actor);if(at&&at.distanceTo(body.position)>5.5)endConversation();}
     props.update(dt,time,story,world.activeLevel,world.special);
     // The supplied hard-drive model is placed by the character cast, so taking
     // it in story mode has to clear it from the bench there.
     if(cast?.relic&&story.story&&story.has('harddrive'))cast.relic.visible=false;
     world.actorInteractions.push(...props.interactions(story,world.activeLevel,world.special));
+    world.storyInteractions=[];
+    if(world.activeLevel===1&&!world.special)world.storyInteractions.push({position:topPoint(28,1.2,38),label:'Talk to Officer Billings',action:'billings'});
+    syncStoryHud();
     stepOutside(eye);
     if(drone.active){
       const event=drone.update(dt,eye);
       if(event==='fired')droneKill();
-      else if(event==='landed'){story.droneKilled();saveStory();syncStoryHud(true);notify('It is down. Nothing else is coming.');}
+      else if(event==='landed'){story.droneKilled();world.surface.setNetworkVisible(true);world.rebuildCollision();saveStory();syncStoryHud(true);notify('It is down. Beyond the ridge, other silo crowns break the horizon.');}
     }
     // The range's steel plates only exist on the top floor; the weapon keeps
     // working anywhere, but there is nothing to hit outside the room.
@@ -547,18 +652,20 @@ function frame(){
       firearms.place(camera);
       if(hudTick!==Math.floor(time*8)){hudTick=Math.floor(time*8);updateWeaponHud();}
     }
-    interaction=body.climbing||opening.focus?null:world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;if(interaction)$('interaction').lastElementChild.textContent=interaction.label;
+    interaction=body.climbing||opening.focus||talking?null:world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;
+    if(interaction){$('interactionLabel').textContent=interaction.label;$('interactionHint').textContent=interaction.hint||'';}
     $('touchUse').style.opacity=interaction||opening.state==='read-book'?'1':'.4';audio.step(body.distanceWalked,body.horizontalSpeed,cast.active?.motion.stepCount);
     crowdSoundTime-=dt;if(crowdSoundTime<=0){crowdSoundTime=opening.watching?4:1.1+Math.random()*1.5;audio.residents?.(population.count,opening.watching);}
   }else if(!started){
     const p=topPoint(...CAFETERIA_START);camera.position.copy(topPoint(0,1.85,10));camera.lookAt(topPoint(0,3.2,39));world.update(dt,p);population.update(dt,body,false,cast.selected);
-  }else{world.update(dt,body.position);cast?.update(0,body,started);}
+  }else{if(workAction)workAction.until+=dt*1000;world.update(dt,body.position);cast?.update(0,body,started);}
   audio.setStoryPaused?.(document.hidden||(opening?.watching&&paused()));
   updateInterface(time);
   if(time-lastHUD>.25){updateHUD();lastHUD=time;}
   world.surface.renderFeed(renderer,time);
-  if(world.special&&!opening?.focus)world.underground.waterSurface.update(renderer,scene,camera,time);
-  updateWading(dt);
+  if(['excavator','tunnel'].includes(world.special)&&!opening?.focus)world.underground.waterSurface.update(renderer,scene,camera,time);
+  if(world.special==='silo17')world.silo17.waterSurface.update(renderer,scene,camera,time);
+  if(!paused())updateWading(dt);else if(wading)audio.setWadeLevel?.(0);
   if(cleanWasRunning!==world.surface.cleaning){if(world.surface.cleaning)audio.scrubStart();else{audio.scrubStop();notify('Camera lens clean. The outside view is clear on the cafeteria screens.');}}cleanWasRunning=world.surface.cleaning;
   if(outsideTarget&&lastScreen!==world.screens[0]){for(const screen of world.screens){screen.material.map=outsideTarget.texture;screen.material.color.setHex(0xffffff);screen.material.needsUpdate=true;}lastScreen=world.screens[0];}
   torch.position.copy(camera.position);camera.getWorldDirection(direction);torch.target.position.copy(camera.position).addScaledVector(direction,15);torch.visible=torchOn&&started;
@@ -575,10 +682,11 @@ async function boot(){
     cast=new CharacterCast(scene,world);await cast.load(progress=>{$('enterButton').textContent=`Preparing characters · ${Math.round(45+progress*55)}%`;});cast.select(saved.character||'juliette');cast.thirdPerson=saved.thirdPerson!==false;body.standHeight=body.height=cast.active.definition.height;cast.active.heading=yaw+Math.PI;renderCharacters();
     world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;world.update(0,body.position);cast.update(0,body,false);
     population=new Population(scene,world);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);
-    story=Story.load(savedStory);world.story=story;props=new StoryProps(scene,world.m);drone=new Drone(scene,world.m);
+    story=Story.load(savedStory);terminal=GeorgeTerminal.load(savedStory?.terminal);world.story=story;props=new StoryProps(scene,world.m);drone=new Drone(scene,world.m);
+    if(story.story&&story.chapter!=='cleaning'){opening.finish();const cp=savedStory?.checkpoint;if(cp&&Number.isInteger(cp.level)&&cp.level>=1&&cp.level<=144&&Array.isArray(cp.position)&&cp.position.length===3&&cp.position.every(Number.isFinite)&&[null,'generator','mines','excavator','tunnel','pipe-gallery','silo17'].includes(cp.special)){world.setLevel(cp.level,cp.special);const [x,y,z]=cp.position;const floor=world.colliders.floorAt(x,z,.3,y+1);if(Number.isFinite(floor)&&Math.abs(floor-y)<2)body.teleport(x,floor+.05,z);else{const dest=world.destination(cp.special||cp.level);body.teleport(...dest.position.toArray());}yaw=Number.isFinite(cp.yaw)?cp.yaw:0;}if(story.hasFlag('hideout-open'))world.openBreach();if(story.chapter==='drone'){story.killedByDrone();const back=world.destination('airlock');world.setLevel(1);body.teleport(...back.position.toArray());}world.update(0,body.position);}
     openingChanged(opening.state);syncStoryHud(true);
     outsideTarget=world.surface.initFeed(renderer);renderer.compile(scene,camera);setDirectoryMode(true);
-    ready=true;$('enterButton').disabled=false;$('enterButton').textContent='New game · the story';
+    ready=true;$('resumeButton').hidden=!savedStory;$('enterButton').disabled=false;$('enterButton').textContent='New game · the story';
     if(world.materialFailures)notify('Some surface materials could not load. Refresh to retry.');
     if(world.assetFailures)notify('Some Lost Signal props could not load. The complete architectural reconstruction is still available.');
     frame();
@@ -586,7 +694,7 @@ async function boot(){
 }
 // One handle on the running game, for the headless smoke test that drives the
 // whole story through in a real browser. Nothing in the game reads it.
-window.__silo={begin,fire,takeRelic,stepOutside,firearms,takeWeapon,camera,
+window.__silo={begin,fire,use,travel,takeRelic,stepOutside,firearms,takeWeapon,camera,
   look(y,p=0){yaw=y;pitch=p;},
   get story(){return story;},get world(){return world;},get body(){return body;},
   get drone(){return drone;},get opening(){return opening;},get ready(){return ready;}};
