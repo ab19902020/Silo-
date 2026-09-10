@@ -266,6 +266,78 @@ test('standing in the water is the only thing that overrides the room floor',()=
   audio.setSurface('nonsense');
   assert.equal(audio.material(),'concrete','an unknown surface falls back rather than going silent');
 });
+// The three surfaces that are not silo floor have to stay three different
+// recordings. When `rock` and `grit` were both mapped onto the gravel takes,
+// walking out onto the crater sounded exactly like walking through the mines.
+test('the mines, the void and the world outside do not share a recording',()=>{
+  const manifest=JSON.parse(fs.readFileSync('dist/assets/audio/footsteps/manifest.json','utf8'));
+  const sources=['concrete','rock','grit','wet'].map(m=>{
+    const entry=manifest.materials[m];
+    assert.ok(entry,`${m} has no recordings`);
+    return [m,entry.source];
+  });
+  const seen=new Map();
+  for(const [material,source] of sources){
+    assert.ok(!seen.has(source),
+      `${material} and ${seen.get(source)} are both ${source}; two places that look different have to sound different`);
+    seen.set(source,material);
+  }
+});
+
+// A footstep is its attack. The water recordings in the pack are 2.1-2.5 s of
+// continuous wading rather than single steps, and taking the head of one gives
+// a take whose loudest moment is 450 ms in behind a 400 ms fade-up — which is
+// why walking through the basin sounded like nothing was happening underfoot.
+//
+// Loose surfaces genuinely build: sand peaks around 95 ms and grass later still,
+// because the crunch is the material collapsing rather than the shoe striking.
+// So the measure is not when the take is loudest but whether it has struck at
+// all by 50 ms. The three water takes that had to be recut measured 0.07, 0.09
+// and 0.32 by that measure; every surface the player walks on now measures 0.61
+// or better.
+test('every footstep recording has struck within 50 ms',()=>{
+  const manifest=JSON.parse(fs.readFileSync('dist/assets/audio/footsteps/manifest.json','utf8'));
+  // The four the player actually walks on: the silo, the mines and the void,
+  // the crater outside, and the basin.
+  for(const material of ['concrete','rock','grit','wet'])
+    for(const take of manifest.materials[material].takes){
+      const buffer=fs.readFileSync(`dist/assets/audio/footsteps/${take.file}`);
+      let offset=12,data=0,size=0,rate=48000;
+      while(offset<buffer.length-8){
+        const id=buffer.toString('latin1',offset,offset+4),chunk=buffer.readUInt32LE(offset+4);
+        if(id==='fmt ')rate=buffer.readUInt32LE(offset+12);
+        if(id==='data'){data=offset+8;size=chunk;break;}
+        offset+=8+chunk+(chunk&1);
+      }
+      const samples=size/2,head=Math.min(samples,rate*.05);
+      let peak=0,front=0;
+      for(let i=0;i<samples;i++){
+        const v=Math.abs(buffer.readInt16LE(data+i*2));
+        if(v>peak)peak=v;
+        if(i<head&&v>front)front=v;
+      }
+      assert.ok(peak/32768>=.55,
+        `${take.file} (${material}) peaks at ${(peak/32768).toFixed(2)}; a take much quieter than the rest disappears under everything else in the mix`);
+      assert.ok(front/peak>=.45,
+        `${take.file} (${material}) is at ${(100*front/peak).toFixed(0)} per cent of its own peak after 50 ms; that is a swell, not a footfall`);
+    }
+});
+
+// The wading loop is the water closing back over you between steps. If it comes
+// up to the level of a splash it simply masks every one of them, which is the
+// other half of why the basin was silent underfoot.
+test('the wading loop stays under the footsteps it runs beneath',()=>{
+  const source=fs.readFileSync('dist/src/audio.js','utf8');
+  const wet=Number(source.match(/wet:\s*\{level:[\d.]+,sample:([\d.]+)/)[1]);
+  const [,base,swing]=source.match(/wade\.envelope\.gain\.setTargetAtTime\(([\d.]+)\+clamp\(amount,0,1\)\*([\d.]+)/).map(Number);
+  const loudest=base+swing;
+  assert.ok(loudest<wet*.5,
+    `the wading loop reaches ${loudest.toFixed(3)} against a ${wet.toFixed(3)} footstep; the steps have to sit on top of it, not inside it`);
+  const concrete=Number(source.match(/concrete:\s*\{level:[\d.]+,sample:([\d.]+)/)[1]);
+  assert.ok(wet>concrete,
+    `a splash (${wet}) is quieter than a dry step on concrete (${concrete}); water is the loudest thing you can put a foot into`);
+});
+
 test('picking something up is the object, not one interface click',()=>{
   const {audio,context}=silo();
   const before=context.created.source||0;
