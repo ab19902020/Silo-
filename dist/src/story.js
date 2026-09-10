@@ -62,11 +62,14 @@ const CHAPTERS=Object.freeze([
    hints:['A bulkhead that has moved once will move again, with something to lever it. Tools live in Mechanical.',
           'You do not need to travel. It is the same level you are standing on: 144, wing A.',
           'Look for the tool board standing on a workbench along the side of the machine hall. The crowbar is lying on the bench in front of it.']},
-  {id:'hideout',title:'Behind the wall',objective:'Take the crowbar back to the bulkhead below Mechanical and pry it open.',
+  // One chapter, two actions: the objective has to still be true after the
+  // bulkhead is open, or it sits there telling you to do something you have
+  // already done.
+  {id:'hideout',title:'Behind the wall',objective:'Pry the bulkhead open with the crowbar, then search George’s hideout. The obvious relic is not what he hid.',
    where:{level:144,wing:0,place:'Mechanical · Level 144 · wing A'},
-   hints:['Back to the bulkhead in the rear service gallery, with the crowbar in hand.',
-          'Inspect it again now that you are carrying the lever.',
-          'What is behind it is a hideout, and the obvious relic in it is not the point. Search all of it.']},
+   hints:['Back to the bulkhead in the rear service gallery, with the crowbar in hand. Inspect it again.',
+          'It is open. Now go through it and look at everything, not just the thing on the shelf.',
+          'What matters is a hard drive stamped 18. He left it where nobody would look twice.']},
   {id:'george-home',title:'Something missing',objective:'The drive came with a folded slip: “G. Wilkins · 068 · A.” Find the machine it belonged to.',
    where:{level:68,wing:0,place:'Wilkins residence · Level 068 · wing A'},
    hints:['The slip is an address. 068 is the level; A is the wing.',
@@ -155,7 +158,7 @@ export class Story{
   terminalDiscovered(){if(!this.story)return true;if(this.chapter!=='terminal'||!this.has('harddrive'))return false;this.flags.add('blueprint-found');this.setChapter('pipe-tools');return true;}
   capPipe(step){const order=['isolate','collar','torque'];if(this.story&&(this.chapter!=='pipe'||!this.has('pipekit')))return {complete:false,message:'You do not have the tools or the schematic.'};if(!this.flags.has('pipe-cover-open'))return {complete:false,message:'Remove the inspection cover with the crowbar first.'};if(step!==order[this.pipeSteps.length])return {complete:false,message:'Follow the schematic: isolate the line, seat the collar, then torque it.'};this.pipeSteps.push(step);if(this.pipeSteps.length===order.length){this.flags.add('pipe-capped');this.setChapter('billings');return {complete:true};}return {complete:false,next:order[this.pipeSteps.length]};}
   openPipeCover(){if(!this.story){this.flags.add('pipe-cover-open');return true;}if(this.chapter!=='pipe'||!this.has('crowbar')||!this.has('pipekit'))return false;this.flags.add('pipe-cover-open');return true;}
-  travelAllowed(id){if(!this.story)return null;if(['surface','silo17','silo17-surface'].includes(id)&&!this.complete)return 'The way out is through the airlock, once the work is finished.';if(['excavator','tunnel'].includes(id)&&!this.flags.has('hideout-open'))return 'The route is concealed. Follow George’s clue through Mechanical.';if(id==='pipe-gallery'&&!this.flags.has('blueprint-found'))return 'A disused service hatch. You do not know where this line leads.';if(this.chapter==='drone')return 'Get clear of the drone before opening the directory.';return null;}
+  travelAllowed(id){if(!this.story)return null;if(['surface','silo17','silo17-surface'].includes(id)&&!this.complete)return 'The way out is the airlock on Level 001, once the work is finished.';if(['excavator','tunnel'].includes(id)&&!this.flags.has('hideout-open'))return 'The route is concealed. George’s clue points below Mechanical, Level 144.';if(id==='pipe-gallery'&&!this.flags.has('blueprint-found'))return 'A disused service hatch. Until the schematic tells you where this line goes, it is only a hole.';if(this.chapter==='drone')return 'Get clear of the drone before opening the directory.';return null;}
   speakToBillings(){if(!this.story)return {helped:true};if(this.chapter!=='billings')return {helped:false,message:'Billings listens, but you have not brought him proof he can act on.'};if(!this.has('georgia'))return {helped:false,message:'Your account is only a story. Billings needs something he can see and hold.'};this.flags.add('billings-helped');return {helped:true,message:'Billings rests a thumb on the printed skyline. “They told us there was nothing worth saving out there. I cannot promise the air is safe. But if that pipe is sealed, I can give you a chance. Take the shotgun. Come back with the truth.”'};}
   steppedOutside(){if(!this.story)return null;if(this.complete||this.chapter==='drone')return null;if(this.chapter!=='airlock')return {stop:true,message:'The airlock will not turn this investigation into an escape yet.'};if(!this.flags.has('pipe-capped'))return {stop:true,message:'The gas line is still live.'};if(!this.wearing||!this.armed)return {stop:true,message:'You need the sealed suit and Billings’ shotgun.'};this.setChapter('drone');return {drone:true};}
   droneKilled(){if(this.chapter!=='drone')return false;this.droneDown=true;this.setChapter('free');return true;} killedByDrone(){this.deaths++;if(this.chapter==='drone')this.chapter='airlock';}

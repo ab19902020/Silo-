@@ -22,7 +22,7 @@ import { StoryProps, Drone } from './relics.js';
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel'),terminalDialog=$('georgeTerminal');
 const dialogs=[welcome,directory,settings,about,characters,relic,conversation,satchel,terminalDialog],coarse=matchMedia('(pointer:coarse)').matches;
 let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
-let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null,talking=null,chapterEnteredAt=0;
+let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null,talking=null,chapterEnteredAt=0,hintUntil=0;
 let terminal=new GeorgeTerminal(),workAction=null;
 const pausingDialogs=dialogs.filter(d=>d!==conversation);
 let story=null,props=null,drone=null,wasOutside=false,lastChapter=null;
@@ -156,8 +156,12 @@ function syncGuidance(){
     whereLine.textContent=here?`${where.place} — you are here`:where.place;
     whereLine.classList.toggle('here',!!here);
   }
-  hintLine.hidden=!hint;
-  if(hint)hintLine.textContent=hint;
+  // The hint is prominent while it is news, then it goes. Left on the card it
+  // made the card half the height of a phone screen, and the answer is already
+  // written down in the journal for as long as the player wants it.
+  const fresh=hint&&performance.now()<hintUntil;
+  hintLine.hidden=!fresh;
+  if(fresh)hintLine.textContent=hint;
   const left=story?.story?story.hintsLeft:0;
   button.hidden=!story?.story||!story.hintsTotal;
   button.textContent=left?'Think about it':'Nothing more to work out';
@@ -180,6 +184,7 @@ function nudge(now){
   if(waited<due)return;
   const hint=story.revealHint();
   if(!hint)return;
+  hintUntil=performance.now()+9000;
   showObjective(story.chapterInfo.title,story.objective,9000);
   notify(hint);saveStory();
 }
@@ -204,6 +209,7 @@ function askForHint(){
   const hint=story.revealHint();
   audio.click();
   if(!hint){notify('Nothing more to work out. What you need is where the objective says.');syncGuidance();return;}
+  hintUntil=performance.now()+11000;
   showObjective(story.chapterInfo.title,story.objective,11000);
   notify(hint);saveStory();
 }
