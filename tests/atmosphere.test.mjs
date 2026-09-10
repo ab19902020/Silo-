@@ -197,10 +197,10 @@ test('the fixtures dim and go amber on the night cycle, and come back in the mor
   // 0.41 made a beautiful shaft nobody could walk down; you have to be able to
   // see where you are going on a landing at three in the morning. Both bounds
   // are asserted, and the lower one is the one that matters.
-  assert.ok(night.lit<noon.lit*.92,`night burns ${night.lit.toFixed(0)} against noon's ${noon.lit.toFixed(0)}`);
-  assert.ok(night.lit>noon.lit*.70,`night is down to ${(night.lit/noon.lit*100).toFixed(0)}% of noon — too dark to play`);
-  assert.ok(night.key<noon.key*.92&&night.key>noon.key*.70,'the shadow caster ignores the hour, or overdoes it');
-  assert.ok(night.ambient<noon.ambient*.88&&night.ambient>noon.ambient*.55,'the fill is wrong for a night you can walk');
+  assert.ok(night.lit<noon.lit*.95,`night burns ${night.lit.toFixed(0)} against noon's ${noon.lit.toFixed(0)}`);
+  assert.ok(night.lit>noon.lit*.80,`night is down to ${(night.lit/noon.lit*100).toFixed(0)}% of noon — too dark to play`);
+  assert.ok(night.key<noon.key*.95&&night.key>noon.key*.80,'the shadow caster ignores the hour, or overdoes it');
+  assert.ok(night.ambient<noon.ambient*.95&&night.ambient>noon.ambient*.78,'the fill is wrong for a night you can walk');
   // Slightly faster than the fixtures, so there is a little more shape between
   // the lamps at night — enough to feel, not enough to lose the floor.
   assert.ok(night.ambient/noon.ambient<night.lit/noon.lit,'the fill and the fixtures fall together');

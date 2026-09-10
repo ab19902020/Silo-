@@ -53,8 +53,8 @@ hill should not also be ninety seconds of the sun moving behind him.
   every frame rather than when a lamp is placed, so a fixture lit at noon and
   still burning at midnight goes amber *where it stands* instead of waiting to
   be relocated before it notices the hour.
-- **The night is carried by colour, not by darkness.** Night is 0.81 of the
-  working day at the lamps and 0.75 of it in the ambient — dimmer, and only
+- **The night is carried by colour, not by darkness.** Night is 0.88 of the
+  working day at the lamps and 0.87 of it in the ambient — dimmer, and only
   dimmer. What actually moves is the warmth curve, which runs the filaments
   from a cold working white right down to amber. That is how a real building on
   a night setting behaves.
@@ -68,10 +68,16 @@ hill should not also be ninety seconds of the sun moving behind him.
   pleased with. A game has to let you see where you are going at three in the
   morning.
 
-  The fill still comes off slightly faster than the fixtures, so there is a
-  little more shape between the lamps at night than at midday — enough to feel,
-  not enough to lose the floor. The test asserts both bounds, and the lower one
-  is the one that matters.
+  The level is not the whole story, which is what the third attempt missed. The
+  grade's contrast curve, the vignette and the swing to amber all read as
+  "darker" on top of it, so a fifth off the fixtures landed nearer a half off
+  the picture. The final numbers are far shallower than they look like they
+  should be, and that is correct.
+
+  The fill still comes off very slightly faster than the fixtures, so there is
+  a little more shape between the lamps at night than at midday — enough to
+  feel, not enough to lose the floor. The test asserts both bounds, and the
+  lower one is the one that matters.
 - **Crowd.** The population limit scales with `crowd`, floored at six — there is
   always somebody on shift. Named residents already sort first, so the story
   cannot be locked out by the night cycle emptying a gallery.
