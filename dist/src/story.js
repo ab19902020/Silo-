@@ -6,10 +6,10 @@ export const RELICS=Object.freeze([
   {id:'pez',sound:'plastic',name:'A duck-headed PEZ dispenser',eyebrow:'RELIC · UNAUTHORISED',level:26,wing:0,at:[-4.9,1.45,9.6],float:true,
    blurb:'A yellow duck head on a spring. A repair ticket is folded under the spring: “G. Wilkins — watch left at the market, Level 100. Book with the Medical returns, 62.” On the sleeve, three scratches: 1–4–4.',
    source:'Named in the television series. The scratched level clue is reconstructed for this game.'},
-  {id:'watch',sound:'metal',name:'George Wilkins’ wristwatch',eyebrow:'RELIC · AUTHORISED',level:100,wing:0,at:[4.6,1.02,9.4],float:true,
+  {id:'watch',sound:'metal',name:'George Wilkins’ wristwatch',eyebrow:'RELIC · AUTHORISED',level:100,wing:0,at:[6.6,.94,6.35],float:true,
    blurb:'Still running. The back is scarred by a crude wave and a downward arrow. It is not decoration: George left a direction: below Mechanical, behind the warning sign in the rear service gallery.',
    source:'George’s authorised watch is established in the television series. The engraved void clue is reconstructed for this game.'},
-  {id:'georgia',sound:'book',name:'Amazing Adventures in Georgia',eyebrow:'RELIC · RED',level:62,wing:0,at:[6.9,1.06,17.4],float:true,
+  {id:'georgia',sound:'book',name:'Amazing Adventures in Georgia',eyebrow:'RELIC · RED',level:62,wing:0,at:[7.4,.72,15],float:true,
    blurb:'A children’s travel guide full of open sky, roads and water. A folded Atlanta page carries George’s pencil marks. It is dangerous evidence—and proof that the world has names.',
    source:'The Georgia travel guide and its importance are established in the television series. The pencil annotations are reconstructed.'},
   {id:'harddrive',sound:'plastic',name:'Hard Drive 18',eyebrow:'RELIC · RED',level:144,wing:1,at:[-5.28,.863,5.48],hideoutAt:[68.5,12.92,6.6],prop:true,needs:'hideout-open',
@@ -18,11 +18,11 @@ export const RELICS=Object.freeze([
 ]);
 
 export const EQUIPMENT=Object.freeze([
-  {id:'crowbar',sound:'metal',name:'A maintenance crowbar',eyebrow:'TOOL · MECHANICAL',level:144,wing:0,at:[1.9,.95,11.7],needs:'crowbar',
+  {id:'crowbar',sound:'metal',name:'A maintenance crowbar',eyebrow:'TOOL · MECHANICAL',level:144,wing:0,at:[5.4,.93,13],needs:'crowbar',
    blurb:'A short forged bar with a flattened end. The wear marks match the fasteners on the concealed void bulkhead.',source:'A gameplay tool and placement reconstructed for this game.'},
-  {id:'pipekit',sound:'metal',name:'A pipe-capping kit',eyebrow:'TOOL · WATER FILTRATION',level:55,wing:0,at:[-6.7,1.15,18.7],needs:'pipe-tools',
+  {id:'pipekit',sound:'metal',name:'A pipe-capping kit',eyebrow:'TOOL · WATER FILTRATION',level:55,wing:0,at:[-6.7,0,18.7],needs:'pipe-tools',
    blurb:'A split steel collar, seal compound, torque handle and pressure key. The sizes match the service line drawn in the hidden blueprint.',source:'The kit and its placement are reconstructed for this game; the exact gas-pipe location is not presented as canon.'},
-  {id:'suit',sound:'cloth',name:'A sealed outside suit',eyebrow:'SUPPLY · NOT ON THE MANIFEST',level:144,wing:3,at:[5.6,.4,18.5],needs:'escape-kit',
+  {id:'suit',sound:'cloth',name:'A sealed outside suit',eyebrow:'SUPPLY · NOT ON THE MANIFEST',level:144,wing:3,at:[5.6,0,18.5],needs:'escape-kit',
    blurb:'A suit with sound seals and Mechanical heat tape. It was prepared to survive the hill, not to perform a cleaning.',source:'The importance of correctly made heat tape is established in the books and television series; this stored suit is reconstructed.'},
   {id:'shotgun',sound:'metal',name:'Billings’ shotgun',eyebrow:'SHERIFF · ISSUED',level:1,wing:0,at:[1.9,.95,11.7],needs:'billings',
    blurb:'Officer Billings has opened the armoury and placed the shotgun in your hands. It is not permission to clean. It is his decision to believe the evidence.',source:'Billings, the Atlanta book and sheriff’s station are established. This handoff is reconstructed for the game’s finale.'},
@@ -30,30 +30,119 @@ export const EQUIPMENT=Object.freeze([
 export const COLLECTABLES=Object.freeze([...RELICS,...EQUIPMENT]);
 const byId=new Map(COLLECTABLES.map(item=>[item.id,item]));
 
+// Every chapter names a place the player can actually travel to, and carries
+// hints that get more specific the longer they are stuck.
+//
+// `where` is a real destination: the level the directory travels to, the wing
+// letter on its door, and a short label for the heads-up display. An objective
+// that says "in Mechanical" is useless in a silo a hundred and forty-four
+// levels deep — Mechanical is a level number, and the player needs it.
+//
+// `hints` escalate. The first is the reasoning the character would do for
+// themselves; the last says where the thing is. They are revealed one at a
+// time, on request or after being stuck long enough, so the player who wants
+// to work it out still can and the player who is lost is not stranded.
 const CHAPTERS=Object.freeze([
-  {id:'cleaning',title:'The last cleaning',objective:'Find the directory book in the cafeteria and watch Holston cross the hill.'},
-  {id:'clues',title:'Things George left',objective:'A receipt in the directory reads: “George left the little duck at the bar, 026.” Start there.'},
-  {id:'void-lead',title:'A mark like water',objective:'The watch points down, toward the water below Mechanical. Find the concealed route to the void.'},
-  {id:'crowbar',title:'The blocked way',objective:'The old bulkhead has already moved once. Find a short leverage tool in Mechanical and return.'},
-  {id:'hideout',title:'Behind the wall',objective:'Pry open the bulkhead and search George’s hideout. Do not assume the most obvious relic explains itself.'},
-  {id:'george-home',title:'Something missing',objective:'The drive came with a folded delivery slip: “G. Wilkins · 068 · A.” Find the machine it belonged to.'},
-  {id:'terminal',title:'The ordinary answer',objective:'George’s machine is missing its external storage. Check the cable and the papers he left beside it.'},
-  {id:'pipe-tools',title:'The service line',objective:'The hidden schematic identifies a service gas line. Collect the capping kit from Water Filtration on Level 055.'},
-  {id:'pipe',title:'Under pressure',objective:'Follow the red line beyond the mine drill into the pressure gallery. Open the cover, isolate, seat the collar, then torque it.'},
-  {id:'billings',title:'A page called Atlanta',objective:'Take the Georgia book to Officer Billings in the Level 001 sheriff’s station. Give him a reason to help.'},
-  {id:'escape-kit',title:'Not a cleaning',objective:'Billings has granted the shotgun. Collect the sealed suit from Supply on Level 144, then return to the airlock.'},
-  {id:'airlock',title:'First sunlight',objective:'Cycle the airlock and leave Silo 18. You are escaping—not cleaning.'},
-  {id:'drone',title:'The thing over the ridge',objective:'Hold the shotgun on the drone, let it close, and fire twice.'},
-  {id:'free',title:'Fifty-one doors',objective:'The ridge is open. Explore the exterior network and enter the flooded remains of Silo 17.'},
+  {id:'cleaning',title:'The last cleaning',objective:'Find the directory book in the cafeteria and watch Holston cross the hill.',
+   where:{level:1,wing:0,place:'Cafeteria · Level 001'},
+   hints:['The book is on a table in front of the screen wall.',
+          'Walk up to it and press Use. Everything starts from the book.']},
+  {id:'clues',title:'Things George left',objective:'A receipt in the directory reads: “George left the little duck at the bar, 026.” Start there.',
+   where:{level:26,wing:0,place:'The bar · Level 026'},
+   hints:['The receipt gives you a level: 026. Open the directory and travel to it.',
+          'The bar is wing A. Go to the bar itself, not the tables.',
+          'A small yellow duck head, sitting on the bar counter among the mugs.']},
+  {id:'void-lead',title:'A mark like water',objective:'The watch is scratched with a wave and a downward arrow. Follow it below Mechanical, Level 144.',
+   where:{level:144,wing:0,place:'Mechanical · Level 144 · wing A'},
+   hints:['A wave and an arrow pointing down. Water, below. The lowest working level is Mechanical, 144.',
+          'The watch said the rear service gallery, behind the warning sign — the back of the machine hall, not the front.',
+          'There is an old bulkhead set into the wall back there. Get close and inspect it.']},
+  {id:'crowbar',title:'The blocked way',objective:'The bulkhead has been prised open before. Find a lever on the tool board in Mechanical, Level 144, and come back.',
+   where:{level:144,wing:0,place:'Mechanical · Level 144 · wing A'},
+   hints:['A bulkhead that has moved once will move again, with something to lever it. Tools live in Mechanical.',
+          'You do not need to travel. It is the same level you are standing on: 144, wing A.',
+          'Look for the tool board standing on a workbench along the side of the machine hall. The crowbar is lying on the bench in front of it.']},
+  {id:'hideout',title:'Behind the wall',objective:'Take the crowbar back to the bulkhead below Mechanical and pry it open.',
+   where:{level:144,wing:0,place:'Mechanical · Level 144 · wing A'},
+   hints:['Back to the bulkhead in the rear service gallery, with the crowbar in hand.',
+          'Inspect it again now that you are carrying the lever.',
+          'What is behind it is a hideout, and the obvious relic in it is not the point. Search all of it.']},
+  {id:'george-home',title:'Something missing',objective:'The drive came with a folded slip: “G. Wilkins · 068 · A.” Find the machine it belonged to.',
+   where:{level:68,wing:0,place:'Wilkins residence · Level 068 · wing A'},
+   hints:['The slip is an address. 068 is the level; A is the wing.',
+          'It is a residence on Level 068. The watch carries a maker number the old register will accept.',
+          'George’s own room. His machine is still in it.']},
+  {id:'terminal',title:'The ordinary answer',objective:'George’s machine has no storage in it. Insert Hard Drive 18 and look properly — an empty file list is not an answer.',
+   where:{level:68,wing:0,place:'Wilkins residence · Level 068 · wing A'},
+   hints:['Insert the drive first. What comes up is meant to look like nothing.',
+          'The machine has a search. George would not leave the thing he died for in a folder called SECRET.',
+          'Search for the word a Flamekeeper would use for a place things are kept: library.']},
+  {id:'pipe-tools',title:'The service line',objective:'The hidden schematic names a service gas line. Collect the capping kit from Water Filtration, Level 055.',
+   where:{level:55,wing:0,place:'Water filtration · Level 055 · wing A'},
+   hints:['The schematic needs tools you do not have. Water Filtration keeps them: Level 055.',
+          'Wing A, on the floor among the filter vessels and pump controls.',
+          'A steel case: split collar, seal compound, torque handle and pressure key.']},
+  {id:'pipe',title:'Under pressure',objective:'Follow the red line past the mine drill to the pressure gallery. Lever the cover, isolate, seat the collar, then torque it.',
+   where:{level:144,wing:0,place:'Pressure gallery · beyond the mine drill'},
+   hints:['The red line painted along the mine wall is the route. Follow it past the drill.',
+          'You need both the crowbar and the capping kit before the cover will come off.',
+          'The order is on the schematic and it matters: isolate the line, seat the collar, then torque it.']},
+  {id:'billings',title:'A page called Atlanta',objective:'Take the Georgia book to Officer Billings in the sheriff’s station, Level 001, and give him a reason to help.',
+   where:{level:1,wing:0,place:'Sheriff’s station · Level 001'},
+   hints:['Billings will not act on an account. He needs something he can hold.',
+          'Carry the Georgia book to him. The station is off the cafeteria on Level 001.',
+          'Talk to him, and offer the book with the Atlanta page in it.']},
+  {id:'escape-kit',title:'Not a cleaning',objective:'Billings has released the shotgun. Collect the sealed suit from Supply, Level 144, then go up to the airlock.',
+   where:{level:144,wing:3,place:'Supply · Level 144 · wing D'},
+   hints:['Supply is on Level 144, wing D. It will open for you now.',
+          'It is an open crate on the floor, not on the manifest, with Mechanical’s own heat tape on it.',
+          'With the suit and the shotgun, the airlock is on Level 001.']},
+  {id:'airlock',title:'First sunlight',objective:'Cycle the airlock on Level 001 and walk out. You are escaping — not cleaning.',
+   where:{level:1,wing:0,place:'Airlock · Level 001'},
+   hints:['Through the sheriff’s station and the cleaning preparation room, to the airlock.',
+          'Cycle the inner door, step in, then cycle the outer one.']},
+  {id:'drone',title:'The thing over the ridge',objective:'Something is circling. Let it come inside thirty metres, put the sight on it and give it both barrels.',
+   where:null,
+   hints:['Do not fire at the sky. It has to be close.',
+          'Two shots. Hold still and let it commit.']},
+  {id:'free',title:'Fifty-one doors',objective:'The ridge is open. Explore the exterior network and the flooded remains of Silo 17.',
+   where:null,hints:[]},
 ]);
 const indexOf=id=>CHAPTERS.findIndex(chapter=>chapter.id===id);
 const SEALS={george:{types:['residential'],levels:[68],label:'Wilkins residence',reason:'The lock is intact. George’s watch has a maker number that may fit the old resident register.'},supply:{types:['supply'],levels:[144],label:'Supply, Level 144',reason:'Supply will not release an outside suit without a reason and a name.'}};
 
 export class Story{
-  constructor(mode='explore'){this.mode=MODES.includes(mode)?mode:'explore';this.held=new Set();this.flags=new Set();this.chapter=this.story?'cleaning':'free';this.pipeSteps=[];this.wearing=false;this.armed=false;this.droneDown=false;this.deaths=0;}
+  constructor(mode='explore'){this.mode=MODES.includes(mode)?mode:'explore';this.held=new Set();this.flags=new Set();this.chapter=this.story?'cleaning':'free';this.pipeSteps=[];this.wearing=false;this.armed=false;this.droneDown=false;this.deaths=0;this.hints={};this.seen=new Set();}
   get story(){return this.mode==='story';} get chapterInfo(){return CHAPTERS.find(c=>c.id===this.chapter)||CHAPTERS.at(-1);} get chapterIndex(){return Math.max(0,indexOf(this.chapter));}
   get relicsHeld(){return RELICS.filter(r=>this.held.has(r.id)).length;} get objective(){return this.story?this.chapterInfo.objective:'Explore every level, the mine network, the void and the exterior silos.';} get complete(){return this.chapter==='free';}
   has(id){return this.held.has(id);} hasFlag(id){return this.flags.has(id);}
+
+  // --- guidance -----------------------------------------------------------
+  // Where the current chapter is asking you to go, if it is asking for a place
+  // at all. The heads-up display, the directory and the arrival notice all read
+  // this rather than each keeping their own idea of where the player should be.
+  get destination(){return this.story?this.chapterInfo.where||null:null;}
+  get hintsTotal(){return this.chapterInfo.hints?.length||0;}
+  get hintsShown(){return Math.min(this.hintsTotal,this.hints[this.chapter]||0);}
+  get hintsLeft(){return this.hintsTotal-this.hintsShown;}
+  get shownHints(){return (this.chapterInfo.hints||[]).slice(0,this.hintsShown);}
+  // One more hint, or null when the chapter has nothing further to say. Asking
+  // is always allowed; being stuck long enough asks on the player's behalf.
+  revealHint(){
+    if(!this.story||!this.hintsLeft)return null;
+    const next=this.chapterInfo.hints[this.hintsShown];
+    this.hints[this.chapter]=this.hintsShown+1;
+    return next;
+  }
+  // True once, the first time the player reaches the level the chapter points
+  // at, so arriving somewhere correct is confirmed instead of silent.
+  arriving(level){
+    const where=this.destination;
+    if(!where||where.level!==level)return false;
+    const key=`arrived:${this.chapter}`;
+    if(this.seen.has(key))return false;
+    this.seen.add(key);return true;
+  }
   setChapter(id){if(!this.story||indexOf(id)<0||indexOf(id)<this.chapterIndex)return false;const changed=this.chapter!==id;this.chapter=id;return changed;}
   beginSearch(){return this.chapter==='cleaning'&&this.setChapter('clues');}
   opened(key){if(!this.story)return true;if(key==='supply')return this.opened('escape-kit');if(key==='crowbar')return this.chapter==='crowbar';if(key==='hideout-open')return this.flags.has('hideout-open');if(key==='pipe-tools')return this.chapter==='pipe-tools';if(key==='billings')return this.flags.has('billings-helped');if(key==='escape-kit')return this.chapterIndex>=indexOf('escape-kit');if(key==='george')return this.flags.has('george-home-known');return true;}
@@ -70,7 +159,7 @@ export class Story{
   speakToBillings(){if(!this.story)return {helped:true};if(this.chapter!=='billings')return {helped:false,message:'Billings listens, but you have not brought him proof he can act on.'};if(!this.has('georgia'))return {helped:false,message:'Your account is only a story. Billings needs something he can see and hold.'};this.flags.add('billings-helped');return {helped:true,message:'Billings rests a thumb on the printed skyline. “They told us there was nothing worth saving out there. I cannot promise the air is safe. But if that pipe is sealed, I can give you a chance. Take the shotgun. Come back with the truth.”'};}
   steppedOutside(){if(!this.story)return null;if(this.complete||this.chapter==='drone')return null;if(this.chapter!=='airlock')return {stop:true,message:'The airlock will not turn this investigation into an escape yet.'};if(!this.flags.has('pipe-capped'))return {stop:true,message:'The gas line is still live.'};if(!this.wearing||!this.armed)return {stop:true,message:'You need the sealed suit and Billings’ shotgun.'};this.setChapter('drone');return {drone:true};}
   droneKilled(){if(this.chapter!=='drone')return false;this.droneDown=true;this.setChapter('free');return true;} killedByDrone(){this.deaths++;if(this.chapter==='drone')this.chapter='airlock';}
-  save(){return {version:2,mode:this.mode,chapter:this.chapter,held:[...this.held],flags:[...this.flags],pipeSteps:[...this.pipeSteps],deaths:this.deaths};}
+  save(){return {version:3,mode:this.mode,chapter:this.chapter,held:[...this.held],flags:[...this.flags],pipeSteps:[...this.pipeSteps],deaths:this.deaths,hints:{...this.hints},seen:[...this.seen]};}
   static load(saved){
     const s=new Story(saved?.mode||'explore');
     const held=new Set(Array.isArray(saved?.held)?saved.held:[]),flags=new Set(Array.isArray(saved?.flags)?saved.flags:[]),past=indexOf(saved?.chapter);
@@ -85,7 +174,14 @@ export class Story{
     for(const step of Array.isArray(saved?.pipeSteps)?saved.pipeSteps:[]){if(step!==['isolate','collar','torque'][s.pipeSteps.length])break;s.capPipe(step);}
     if(flags.has('billings-helped'))s.speakToBillings();if(held.has('shotgun'))s.take('shotgun');if(held.has('suit'))s.take('suit');
     if(past>=indexOf('drone')&&s.chapter==='airlock')s.steppedOutside();if(saved?.chapter==='free'&&s.chapter==='drone')s.droneKilled();
-    s.deaths=Math.min(9999,Math.max(0,Number(saved?.deaths)||0));return s;
+    s.deaths=Math.min(9999,Math.max(0,Number(saved?.deaths)||0));
+    // Hints already given stay given: a reload is not a way to be told again,
+    // and more to the point it is not a way to lose the help you already had.
+    if(saved?.hints&&typeof saved.hints==='object')
+      for(const [chapter,count] of Object.entries(saved.hints))
+        if(indexOf(chapter)>=0)s.hints[chapter]=Math.max(0,Math.min(20,Number(count)||0));
+    if(Array.isArray(saved?.seen))for(const key of saved.seen)if(typeof key==='string')s.seen.add(key);
+    return s;
   }
 }
 export {CHAPTERS};

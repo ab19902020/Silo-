@@ -76,9 +76,42 @@ const build={
 };
 
 const TURN=.55;
+
+// Somewhere for a story item to live.
+//
+// A relic lying at chest height in the middle of a room reads as a bug, and it
+// is invisible: there is nothing to catch the eye and nothing to walk towards.
+// The crowbar sat like that in the machine hall — no bench under it, no board
+// behind it — which is exactly the one item players could not find.
+//
+// A fixture is the furniture that explains the item. It is built once and stays
+// after the item is taken, so the empty outline reads as somebody having been
+// here before you.
+const FIXTURES=[
+  {id:'tool-board',level:144,wing:0,at:[6.5,0,13.62],build:(k)=>{
+    for(const x of [-1.5,1.5])k.beam('darkMetal',[x,.88,0],[x,2.02,0],.035);
+    k.box('wood',0,1.5,.06,3.2,1.16,.05);
+    k.box('darkMetal',0,2.06,.04,3.3,.07,.12);
+    // Painted outlines of what hangs here, so a gap reads as a missing tool.
+    for(let i=0;i<5;i++)k.box('pale',-1.2+i*.6,1.72,.026,.055,.42,.006);
+    k.box('pale',-1.2,1.28,.026,.5,.05,.006);k.box('pale',-.95,1.16,.026,.05,.3,.006);
+    for(const x of [-.35,.25,.85])k.beam('rust',[x,1.86,.03],[x,1.5,.03],.014);
+    for(const x of [-1.5,1.5])k.box('brass',x,1.16,.04,.09,.09,.05);
+  }},
+];
+
 export class StoryProps{
   constructor(scene,materials){
     this.scene=scene;this.m=materials;this.items=new Map();
+    this.fixtures=FIXTURES.map(fixture=>{
+      const k=new Kit(materials);fixture.build(k);
+      const group=new THREE.Group();group.add(k.group());group.name=`fixture-${fixture.id}`;
+      group.position.copy(roomPoint(fixture.level,fixture.wing,fixture.at[0],fixture.at[2]));
+      group.position.y+=fixture.at[1];
+      group.traverse(o=>{if(o.isMesh||o.isInstancedMesh){o.castShadow=true;o.receiveShadow=true;}});
+      group.visible=false;scene.add(group);
+      return {fixture,group};
+    });
     for(const item of COLLECTABLES){
       if(item.prop||item.id==='shotgun'||!build[item.id])continue;                  // the hard drive is a supplied model
       const k=new Kit(materials);build[item.id](k);
@@ -96,13 +129,20 @@ export class StoryProps{
   }
   // Only what the story says is there, on the level you are standing on.
   update(dt,time,story,level,special){
+    for(const {fixture,group} of this.fixtures)group.visible=!special&&fixture.level===level;
     for(const [id,entry] of this.items){
       const on=!special&&story.visible(id)&&entry.item.level===level;
       entry.group.visible=on;
       if(!on)continue;
-      // Small things turn and lift, so they read as something to take. A crate
-      // and a shotgun stay on the floor where somebody left them and only turn.
-      entry.group.rotation.y=0;entry.group.position.y=entry.base;
+      // Small things turn and lift, so they read as something to take rather
+      // than as part of the furniture. A crate, a crowbar and a shotgun are
+      // things somebody put down: they stay where they were left.
+      if(entry.item.float){
+        entry.group.rotation.y=time*TURN;
+        entry.group.position.y=entry.base+Math.sin(time*1.6)*.014;
+      }else{
+        entry.group.rotation.y=0;entry.group.position.y=entry.base;
+      }
     }
   }
   interactions(story,level,special){

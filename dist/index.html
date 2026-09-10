@@ -18,13 +18,15 @@
   </header>
   <button id="interaction" hidden><kbd>E</kbd><span id="interactionLabel">Open door</span><small id="interactionHint"></small></button>
   <aside id="levelRail" aria-hidden="true"><span>001</span><div><i id="depthMarker"></i></div><span>144</span></aside>
-  <div class="bottom-hud" id="bottomHud"><div><span class="mode-dot"></span><span id="modeLabel">ON FOOT</span></div><p id="controlHint"><kbd>W A S D</kbd> Move <span>·</span> Drag to look <span>·</span> <kbd>E</kbd> Use <span>·</span> <kbd>M</kbd> Directory</p><button id="viewButton" aria-label="Switch first or third person">View: third person</button><button id="torchButton" aria-label="Toggle torch">☀ <span>Torch</span></button></div>
+  <div class="bottom-hud" id="bottomHud"><div><span class="mode-dot"></span><span id="modeLabel">ON FOOT</span></div><p id="controlHint"><kbd>W A S D</kbd> Move <span>·</span> Drag to look <span>·</span> <kbd>E</kbd> Use <span>·</span> <kbd>M</kbd> Directory <span>·</span> <kbd>T</kbd> Think</p><button id="viewButton" aria-label="Switch first or third person">View: third person</button><button id="torchButton" aria-label="Toggle torch">☀ <span>Torch</span></button></div>
   <div id="touchControls"><div id="joystick" aria-label="Move"><i></i></div><div class="touch-actions"><button id="runButton" aria-label="Toggle running">Run</button><button id="jumpButton" aria-label="Jump">Jump</button><button id="touchUse" aria-label="Interact">Use</button></div><span id="lookHint">Drag the right side to look</span></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="fade" aria-hidden="true"></div>
   <aside id="chapterHud" hidden aria-label="Opening chapter">
     <span class="eyebrow">CHAPTER ONE · THE CLEANING</span><strong id="chapterTitle">A book on the table</strong><p id="chapterObjective">Find the directory book on the table ahead.</p>
-    <div class="chapter-actions"><button id="openBookButton" hidden>Open your book</button><button id="satchelButton" hidden>What you are carrying</button></div>
+    <p id="chapterWhere" hidden></p>
+    <p id="chapterHint" hidden></p>
+    <div class="chapter-actions"><button id="openBookButton" hidden>Open your book</button><button id="hintButton" hidden>Think about it</button><button id="satchelButton" hidden>What you are carrying</button></div>
   </aside>
 
   <div id="cinemaControls"><button id="focusScreenButton" hidden>Back to cafeteria</button><button id="skipOpening" hidden>Skip</button></div>

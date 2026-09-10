@@ -79,3 +79,43 @@ body.armed #crosshair{display:block}
 @media(max-width:650px){.terminal-content{padding:0 16px 20px}.terminal-controls button{flex:1 1 45%}.terminal-panel .panel-head{padding:16px}}
 
 #terminalRows p{white-space:pre-wrap;line-height:1.65}
+
+/* Where the current chapter is sending you, under the objective. A level
+   number is the one piece of information the directory can act on, so it is
+   given its own line rather than buried in a sentence. */
+#chapterWhere{margin:.45rem 0 0;font:600 11px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.11em;text-transform:uppercase;color:#9fd6b4}
+#chapterWhere::before{content:"↗ ";opacity:.8}
+/* A hint, once it has been asked for or earned by being stuck. Set apart from
+   the objective so it never reads as part of the story's own voice. */
+#chapterHint{margin:.5rem 0 0;padding:.45rem .6rem;border-left:2px solid #6f8f79;
+  background:rgba(120,160,132,.10);font-size:12.5px;line-height:1.42;color:#cfdcd2}
+#hintButton[data-exhausted="true"]{opacity:.45}
+
+/* The level the story is pointing at, marked where the player already looks
+   for somewhere to travel. */
+.location-item.objective{border-color:#6f9c7d;box-shadow:inset 3px 0 0 #7fb890}
+.location-item.objective .location-number{color:#9fd6b4}
+.room-links button.objective{border-color:#6f9c7d;color:#cfe9d8;font-weight:600}
+
+/* The journal's record of the story so far: what is done, what is open, and
+   the hints already worked out on the open one. Chapters ahead are not listed. */
+.journal-chapters{margin:0 0 1.1rem;padding:0 0 .9rem;border-bottom:1px solid rgba(180,196,184,.16)}
+.journal-chapters>h3{margin:0 0 .55rem;font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.13em;text-transform:uppercase;color:#8fae99}
+.journal-chapter{display:flex;gap:.6rem;align-items:flex-start;padding:.3rem 0}
+.journal-chapter span{flex:0 0 1rem;text-align:center;font-size:12px;line-height:1.5}
+.journal-chapter strong{font-size:13.5px;font-weight:600}
+.journal-chapter p{margin:.2rem 0 0;font-size:12.5px;line-height:1.45;color:#c3cfc6}
+.journal-chapter.done{opacity:.5}
+.journal-chapter.done span{color:#7fb890}
+.journal-chapter.now span{color:#e0c37a}
+.journal-hint{border-left:2px solid #6f8f79;padding-left:.5rem;color:#a9c1b1 !important}
+
+#chapterWhere.here{color:#e0c37a}
+#chapterWhere.here::before{content:"◆ "}
+/* The chapter card grows with its destination line and its hint, and on a short
+   screen it reached the toast. Lift the toast clear while the card is up. */
+body:has(#chapterHud:not([hidden])) #toast{bottom:calc(24px + var(--card-h,0px) + 20px)}
+body:has(#chapterHud:not([hidden])) #interaction{top:auto;bottom:calc(24px + var(--card-h,0px) + 20px)}
+body:has(#chapterHud:not([hidden])) #toast.show ~ #interaction{bottom:calc(24px + var(--card-h,0px) + 92px)}

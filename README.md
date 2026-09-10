@@ -157,6 +157,7 @@ See [research and reconstruction decisions](docs/reconstruction.md), [the full l
 | Directory | M | Directory button |
 | Torch | F | Torch button |
 | Character | C | Character button |
+| Think it through (a hint) | T | The button on the chapter card |
 | Fire | Left mouse (captured) or G | FIRE button |
 | Reload / aim / sling | R / hold Shift / H | — |
 | First / third person | V | View button |

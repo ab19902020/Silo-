@@ -11,7 +11,7 @@ import { Population } from './population.js';
 import { CafeteriaOpening, CAFETERIA_START } from './opening.js';
 import { conversationFor, ALGORITHM } from './conversations.js';
 import { RESIDENT_CAST } from './resident-data.js';
-import { Story, COLLECTABLES, RELICS } from './story.js';
+import { Story, COLLECTABLES, RELICS, CHAPTERS } from './story.js';
 import { Firearms } from './firearms.js';
 import { WEAPONS } from './weapons.js';
 import { updateRangeTargets } from './gun-range.js';
@@ -22,7 +22,7 @@ import { StoryProps, Drone } from './relics.js';
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel'),terminalDialog=$('georgeTerminal');
 const dialogs=[welcome,directory,settings,about,characters,relic,conversation,satchel,terminalDialog],coarse=matchMedia('(pointer:coarse)').matches;
 let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
-let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null,talking=null;
+let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null,talking=null,chapterEnteredAt=0;
 let terminal=new GeorgeTerminal(),workAction=null;
 const pausingDialogs=dialogs.filter(d=>d!==conversation);
 let story=null,props=null,drone=null,wasOutside=false,lastChapter=null;
@@ -43,7 +43,9 @@ function toggleControls(){hudOpen=!hudOpen;document.body.classList.toggle('hud-o
 function updateInterface(time){
   if(hudOpen&&(body.horizontalSpeed>.12||opening?.focus&&time*1000>touchUntil)){hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');}
   document.body.classList.toggle('playing',started&&!paused());document.body.classList.toggle('touch-awake',time*1000<touchUntil||body.horizontalSpeed>.12);
-  $('chapterHud').hidden=paused()||opening?.watching||time*1000>chapterUntil;
+  const card=$('chapterHud'),wasShown=!card.hidden;
+  card.hidden=paused()||opening?.watching||time*1000>chapterUntil;
+  if(wasShown&&card.hidden)document.body.style.setProperty('--card-h','0px');
   $('controlsButton').hidden=!started||paused();
   document.body.classList.toggle('screen-focused',!!opening?.focus);
 }
@@ -137,6 +139,49 @@ function syncMusicGate(){
 function showObjective(title,text,linger=7000){
   $('chapterTitle').textContent=title;$('chapterObjective').textContent=text;
   chapterUntil=performance.now()+linger;$('chapterHud').hidden=false;
+  syncGuidance();
+}
+// The destination line, the latest hint, and whether there is another one to
+// ask for. Kept in one place so the card never disagrees with itself.
+function syncGuidance(){
+  const where=story?.destination,hint=story?.shownHints.at(-1);
+  const whereLine=$('chapterWhere'),hintLine=$('chapterHint'),button=$('hintButton');
+  if(!whereLine||!hintLine||!button)return;
+  whereLine.hidden=!where;
+  if(where){
+    // Standing on the level the story is pointing at is worth saying on the
+    // card itself. It is permanent while it is true, which a toast is not, and
+    // it stops the player travelling away from the thing they came for.
+    const here=started&&world&&!world.special&&!world.outside&&world.activeLevel===where.level;
+    whereLine.textContent=here?`${where.place} — you are here`:where.place;
+    whereLine.classList.toggle('here',!!here);
+  }
+  hintLine.hidden=!hint;
+  if(hint)hintLine.textContent=hint;
+  const left=story?.story?story.hintsLeft:0;
+  button.hidden=!story?.story||!story.hintsTotal;
+  button.textContent=left?'Think about it':'Nothing more to work out';
+  button.disabled=!left;
+  button.dataset.exhausted=String(!left);
+  // The card grew a destination line, a hint and a third button, and on a short
+  // screen it covered both the toast and the "press E" prompt — so the player
+  // could not read what they were about to interact with. Publish its real
+  // height and let those two sit above whatever it happens to be.
+  const card=$('chapterHud');
+  document.body.style.setProperty('--card-h',(card.hidden?0:card.offsetHeight)+'px');
+}
+// Being stuck is allowed to ask on the player's behalf. The first nudge comes
+// after a minute and a half on the same chapter, and each one after that takes
+// longer, so a player who is exploring is not lectured while they do it.
+function nudge(now){
+  if(!story?.story||!story.hintsLeft)return;
+  const waited=(now-chapterEnteredAt)/1000;
+  const due=90+story.hintsShown*120;
+  if(waited<due)return;
+  const hint=story.revealHint();
+  if(!hint)return;
+  showObjective(story.chapterInfo.title,story.objective,9000);
+  notify(hint);saveStory();
 }
 function syncStoryHud(force=false){
   if(!story)return;
@@ -146,16 +191,52 @@ function syncStoryHud(force=false){
   $('crosshair').hidden=!firearms.held;
   if(!story.story)return;
   if(force||lastChapter!==story.chapter){
+    if(lastChapter!==story.chapter)chapterEnteredAt=performance.now();
     lastChapter=story.chapter;
     showObjective(story.chapterInfo.title,story.objective,force?7000:9000);
     saveStory();
-  }
+  }else syncGuidance();
+}
+// Asked for, rather than waited out. The card comes back up with it so the
+// player is looking at the objective and the hint together.
+function askForHint(){
+  if(!story?.story)return;
+  const hint=story.revealHint();
+  audio.click();
+  if(!hint){notify('Nothing more to work out. What you need is where the objective says.');syncGuidance();return;}
+  showObjective(story.chapterInfo.title,story.objective,11000);
+  notify(hint);saveStory();
 }
 function renderSatchel(){
-  $('satchelObjective').textContent=story.objective;
+  const where=story.destination;
+  $('satchelObjective').textContent=where?`${story.objective}  (${where.place})`:story.objective;
   const held=COLLECTABLES.filter(c=>story.has(c.id));
   $('satchelCount').textContent=held.length?`${held.length} ITEMS · ${RELICS.filter(r=>story.has(r.id)).length} RELICS`:'NOTHING YET';
   const list=$('satchelList');list.replaceChildren();
+  // The story so far, before the things you are carrying. Without it there is
+  // no record of what you worked out — only a bag of objects and one line of
+  // objective, which is not what a player means by "where am I up to".
+  const progress=document.createElement('div');progress.className='journal-chapters';
+  const heading=document.createElement('h3');heading.textContent='The story so far';progress.append(heading);
+  for(const chapter of CHAPTERS){
+    if(chapter.id==='free')continue;
+    const index=CHAPTERS.findIndex(c=>c.id===chapter.id);
+    const state=index<story.chapterIndex?'done':index===story.chapterIndex?'now':'later';
+    if(state==='later')continue;                               // no spoilers for what you have not reached
+    const row=document.createElement('div');row.className=`journal-chapter ${state}`;
+    const mark=document.createElement('span');mark.textContent=state==='done'?'✓':'▸';
+    const copy=document.createElement('div');
+    const title=document.createElement('strong');title.textContent=chapter.title;
+    copy.append(title);
+    if(state==='now'){
+      const line=document.createElement('p');line.textContent=chapter.objective;copy.append(line);
+      for(const hint of story.shownHints){
+        const h=document.createElement('p');h.className='journal-hint';h.textContent=hint;copy.append(h);
+      }
+    }
+    row.append(mark,copy);progress.append(row);
+  }
+  list.append(progress);
   for(const item of held){
     const has=story.has(item.id),row=document.createElement('div');row.className='satchel-item';
     const tick=document.createElement('span');tick.className='tick';tick.textContent=has?'✓':'·';
@@ -208,9 +289,15 @@ function renderDirectory(){
     if(lastZone!==zone){const div=document.createElement('div');div.className='zone-divider';div.textContent=zone;target.append(div);lastZone=zone;}
     const button=document.createElement('button');button.className='location-item';
     const n=document.createElement('span');n.className='location-number';n.textContent=special?'↓':String(item.level).padStart(3,'0');
-    const copy=document.createElement('span');copy.className='location-copy';const title=document.createElement('strong');title.textContent=item.name;const sub=document.createElement('small');sub.textContent=special?item.description:`6 enterable wings · ${item.placement}`;
+    // The level the current chapter is sending you to is marked in the
+    // directory itself, because the directory is the thing you travel with.
+    const where=story?.destination;
+    const isTarget=!special&&where&&where.level===item.level;
+    if(isTarget)button.classList.add('objective');
+    const copy=document.createElement('span');copy.className='location-copy';const title=document.createElement('strong');title.textContent=item.name;const sub=document.createElement('small');
+    sub.textContent=isTarget?`Your objective is here · ${item.placement}`:special?item.description:`6 enterable wings · ${item.placement}`;
     copy.append(title,sub);const arrow=document.createElement('span');arrow.textContent='↗';button.append(n,copy,arrow);button.addEventListener('click',()=>travel(special?item.id:item.level));target.append(button);
-    if(!special){const rooms=document.createElement('div');rooms.className='room-links';for(const room of roomsForLevel(item.level)){const b=document.createElement('button');b.textContent=`${String.fromCharCode(65+room.wing)} · ${room.name.toLowerCase()}`;b.addEventListener('click',()=>travel(room.id));rooms.append(b);}target.append(rooms);}
+    if(!special){const rooms=document.createElement('div');rooms.className='room-links';for(const room of roomsForLevel(item.level)){const b=document.createElement('button');b.textContent=`${String.fromCharCode(65+room.wing)} · ${room.name.toLowerCase()}`;if(isTarget&&where.wing===room.wing)b.classList.add('objective');b.addEventListener('click',()=>travel(room.id));rooms.append(b);}target.append(rooms);}
   };
   selected.forEach(i=>addItem(i));
   for(const i of SPECIALS.filter(i=>!query||`${i.name} ${i.type}`.toLowerCase().includes(query)))addItem(i,true);
@@ -452,6 +539,7 @@ addEventListener('pointerdown',revealControls,{passive:true});
 $('enterButton').addEventListener('click',()=>begin('story'));
 $('resumeButton').addEventListener('click',()=>begin());
 $('exploreButton').addEventListener('click',()=>begin('explore'));
+$('hintButton').addEventListener('click',()=>{askForHint();});
 $('journalButton').addEventListener('click',()=>{renderSatchel();openDialog(satchel);});
 $('satchelButton').addEventListener('click',()=>{renderSatchel();openDialog(satchel);});$('home').addEventListener('click',()=>{if(started){$('resumeButton').hidden=false;}openDialog(welcome);});
 $('directoryButton').addEventListener('click',requestDirectory);
@@ -511,6 +599,7 @@ addEventListener('keydown',e=>{
   keys.add(e.code);if(e.code==='KeyE')use();if(e.code==='KeyF')toggleTorch();if(e.code==='Space')jumpQueued=true;if(e.code==='KeyG')fire();
   if(e.code==='KeyR'&&firearms.held){if(firearms.reload())updateWeaponHud();}
   if(e.code==='KeyX'&&firearms.held&&!story.story){const name=firearms.held.name;firearms.holster();updateWeaponHud();notify(`${name} slung.`);}if(e.code==='KeyB'&&story?.story){renderSatchel();openDialog(satchel);}
+  if(e.code==='KeyT'&&story?.story)askForHint();
   if(e.code==='Escape')openDialog(welcome);
 });
 addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',()=>{keys.clear();stick.x=stick.y=0;});
@@ -666,7 +755,19 @@ function frame(){
   }else{if(workAction)workAction.until+=dt*1000;world.update(dt,body.position);cast?.update(0,body,started);}
   audio.setStoryPaused?.(document.hidden||(opening?.watching&&paused()));
   updateInterface(time);
-  if(time-lastHUD>.25){updateHUD();lastHUD=time;}
+  if(time-lastHUD>.25){
+    updateHUD();lastHUD=time;
+    // Arriving somewhere correct should say so. Without it there is no way to
+    // tell a level you were sent to from a level you wandered into, and the
+    // player who is on the right floor goes on looking somewhere else.
+    if(started&&story?.story&&!world.special&&!world.outside&&story.arriving(world.activeLevel)){
+      // The card carries it. Toasting as well stacked two messages saying the
+      // same thing in the same corner of a short screen.
+      showObjective(story.chapterInfo.title,story.objective,6000);
+      saveStory();
+    }else if(started&&story?.story)syncGuidance();
+    if(!paused())nudge(performance.now());
+  }
   world.surface.renderFeed(renderer,time);
   if(['excavator','tunnel'].includes(world.special)&&!opening?.focus)world.underground.waterSurface.update(renderer,scene,camera,time);
   if(world.special==='silo17')world.silo17.waterSurface.update(renderer,scene,camera,time);
