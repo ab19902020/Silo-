@@ -4,6 +4,18 @@ import { buildCafeteriaCeiling } from './cafeteria-ceiling.js';
 import { dressCafeteria } from './environment-details.js';
 import { buildGunRange } from './gun-range.js';
 
+// The cafeteria's tables: four across, five rows deep, the last row hard up
+// against the great screen. kit.table() builds its top surface to TABLE_TOP,
+// and anything that stands on one of these tables has to be placed from that
+// number rather than from a guess.
+export const TABLE_ROWS=Object.freeze([12.8,17,22,27,32]);
+export const TABLE_COLUMNS=Object.freeze([-11,-5,2,9]);
+export const TABLE_TOP=.835;
+// The front table: the row closest to the screen, and the column closest to
+// the middle of the room. The directory book is on it and the story starts
+// standing behind it, so opening.js places both from here.
+export const BOOK_TABLE=Object.freeze([2,32]);
+
 export function makeDisplayGeometry(w,h,radius=34){
   const positions=[],uv=[],indices=[],cols=96,rows=16,r=1.15;
   for(let i=0;i<=cols;i++){const x=(i/cols-.5)*w,dx=Math.max(0,Math.abs(x)-(w/2-r)),clip=r-Math.sqrt(Math.max(0,r*r-dx*dx));for(let j=0;j<=rows;j++){const y=clip+(h-2*clip)*j/rows;positions.push(x,y,radius-Math.sqrt(radius*radius-x*x));uv.push(i/cols,y/h);}}
@@ -28,10 +40,15 @@ export function buildTopFloor(m) {
   for(const z of [10,18,26,34,39]){k.box('concrete',0,7.9,z,36,.7,.75);for(const x of [-17.65,17.65]){k.bevel('concrete',x,4,z,.8,8,.9);k.box('darkConcrete',x,.55,z,.94,1.1,1.05);}}
   root.add(buildCafeteriaCeiling(m));
   for(const x of [-17.45,17.45])for(const z of [14,22,36]){k.bevel('brass',x,3.3,z,.22,.75,.35);k.sphere('lamp',x,3.4,z,.18,.27,.18);}
-  for(const z of [12.8,17,22,27,32])for(const x of [-11,-5,2,9]){
+  for(const z of TABLE_ROWS)for(const x of TABLE_COLUMNS){
     table(k,x,z,3.3,1.4,'metal');solids.push({x,z,w:3.3,d:1.4,y0:0,y1:.9});
     // Both rows face the screen wall at +z, the way a room built around a view is seated.
     for(const dx of [-1.05,0,1.05]){chair(k,x+dx,z-1.15);chair(k,x+dx,z+1.15);for(const side of [-1,1])solids.push({x:x+dx,z:z+side*1.15,w:.48,d:.5,y0:0,y1:.96});}
+    // Every table but one is laid. A mug and a plate either side of the
+    // directory book were enough to lose it: three pale objects in a row on a
+    // black table read as three pieces of crockery, and the one you have to
+    // find is the middle one. That table is left clear.
+    if(x===BOOK_TABLE[0]&&z===BOOK_TABLE[1])continue;
     k.cylinder('white',x+.6,.91,z,.11,.13);k.cylinder('white',x-.6,.84,z,.22,.02);
   }
   for(const x of [-15.8,-12.5,-9.2]){box('green',x,.7,7,3.1,1.4,1.5);k.bevel('metal',x,1.45,7,3.2,.1,1.6);}
@@ -92,6 +109,6 @@ export function buildTopFloor(m) {
   label('RANGE  ↓',26,3.8,25.4,3.1,.4,0);
   const range=buildGunRange(m);root.add(range.root);
   solids.push(...range.solids);floors.push(...range.floors);interactions.push(...range.interactions);
-  dressCafeteria(k,root);root.add(k.group());
+  dressCafeteria(k,root,{rows:TABLE_ROWS,columns:TABLE_COLUMNS,clear:BOOK_TABLE});root.add(k.group());
   root.userData={...root.userData,solids,floors,interactions,animated,doors,type:'cafeteria',outsideScreen:screen,extraScreens:[cellScreen,dutyScreen],rangeTargets:range.targets,bespoke:true};return root;
 }

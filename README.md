@@ -22,6 +22,7 @@ A browser-based, first- and third-person reconstruction of the television silo, 
 - Talking keeps you in the silo. The panel no longer pauses the world; the person stops, turns to face you and stays turned, the camera settles on them, and **1**–**4** ask while **E** or **Esc** steps away.
 - Restaged the cleaning so the cafeteria screen can actually see it: Holston is framed at the lens, steps in to wipe, and the rag blanks the picture on each pass. The helmet is a helmet rather than a pale sphere the size of a skull, and it comes off in his hands.
 - The directory book is on a front table and picking it up no longer snaps the camera into the screen.
+- Fixed the book itself: the frame loop was overwriting the pickup prompt every tick, so a new game could not be started at all. The book is also findable now — a tan, brass-cornered volume with a lit title plate, on a table laid with nothing else, off the line the player character stands on.
 - The crater has a rim that closes the horizon and falls away behind, and the dead tree is grown rather than assembled from four dozen straight cylinders.
 
 See [the notes and reference limits](docs/residents-and-the-cleaning.md).

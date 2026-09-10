@@ -4,16 +4,24 @@ import { RESIDENT_CAST } from './resident-data.js';
 import { createResident, poseResident } from './resident-model.js';
 import { topPoint, topLocal, groundY, surfaceY, sensorLocal, SENSOR } from './surface.js';
 import { Kit, addSign } from './kit.js';
+import { BOOK_TABLE, TABLE_TOP } from './top-floor.js';
 
 export const OPENING_DURATION=90;
 // The frame the suit's own helmet is hidden and the loose one takes over.
 export const HELMET_OFF=63.2;
-// The book is on a front table, one row back from the great screen, and you
-// start at that table. From here the whole 30 m display is in front of you, so
-// the cleaning can be watched from inside the room, standing where the rest of
-// the silo is standing, rather than from a camera bolted to the picture.
-export const BOOK_POSITION=Object.freeze([2,.855,32]);
-export const CAFETERIA_START=Object.freeze([2,0,29.7]);
+// The book is on the front table — the row closest to the great screen — and
+// you start standing behind that table with the whole 30 m display in front of
+// you, so the cleaning is watched from inside the room, where the rest of the
+// silo is standing, rather than from a camera bolted to the picture.
+// Both positions come off the table itself: the book on its near edge, at one
+// of the places, where somebody who had been reading it would have left it,
+// and at the height kit.table() builds its top to, so it rests on the surface
+// instead of hovering over it or sinking into it. The 85 cm across the table
+// is what keeps it findable — the game opens in third person with the camera
+// directly behind the player, so a book straight ahead of the start is behind
+// the player's own back and nothing else in the room tells you where it is.
+export const BOOK_POSITION=Object.freeze([BOOK_TABLE[0]+.85,TABLE_TOP,BOOK_TABLE[1]-.28]);
+export const CAFETERIA_START=Object.freeze([BOOK_TABLE[0],0,BOOK_TABLE[1]-2.3]);
 const clamp=THREE.MathUtils.clamp,lerp=THREE.MathUtils.lerp,ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
 const at=(x,z)=>new THREE.Vector3(x,surfaceY(x,z),z);
 const followGround=p=>{p.y=surfaceY(p.x,p.z);return p;};
@@ -103,12 +111,23 @@ function settleOnSlope(actor){
   if(Number.isFinite(clearance))actor.model.position.y+=.015-clearance;
 }
 
+// The one object in the game you have to find before anything else can happen,
+// in a dim room, on a black metal table, seen from three metres over the
+// player's shoulder. The old one was a dark green board barely lighter than
+// the table it lay on and 4 cm thick: it read as a place mat. This one is
+// built to be picked out at the far end of the room — a warm tan cover, a
+// thick cream page block standing proud of the boards on three sides, brass
+// at the corners, and the title plate lit on top of it. Every part of it sits
+// above y=0 so the group can be set straight down on the table surface.
 export function createDirectoryBook(m){
   const root=new THREE.Group(),k=new Kit(m);root.name='cafeteria-directory-book';
-  k.bevel('green',0,-.01,0,.31,.015,.41);k.bevel('linen',.006,.011,0,.283,.030,.383);k.bevel('green',0,.034,0,.31,.012,.41);k.bevel('darkMetal',-.153,.012,0,.018,.052,.41);
-  for(const z of [-.15,.15])k.box('brass',-.145,.042,z,.03,.005,.027);
-  for(const z of [-.173,.173])k.box('brass',0,.042,z,.258,.002,.004);
-  const label=addSign(root,'SILO 18\nDIRECTORY',[0,.041,0],.225,.205,0,{background:'#35483d',color:'#d0be8b',font:'bold 72px Georgia'});label.rotation.x=-Math.PI/2;label.scale.z=.035;
+  k.bevel('bread',0,.013,0,.33,.026,.43);
+  k.bevel('paper',.012,.046,0,.302,.042,.400);
+  k.bevel('bread',0,.079,0,.33,.024,.43);
+  k.bevel('darkMetal',-.163,.046,0,.026,.092,.43);
+  for(const z of [-.16,.16])k.box('brass',-.150,.092,z,.036,.006,.032);
+  for(const x of [-.141,.141])for(const z of [-.191,.191])k.box('brass',x,.092,z,.044,.004,.044);
+  const label=addSign(root,'SILO 18\nDIRECTORY',[0,.0915,0],.235,.215,0,{background:'#c6ab77',color:'#2b2920',font:'bold 72px Georgia'});label.rotation.x=-Math.PI/2;label.scale.z=.035;
   root.add(k.group());root.position.copy(topPoint(...BOOK_POSITION));root.rotation.y=Math.PI/2;return root;
 }
 
@@ -235,6 +254,9 @@ export class CafeteriaOpening{
   update(dt){
     if(this.watching){this.time=Math.min(OPENING_DURATION,this.time+dt);this.sample(dt);if(this.time>=OPENING_DURATION-1e-7)this.finish();}
     this.book.visible=!this.hasBook&&!this.world.special&&this.world.activeLevel===1;
-    this.world.storyInteractions=this.book.visible?[{position:topPoint(...BOOK_POSITION),label:'Pick up the directory book',action:'opening-book'}]:[];
+    // The prompt sits on the closed book rather than on the table under it.
+    // Nothing else writes this list: the frame loop used to overwrite it with
+    // a second interaction every tick, which left the book unpickable.
+    this.world.storyInteractions=this.book.visible?[{position:topPoint(BOOK_POSITION[0],BOOK_POSITION[1]+.06,BOOK_POSITION[2]),label:'Pick up the directory book',action:'opening-book'}]:[];
   }
 }

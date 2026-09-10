@@ -107,6 +107,54 @@ whole 30 m display is in front of you, and picking it up leaves you in the
 room — free to look around and walk, standing where the rest of the silo is
 standing. *Focus on screen* is still there when you want the wall.
 
+### The book you could not pick up
+
+That move did not survive contact with the frame loop. `CafeteriaOpening.update`
+publishes the pickup as the only entry in `world.storyInteractions`, and a few
+lines later `frame()` in `main.js` did this:
+
+```js
+world.storyInteractions=[];
+if(world.activeLevel===1&&!world.special)world.storyInteractions.push({…billings…});
+```
+
+Every tick, for the whole game. So the prompt never appeared, `Use` did nothing,
+and a new game could not be started at all — the objective panel asked for a
+book the player had no way to take. The Billings entry was itself a duplicate:
+the population already puts *Talk to Paul Billings* on the man himself, and this
+one sat a metre off him against the wall of the sheriff's station, which is why
+a prompt appeared at a blank wall with nothing on it. Both lines are gone. The
+list has one owner, and `tests/directory-book.test.mjs` asserts at the source
+that nothing outside `opening.js` writes it — the failure is invisible from
+either module on its own, so it has to be checked where the two meet.
+
+### Finding it
+
+The rest is staging, and it all came from looking at the actual first frame of
+a new game rather than at the coordinates:
+
+- **It was the same colour as the table.** A dark green board, 4 cm thick, on
+  black metal. It is now a tan cover with a thick cream page block standing
+  proud of the boards on three sides, brass at the corners, and the title plate
+  lit on top — 33 × 43 × 9.5 cm, and it reads from the far end of the hall.
+- **It sat 2 cm inside the table.** Both heights are derived now:
+  `top-floor.js` exports `TABLE_TOP`, the surface `kit.table()` actually builds
+  to, and the book is modelled from y=0 up so its underside lands on it.
+- **It was the middle piece of a place setting.** A mug and a plate flanked it
+  and a tray, a paper stack and a second mug were dressed onto the same table.
+  Its table is laid with nothing at all now; `dressCafeteria` takes the table
+  grid and the one table to leave clear from `top-floor.js`, instead of keeping
+  its own copy of the row positions — which had drifted, leaving a tray hanging
+  80 cm off the front row.
+- **The player was standing in front of it.** The game opens in third person
+  with the camera directly behind, so a book on the start's own line of advance
+  is behind the player's own back. It is 85 cm across the table from that line,
+  at the next place along.
+
+`BOOK_TABLE` in `top-floor.js` is the single statement of where this is: the row
+closest to the screen, the column closest to the middle of the room. The book,
+the start position and the clear table all come off it.
+
 ## The crater
 
 The ground climbed away from the silo and never came back down. That reads as

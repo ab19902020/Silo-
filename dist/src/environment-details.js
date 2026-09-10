@@ -138,7 +138,12 @@ export function dressRoom(k,root,type,level,wing){
   root.userData.lightPoints=lightPoints;root.userData.detailRevision=2;
 }
 
-export function dressCafeteria(k,root){
+// `tables` is the cafeteria's own table grid, handed in by top-floor.js so the
+// dressing cannot drift off the furniture it is dressing. `clear` names one
+// table that is laid with nothing at all: the directory book stands on it, and
+// a tray, a paper stack and a mug around a 43 cm book is how you lose it.
+export function dressCafeteria(k,root,tables={}){
+  const rows=tables.rows||[12.8,17,22,27,32],columns=tables.columns||[-11,-5,2,9],clear=tables.clear||null;
   // Rounded acoustic fins in the ceiling, brass expansion joints, and the
   // complete serving-counter language of the photographed communal hall.
   for(const s of [-1,1])for(const z of [12,20,28,36]){
@@ -154,7 +159,8 @@ export function dressCafeteria(k,root){
   }
   k.bevel('enamel',-6.1,1.74,7,.65,1.12,.65);wallGauge(k,-6.1,1.99,7.36,.10);
   for(const dx of [-.18,.18]){k.beam('metal',[-6.1+dx,1.55,7.3],[-6.1+dx,1.55,7.49],.025);k.cylinder('black',-6.1+dx,1.6,7.51,.026,.09);}
-  for(const z of [12,17,22,27,32])for(const x of [-11,-5,2,9]){
+  for(const z of rows)for(const x of columns){
+    if(clear&&x===clear[0]&&z===clear[1])continue;
     k.bevel('metal',x,.85,z,.3,.038,.2);for(let j=0;j<6;j++)k.box('paper',x,.92+j*.012,z,.19,.013,.11);mug(k,x+1.15,.837,z-.27);
   }
   addSign(root,'RETURN TRAYS',[0,2.35,9.83],2.3,.3,0,{glow:.1});

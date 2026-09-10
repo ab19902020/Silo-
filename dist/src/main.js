@@ -626,8 +626,13 @@ function frame(){
     // it in story mode has to clear it from the bench there.
     if(cast?.relic&&story.story&&story.has('harddrive'))cast.relic.visible=false;
     world.actorInteractions.push(...props.interactions(story,world.activeLevel,world.special));
-    world.storyInteractions=[];
-    if(world.activeLevel===1&&!world.special)world.storyInteractions.push({position:topPoint(28,1.2,38),label:'Talk to Officer Billings',action:'billings'});
+    // world.storyInteractions belongs to the opening, which rebuilt it above.
+    // A second writer here used to overwrite it every frame with a hardcoded
+    // Billings prompt, so the directory book could never be picked up and the
+    // story could not be started at all; the Billings prompt was a duplicate
+    // of the one the population already puts on the man himself, standing a
+    // metre off him against the wall of the sheriff's station. Nothing but
+    // CafeteriaOpening.update writes this list.
     syncStoryHud();
     stepOutside(eye);
     if(drone.active){
