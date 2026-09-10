@@ -850,5 +850,9 @@ window.__silo={begin,fire,use,travel,takeRelic,stepOutside,firearms,takeWeapon,c
   get story(){return story;},get world(){return world;},get body(){return body;},
   get drone(){return drone;},get opening(){return opening;},get ready(){return ready;},
   get audio(){return audio;},get wading(){return wading;},
-  get clock(){return siloClock;},get rendering(){return rendering;}};
+  get clock(){return siloClock;},get rendering(){return rendering;},
+  // The crowd and the cast, so an offline capture can drive every animated
+  // system on one fixed timestep instead of on whatever the frame rate
+  // happened to be. Nothing in the game reads any of this.
+  get population(){return population;},get cast(){return cast;}};
 boot();
