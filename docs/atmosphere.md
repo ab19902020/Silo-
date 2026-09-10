@@ -52,8 +52,17 @@ hill should not also be ninety seconds of the sun moving behind him.
   once a frame and everything downstream uses them. The tint is re-applied
   every frame rather than when a lamp is placed, so a fixture lit at noon and
   still burning at midnight goes amber *where it stands* instead of waiting to
-  be relocated before it notices the hour. The ambient fill drops with the
-  lamps: dimming fixtures without dimming the fill just looks underexposed.
+  be relocated before it notices the hour.
+- **The fill falls faster than the fixtures.** Night is 0.41 of the working day
+  at the lamps and 0.24 of it in the ambient. This is the number that took two
+  attempts. The first cut dimmed both together to about a half and the gallery
+  still read as mid-afternoon: pale concrete, evenly spaced lamps and the ACES
+  shoulder ate the dimming before it reached the picture. Dropping both
+  together only dims the frame evenly — letting the fill go first is what puts
+  dark back *between* the lamps, and that contrast is what reads as night
+  rather than as underexposure. There is a test for the relationship, not just
+  for the two levels, because the previous pair of thresholds passed
+  comfortably on the build that looked wrong.
 - **Crowd.** The population limit scales with `crowd`, floored at six — there is
   always somebody on shift. Named residents already sort first, so the story
   cannot be locked out by the night cycle emptying a gallery.
