@@ -1,9 +1,10 @@
 import * as THREE from '../vendor/three.module.js';
 import {Kit,addSign,random,SIGN_DEPTH} from './kit.js';
+export const INTERIOR_LIGHT=0xe6ddc9;
 export function floorAtmosphere(level){
-  if(level<50)return {band:'blue',name:'CIVIC SERVICES',light:0xc4dcda,fog:0x202a2c,density:.0072};
-  if(level<=100)return {band:'green',name:'RESIDENT SERVICES',light:0xe6d8b8,fog:0x292d26,density:.008};
-  return {band:'rust',name:'MECHANICAL SERVICES',light:0xe4b381,fog:0x302920,density:.009};
+  if(level<50)return {band:'blue',name:'CIVIC SERVICES',light:INTERIOR_LIGHT,fog:0x282c29,density:.0072};
+  if(level<=100)return {band:'green',name:'RESIDENT SERVICES',light:INTERIOR_LIGHT,fog:0x282c29,density:.008};
+  return {band:'rust',name:'MECHANICAL SERVICES',light:INTERIOR_LIGHT,fog:0x282c29,density:.009};
 }
 export function dressFloor(root,m,level){
   const labels=new THREE.Group();labels.name='service-notices';root.add(labels);

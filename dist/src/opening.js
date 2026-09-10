@@ -2,13 +2,13 @@ import * as THREE from '../vendor/three.module.js';
 import { clone } from '../vendor/SkeletonUtils.js';
 import { RESIDENT_CAST } from './resident-data.js';
 import { createResident, poseResident } from './resident-model.js';
-import { topPoint, topLocal, groundY, surfaceY, sensorLocal, SENSOR } from './surface.js';
+import { topPoint, topLocal, groundY, surfaceY, sensorLocal, SENSOR, TREE } from './surface.js';
 import { Kit, addSign } from './kit.js';
 import { BOOK_TABLE, TABLE_TOP } from './top-floor.js';
 
 export const OPENING_DURATION=90;
 // The frame the suit's own helmet is hidden and the loose one takes over.
-export const HELMET_OFF=63.2;
+export const HELMET_OFF=66.4;
 // The book is on the front table — the row closest to the great screen — and
 // you start standing behind that table with the whole 30 m display in front of
 // you, so the cleaning is watched from inside the room, where the rest of the
@@ -37,7 +37,7 @@ function groundNormal(x,z,e=.6){
 // her, gets the helmet off, goes down, and drags himself the last four metres.
 // The beats are cut against the opening piece; the note below the cast list
 // gives the timings that decision rests on.
-export const ALLISON_REST=Object.freeze([-4,153.4]);
+export const ALLISON_REST=Object.freeze([TREE.x+1,TREE.z-1.6]);
 export const REST_HEADING=.36;
 export const HOLSTON_REST=Object.freeze([ALLISON_REST[0]+Math.cos(REST_HEADING)*.70,ALLISON_REST[1]-Math.sin(REST_HEADING)*.70]);
 // The scene is cut against assets/audio/silo-18-opening.mp3, which starts on
@@ -66,7 +66,7 @@ const LENS_X=SENSOR.x-.3;
 const STAND_Z=SENSOR.z+3.55, REACH_Z=SENSOR.z+1.42;
 export const CLEAN_STAND=Object.freeze([LENS_X,STAND_Z]),CLEAN_REACH=Object.freeze([LENS_X,REACH_Z]);
 export function cleaningSample(time){
-  const t=clamp(time,0,OPENING_DURATION),entry=at(26,100),lip=at(26,110.2),corner=at(LENS_X,110.2),lens=at(...CLEAN_STAND),reach=at(...CLEAN_REACH),clear=at(LENS_X,111.5),slope=at(-.6,149.1),beside=at(...HOLSTON_REST);
+  const t=clamp(time,0,OPENING_DURATION),entry=at(26,100),lip=at(26,110.2),corner=at(LENS_X,110.2),lens=at(...CLEAN_STAND),reach=at(...CLEAN_REACH),clear=at(LENS_X,111.5),slope=at(HOLSTON_REST[0]+3.4,HOLSTON_REST[1]-4.3),beside=at(...HOLSTON_REST);
   // The sensor is beside the hatch. He emerges away from it, turns, and walks
   // around the curb before approaching the lens. No backwards walking or
   // scripted shortcut across the hole in the ramp.
@@ -90,11 +90,11 @@ export function cleaningSample(time){
   // to it crosses the open trench — he walked over the hole and the ground
   // dropped fourteen metres under him.
   if(t<38)return {phase:'walk',position:followGround(lens.clone().lerp(clear,(t-30)/8)),heading:Math.atan2(clear.x-lens.x,clear.z-lens.z),speed:1.39};
-  if(t<60)return {phase:'walk',position:followGround(clear.clone().lerp(slope,(t-38)/22)),heading:Math.atan2(slope.x-clear.x,slope.z-clear.z),speed:2.25};
-  if(t<68)return {phase:'helmet',position:slope,heading,progress:(t-60)/8,speed:0};
+  if(t<64)return {phase:'walk',position:followGround(clear.clone().lerp(slope,(t-38)/26)),heading:Math.atan2(slope.x-clear.x,slope.z-clear.z),speed:2.15};
+  if(t<70)return {phase:'helmet',position:slope,heading,progress:(t-64)/6,speed:0};
   const finalHeading=Math.atan2(beside.x-slope.x,beside.z-slope.z);
-  if(t<80)return {phase:'crawl',position:followGround(slope.lerp(beside,(t-68)/12)),heading:finalHeading,progress:(t-68)/12,speed:.39};
-  return {phase:'rest',position:beside,heading:lerp(finalHeading,REST_HEADING,ease((t-80)/7)),progress:ease((t-80)/7),speed:0};
+  if(t<82)return {phase:'crawl',position:followGround(slope.lerp(beside,(t-70)/12)),heading:finalHeading,progress:(t-70)/12,speed:.45};
+  return {phase:'rest',position:beside,heading:lerp(finalHeading,REST_HEADING,ease((t-82)/7)),progress:ease((t-82)/7),speed:0};
 }
 
 function settleOnSlope(actor){
@@ -228,7 +228,7 @@ export class CafeteriaOpening{
     // metres away in the same frame. It comes off in his hands now: the moment
     // the suit's own helmet is hidden, this one takes its place at his head and
     // travels down to the slope, turning over as it goes.
-    const rest=at(0,148.6).add(new THREE.Vector3(0,.17,0));
+    const rest=at(HOLSTON_REST[0]+3.9,HOLSTON_REST[1]-4.8).add(new THREE.Vector3(0,.17,0));
     this.helmet.visible=this.helmetFeed.visible=this.time>HELMET_OFF&&this.hasBook;
     if(this.helmet.visible){
       // He holds it for a second, in the hands that lifted it, and then puts

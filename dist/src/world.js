@@ -27,10 +27,10 @@ import { SurfaceWorld, topPoint, topLocal, groundY, inRampCutout } from './surfa
 import { buildGeneratorHall } from './generator-hall.js';
 import { buildUnderground } from './underground.js';
 import { buildStairFlight, hasStairGuard, buildTerminalLanding, terminalStart, buildNewel, sweepParapet,
-  straightPath, helixPath, stairOpening, railRadius, guardZ, PARAPET, PARAPET_TOP, NEWEL } from './staircase.js';
+  straightPath, helixPath, stairOpening, railRadius, guardZ, BRIDGE_GUARD_START, PARAPET, PARAPET_TOP, NEWEL } from './staircase.js';
 import { buildSilo17 } from './silo17.js';
 import { addGeorgeDesk, buildPressureGallery } from './mystery-spaces.js';
-import { floorAtmosphere, dressFloor } from './atmosphere.js';
+import { floorAtmosphere, dressFloor, INTERIOR_LIGHT } from './atmosphere.js';
 import { VOID, voidLedgeGaps, tunnelPoint } from './void-access.js';
 
 export class SiloWorld {
@@ -106,7 +106,7 @@ export class SiloWorld {
     lk.box('concrete',(terminalStart+R+.3)/2,-.2,0,R+.3-terminalStart,.4,(SILO.landingHalf+.16)*2);
     // One guard section for the whole stairwell: the bridge run is the same
     // swept profile the flight uses, and it dies into a column at the well lip.
-    for(const side of [-1,1]){sweepParapet(lk,straightPath(S,NEWEL.x,side*guardZ));}
+    for(const side of [-1,1]){sweepParapet(lk,straightPath(BRIDGE_GUARD_START,NEWEL.x,side*guardZ));}
     lk.box('darkConcrete',(S+R)/2,-.85,0,R-S,.85,1.1);
     // Bridges have a narrow center stripe and real join plates at their ends.
     for(let x=S+.5;x<R;x+=1.4)lk.box('yellow',x,.012,-1.56,.65,.025,.08);
@@ -127,7 +127,7 @@ export class SiloWorld {
     for(let bearing=1;bearing<=3;bearing++)for(const side of [-1,1]){const p=landingPoint(bearing,NEWEL.x,side*NEWEL.z);buildNewel(fk,p.cx,p.cz,H,{slats:10,rings:false});}
     sweepParapet(fl,galleryPath.filter((_,i)=>i%4===0),3);
     fl.box('concrete',(terminalStart+R+.3)/2,-.2,0,R+.3-terminalStart,.4,(SILO.landingHalf+.16)*2);
-    for(const side of [-1,1])sweepParapet(fl,straightPath(S,NEWEL.x,side*guardZ),3);
+    for(const side of [-1,1])sweepParapet(fl,straightPath(BRIDGE_GUARD_START,NEWEL.x,side*guardZ),3);
     fs.cylinder('concrete',0,H/2,0,C,H);
     buildStairFlight(fs,{steps:36,quality:3,density:7});
     this.distant=fk.group(transforms,true);this.distantLandings=fl.group(transforms,true);this.distantStairs=fs.group(transforms,true);
@@ -282,7 +282,7 @@ export class SiloWorld {
     }
     c.addRing({innerRadius:0,outerRadius:C,minY:0,maxY:levelY(1)+H});
     if(this.activeLevel===1){
-      if(this.surface.network.root.visible)for(const crown of this.surface.network.surfaces){const p=topPoint(crown.x,0,crown.z);c.addColumn({cx:p.x,cz:p.z,radius:28,minY:levelY(1)+crown.y-12,maxY:levelY(1)+crown.y});}
+      if(this.surface.network.root.visible)for(const crown of this.surface.network.surfaces){const p=topPoint(crown.x,0,crown.z);c.addColumn({cx:p.x,cz:p.z,radius:3.5,minY:levelY(1)+crown.y-.15,maxY:levelY(1)+crown.y+.5});}
       for(const b of this.surface.solids){const p=topPoint(b.x,0,b.z);c.addOrientedBox({cx:p.x,cz:p.z,halfX:b.w/2,halfZ:b.d/2,rotationY:Math.PI/2,minY:levelY(1)+b.y0,maxY:levelY(1)+b.y1});}
       const floorAt=c.floorAt.bind(c);c.floorAt=(x,z,r,h)=>Math.max(floorAt(x,z,r,h),this.surface.floorAt(x,z,r,h));
     }
@@ -385,12 +385,15 @@ export class SiloWorld {
       // doorway, which on a twenty-two metre room is nothing.
       const fittings=[[-10,6.7,17],[10,6.7,17],[-10,6.7,31],[10,6.7,31],[26,3.7,29],[26,3.7,40],[26,3.7,50],[26,3.7,59],
                       [21,4.4,8.5],[31,4.4,8.5],[21,4.4,15],[31,4.4,15],[21,4.4,21],[31,4.4,21]];
-      for(let i=0;i<fittings.length;i++)out.push({key:`top:${i}`,position:topPoint(...fittings[i]),color:i<4?0xf1e9d9:0xc8d6d4,intensity:i<4?145:i<8?75:95,distance:i<8?28:24,cone:i<8?32:38});
+      for(let i=0;i<fittings.length;i++)out.push({key:`top:${i}`,position:topPoint(...fittings[i]),color:INTERIOR_LIGHT,intensity:i<4?145:i<8?75:95,distance:i<8?28:24,cone:i<8?32:38});
       return out;
     }
-    for(let i=0;i<6;i++){const a=i*TAU/6;out.push({key:`g${level}:${i}`,position:new THREE.Vector3(Math.cos(a)*21,y+4.8,Math.sin(a)*21),color:i%3?0xf0e2c9:0xc0d4d3,intensity:105,distance:38,cone:48});}
-    for(let w=0;w<6;w++){const a=w*TAU/6,color=roomType(level,w)==='medical'?0xc1dcd5:0xe6ddc9;
+    for(let i=0;i<6;i++){const a=i*TAU/6;out.push({key:`g${level}:${i}`,position:new THREE.Vector3(Math.cos(a)*21,y+4.8,Math.sin(a)*21),color:INTERIOR_LIGHT,intensity:105,distance:38,cone:48});}
+    for(let w=0;w<6;w++){const a=w*TAU/6,color=INTERIOR_LIGHT;
       for(const r of [33,44])out.push({key:`c${level}:${w}:${r}`,position:new THREE.Vector3(Math.cos(a)*r,y+4.7,Math.sin(a)*r),color,intensity:150,distance:38,cone:48});}
+    // Fixed service-gallery fittings share the room lamps’ warm neutral tone.
+    for(let j=0;j<48;j+=2){const a=(j+.5)*TAU/48,r=53.6;out.push({key:`rear${level}:${j}`,position:new THREE.Vector3(Math.cos(a)*r,y+3.4,Math.sin(a)*r),color:INTERIOR_LIGHT,intensity:55,distance:10,cone:12,room:true,keyIntensity:70});}
+    if(level===144)for(let r=57.4;r<64.4;r+=3.6)out.push({key:`spur:${r}`,position:new THREE.Vector3(Math.cos(Math.PI/6)*r,y+2.92,Math.sin(Math.PI/6)*r),color:INTERIOR_LIGHT,intensity:45,distance:10,cone:12,room:true,keyIntensity:65});
     // The wing you are in and its two neighbours; the rest are behind walls.
     const here=(Math.round(Math.atan2(position.z,position.x)/TAU*6)+6)%6;
     for(const w of [here,(here+1)%6,(here+5)%6]){
@@ -399,7 +402,7 @@ export class SiloWorld {
       room.updateWorldMatrix(true,false);
       const residential=room.userData.type==='residential';
       room.userData.lightPoints.forEach((p,j)=>out.push({key:`r${level}:${w}:${j}`,position:new THREE.Vector3(...p.position).applyMatrix4(room.matrixWorld),
-        color:p.color,intensity:p.intensity,distance:11,cone:14,room:true,keyIntensity:residential?95:150}));
+        color:INTERIOR_LIGHT,intensity:p.intensity,distance:11,cone:14,room:true,keyIntensity:residential?95:150}));
     }
     return out;
   }

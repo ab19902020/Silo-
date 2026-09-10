@@ -68,7 +68,9 @@ export const LANDMARKS = [
   landmark(144, 'Mechanical · Walker’s workshop', 'mechanical', 'The last numbered landing, electronics workshop, common room and access below to the generator.', 'Television locations · interior reconstructed'),
 ];
 export const SPECIALS = [
-  { id: 'airlock', name: 'Cleaning airlock & ramp', level: 1, type: 'airlock', description: 'Walk through the pressure doors and up the ramp.' },
+  {id:'silo17',name:'Silo 17 · flooded galleries',level:1,type:'silo17',description:'Explore the abandoned galleries of the neighbouring silo.'},
+  {id:'pipe-gallery',name:'Abandoned pressure gallery',level:144,type:'pipe-gallery',description:'A service passage beyond the mine drill.'},
+  { id: 'airlock', name: 'Airlock & exit ramp', level: 1, type: 'airlock', description: 'Walk through the pressure doors and up the ramp.' },
   { id: 'surface', name: 'Surface & cleaning camera', level: 1, type: 'surface', description: 'Barren crater, dead tree, enclosing earth bank and cleanable camera.' },
   { id: 'generator', name: 'Generator hall · below 144', level: 144, type: 'generator', description: 'Turbine, six removable panels, overhead crane and maintenance gantry.' },
   { id: 'mines', name: 'The mines', level: 144, type: 'mines', description: 'Rock tunnels, ore carts, drill faces and salvage working.' },

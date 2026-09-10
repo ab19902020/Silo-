@@ -34,7 +34,7 @@
 
   <dialog id="welcome" class="welcome">
     <div class="welcome-top"><span class="eyebrow">AN UNDERGROUND WORLD</span><span class="edition">CHAPTER ONE · THE CLEANING</span></div>
-    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>A book waits on a cafeteria table.<br>Today, Holston is going outside.</p><div class="welcome-actions"><button id="resumeButton" class="primary" hidden>Continue game</button><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="exploreButton" class="secondary">Explore the silo <span>↗</span></button><button id="welcomeDirectory" class="secondary">Open the directory</button><button id="replayOpening" class="secondary">Replay cafeteria opening</button></div><p id="modeNote" class="help">New game runs the story: the cleaning, then the relics, then the way out. Explore opens every door and every character.</p><div class="welcome-meta"><span>20 PLAYABLE CHARACTERS</span><span>TOUCH & KEYBOARD</span><span>A LIVING SILO</span></div></div>
+    <div class="welcome-body"><span class="eyebrow accent">144 LEVELS BELOW THE SURFACE</span><h1>SILO <em>18</em></h1><p>A book waits on a cafeteria table.<br>Today, Holston is going outside.</p><div class="welcome-actions"><button id="resumeButton" class="primary" hidden>Continue game</button><button id="enterButton" class="primary" disabled>Preparing the silo…</button><button id="exploreButton" class="secondary">Free Roam · All areas</button><button id="welcomeDirectory" class="secondary">Open the directory</button><button id="replayOpening" class="secondary">Replay cafeteria opening</button></div><p id="modeNote" class="help">Story follows George’s clues from the cleaning to the way out. Free Roam opens all 144 levels, the mines, the void, the exterior silos and Silo 17 immediately. Your story save is kept.</p><div class="welcome-meta"><span>20 PLAYABLE CHARACTERS</span><span>TOUCH & KEYBOARD</span><span>A LIVING SILO</span></div></div>
     <footer><span>A reconstruction of the television world.</span><button id="aboutButton">Research & accuracy</button></footer>
   </dialog>
 
@@ -54,9 +54,11 @@
     <div id="characterList" class="character-list"></div>
     <div class="panel-foot"><span id="characterStatus">Preparing characters…</span><small>Switch between first and third person with View or V.</small></div>
   </dialog>
-  <dialog id="relic" class="panel compact">
-    <div class="panel-head"><div><span class="eyebrow accent">A FORBIDDEN RELIC</span><h2>The hard drive</h2></div><button class="close" data-close aria-label="Close relic">×</button></div>
-    <div class="about-content"><img src="./assets/characters/relic.jpg" class="relic-image" alt="The supplied hard-drive relic"><p>The hard-drive relic rests on the repair bench in Walker’s workshop. Its secrets connect George’s discoveries with Juliette’s search for the truth.</p><p class="help">This is the object you supplied, preserved as a three-dimensional prop.</p></div>
+  <dialog id="relic" class="panel relic-panel" aria-labelledby="relicName">
+    <div class="panel-head"><div><span class="eyebrow accent">FROM YOUR SATCHEL</span><h2 id="relicName">Relic</h2></div><button class="close" data-close aria-label="Close inspection">×</button></div>
+    <div class="relic-stage"><canvas id="relicCanvas" tabindex="0" aria-label="Rotatable 3D relic. Use arrow keys to turn, plus and minus to zoom."></canvas></div>
+    <div class="relic-controls"><p id="relicControlsHint" role="status">Drag to turn · pinch or scroll to zoom</p><button id="relicFlip" class="secondary">Other side</button><button id="relicReset" class="secondary">Reset view</button></div>
+    <div class="about-content"><p id="relicDescription"></p><p id="relicSource" class="help"></p></div>
   </dialog>
 
   <dialog id="satchel" class="panel compact">

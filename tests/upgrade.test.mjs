@@ -145,10 +145,10 @@ test('barren terrain supports the old hatch gap and continues past the former ma
   }
 });
 
-test('camera feed contains only bowl terrain, debris and plants with the tree on the right',()=>{
+test('camera feed contains only bowl terrain, debris and plants with the tree left of centre as in the supplied reference',()=>{
   const surface=world.surface;surface.camera.updateMatrixWorld(true);
   for(const child of surface.feedRoot.children)assert.ok(['barren-ground','surface-scree','dead-tree','wind-dust','ramp-mouth'].includes(child.name));
   assert.ok(surface.feedRoot.getObjectByName('ramp-mouth'),'the panorama has to show the hatch the cleaner climbs out of');
-  const p=topPoint(TREE.x,groundY(TREE.x,TREE.z)+3,TREE.z).project(surface.camera);assert.ok(p.x>.3&&p.x<.75,`Tree composition ${p.x}`);
+  const p=topPoint(TREE.x,groundY(TREE.x,TREE.z)+3,TREE.z).project(surface.camera);assert.ok(p.x>-.28&&p.x<-.07,`Tree composition ${p.x}`);
   assert.ok(surface.camera.fov<30);assert.equal(surface.feedRoot.getObjectByName('18'),undefined);
 });

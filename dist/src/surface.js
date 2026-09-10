@@ -4,36 +4,22 @@ import { SILO, levelY } from './data.js';
 import { ExteriorSky } from './sky.js';
 import { projectMaterial } from './materials.js';
 import { buildExteriorNetwork } from './exterior-network.js';
+import {SILO_LAYOUT} from './exterior-layout.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 export const topPoint=(x,y,z)=>new THREE.Vector3(SILO.deckOuter+z,levelY(1)+y,-x);
 export const topLocal=p=>({x:-p.z,y:p.y-levelY(1),z:p.x-SILO.deckOuter});
 export const rampY=z=>THREE.MathUtils.clamp((z-64)/44,0,1)*14;
 export const inRampPassage=(x,z)=>x>23&&x<29&&z>=64&&z<108;
 export const inRampCutout=(x,z)=>inRampPassage(x,z)&&z>=94;
-// Silo 18 stands at the centre of a crater. The floor is flat for the first
-// thirty metres, then the ground climbs away on every bearing and never comes
-// back down: from anywhere on that floor the crest ring is the horizon, so
-// there is nothing beyond the hill to see. The near shoulder is the rise
-// Holston walks up; the far crest, at a quarter of a kilometre, closes the sky.
+// Every visible hatch occupies the floor of an earthen bowl. The same height
+// function drives terrain, props and collision, including distant silos.
 const rise=(a,b,r)=>{const t=THREE.MathUtils.clamp((r-a)/(b-a),0,1);return t*t*(3-2*t);};
 export function groundY(x,z){
-  const r=Math.hypot(x-26,z-108),bearing=Math.atan2(z-108,x-26);
-  // Floor, near shoulder, the long climb, and then a crest that falls away
-  // behind it. The ground used to climb forever, which reads as the inside of
-  // a bowl but never as a rim: nothing stands against the sky. A crest that
-  // drops on its far side is a ridge line, and a ridge line 44 m up at 230 m
-  // out sits ten degrees above the exit — the horizon, on every bearing.
-  const bowl=10*rise(30,84,r)+34*rise(84,232,r)-11*rise(232,420,r)-5*rise(420,900,r);
-  // The rim is a ring of hills, not a cone: peaks and saddles run round it, and
-  // the fog takes the far side, so the eye reads a landform rather than a wall.
-  const crest=(Math.sin(bearing*2+2.4)*7.5+Math.sin(bearing*3+.7)*5.4+Math.sin(bearing*5-1.9)*3.1+Math.sin(bearing*8+.3)*1.6)*rise(110,220,r)*(1-rise(430,780,r));
-  // Long, shallow folds across the slope, on wavelengths the 16 m outer terrain
-  // tiles can still carry. They fade out past the fog, where nothing reads them.
-  const ridges=(Math.sin(x*.0175+z*.0132)*1.5+Math.cos(z*.0231-x*.0163)*1.15)*rise(34,150,r)*(1-rise(360,760,r))
-    +(Math.sin(bearing*11+1.1)*1.5+Math.sin(bearing*17-.4)*.9)*rise(46,150,r)*(1-rise(300,620,r));
-  const detail=(Math.sin(x*.069+z*.022)*.75+Math.cos(z*.087-x*.031)*.52+Math.sin(x*.43+z*.24)*.15)*Math.min(1,Math.max(0,(z-111)/18));
-  const entrance=Math.min(1,Math.hypot(x-26,z-108)/24);
-  return 14+(bowl+crest+ridges+detail)*entrance;
+  let r=Infinity;
+  for(const silo of SILO_LAYOUT){const d=Math.hypot(x-26-silo.x,z-108-silo.z);if(d<r)r=d;}
+  // Perfect circular earthwork in a level plain: no broad hills, bowls piled
+  // on hills, or bearing-dependent crest height. Weathering is in the material.
+  return 14+10*rise(28,70,r)-1*rise(76,87,r);
 }
 // Broad tonal drift across the ground, brightening with height so the far
 // crest hazes into the sky. The wavelengths are long on purpose: the terrain
@@ -61,7 +47,7 @@ export const surfaceY=(x,z)=>inRampCutout(x,z)?rampY(z):groundY(x,z);
 // emerge, which inverts the walk this build already fixed once: they come up
 // with their back to the camera and turn to face it. There is a test on that.
 export const SENSOR=Object.freeze({x:31.5,z:99,eye:1.85});
-export const TREE=Object.freeze({x:-5,z:155});
+export const TREE=Object.freeze({x:42,z:171});
 export const sensorLocal=()=>new THREE.Vector3(SENSOR.x,groundY(SENSOR.x,SENSOR.z)+SENSOR.eye,SENSOR.z+.95);
 
 export class SurfaceWorld {
@@ -157,7 +143,10 @@ export class SurfaceWorld {
     const tree=new THREE.Mesh(treeGeo,this.treeMaterial);tree.name='dead-tree';tree.castShadow=true;tree.receiveShadow=true;tree.userData.ownedGeometry=true;this.root.add(tree);
     this.solids.push({x:tx,z:tz,w:1.1,d:1.1,y0:ty,y1:ty+7});
     // One tree, and only one. Nothing else grew back.
-    // No city geometry: the exterior is a barren bowl.
+    // A restrained ruined skyline appears only beyond the rims after escape.
+    const skyline=new Kit(m),cityRng=random(2077);
+    for(let i=0;i<85;i++){const x=-470+i*11,h=8+Math.pow(cityRng(),3)*85;skyline.box('darkConcrete',x,19+h/2,1500,5+cityRng()*10,h,8+cityRng()*14);}
+    this.skyline=skyline.group();this.skyline.name='distant-atlanta-silhouette';this.root.add(this.skyline);this.skyline.visible=false;
     this.root.add(k.group());
     // Kept out of the cafeteria feed: the network is the revelation after the
     // player survives the ridge, not information Silo 18's sensor gives away.
@@ -183,7 +172,7 @@ export class SurfaceWorld {
 
   }
   terrainGeometry(ix,iz){
-    const size=800,step=ix===0&&iz===0?4:16,cx=26+ix*size,cz=140+iz*size;
+    const size=800,step=ix===0&&iz===0?4:8,cx=26+ix*size,cz=140+iz*size;
     const axis=(center,extra)=>[...new Set([...Array.from({length:size/step+1},(_,i)=>center-size/2+i*step),...extra.filter(v=>v>center-size/2&&v<center+size/2)])].sort((a,b)=>a-b);
     const xs=axis(cx,[23,29]),zs=axis(cz,[94,108]),pos=[],colors=[],uv=[],indices=[];
     for(const z of zs)for(const x of xs){const y=groundY(x,z),shade=terrainShade(x,y,z);pos.push(x,y,z);colors.push(shade,shade*.99,shade*.96);uv.push(x/1.8,z/1.8);}
@@ -200,7 +189,7 @@ export class SurfaceWorld {
     for(const [key,mesh] of this.terrainTiles)if(!keep.has(key)){mesh.removeFromParent();mesh.geometry.dispose();this.terrainTiles.delete(key);}
   }
   refreshMaterials(){const bark=this.treeMaterial;bark.map=this.m.rock.map;bark.normalMap=this.m.rock.normalMap;bark.roughnessMap=this.m.rock.roughnessMap;bark.normalScale.set(.9,.9);projectMaterial(bark,1.1);const mat=this.groundMaterial;mat.map=this.m.rock.map;mat.normalMap=this.m.rock.normalMap;mat.roughnessMap=this.m.rock.roughnessMap;mat.roughness=.96;mat.normalScale.set(.42,.42);projectMaterial(mat,3.2);}
-  setNetworkVisible(visible){this.network.root.visible=!!visible;}
+  setNetworkVisible(visible){this.network.root.visible=!!visible;this.skyline.visible=!!visible;}
   get networkInteractions(){
     if(!this.network.root.visible)return [];
     return this.network.interactions.map(i=>({...i,position:topPoint(i.position[0],i.position[1],i.position[2])}));

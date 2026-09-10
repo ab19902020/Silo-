@@ -16,6 +16,7 @@ export const PARAPET_TOP=PARAPET.crown+PARAPET.half;
 // the bridge guard's on landingHalf-.1 — the radii the collision has always
 // used — so the new profile changes how the guard looks, not where you walk.
 export const railRadius=SILO.stairRadius+PARAPET.half-.1;
+export const BRIDGE_GUARD_START=railRadius+.95;
 export const guardZ=SILO.landingHalf+PARAPET.half-.1;
 // The terminal parapet meets the circular core at the chord, not at its
 // radius. Using C as its start left a triangular gap beside the column.
@@ -84,7 +85,7 @@ export const straightPath=(fromX,toX,z,y=0)=>[[fromX,y,z],[toX,y,z]];
 // a continuous curve rather than the open gap the flight used to stop at.
 // `side` is +1 at the flight's foot and -1 at its head, one level up.
 export function landingPath(side,lift,segments=14){
-  const a=stairOpening,z=side*guardZ,end=railRadius+.95;
+  const a=stairOpening,z=side*guardZ,end=BRIDGE_GUARD_START;
   const p0=[Math.cos(a)*railRadius,side*Math.sin(a)*railRadius];
   const c1=[p0[0]+Math.sin(a)*.22,p0[1]-side*Math.cos(a)*.22],c2=[end-.62,z],path=[];
   for(let i=0;i<=segments;i++){
@@ -128,7 +129,7 @@ export function buildStairFlight(k,{steps=SILO.stairSteps,quality=7,density=44}=
 // guard closes the opening there instead of sweeping away into a flight.
 export function buildTerminalLanding(k,side){
   const C=SILO.stairColumn,S=SILO.stairRadius;
-  sweepParapet(k,straightPath(terminalStart,S+.15,side*guardZ));
+  sweepParapet(k,straightPath(terminalStart,BRIDGE_GUARD_START,side*guardZ));
 }
 
 // A light collar at the coping's height marks every level on the column, which

@@ -15,6 +15,7 @@ import { Story, COLLECTABLES, RELICS, CHAPTERS } from './story.js';
 import { Firearms } from './firearms.js';
 import { WEAPONS } from './weapons.js';
 import { updateRangeTargets } from './gun-range.js';
+import {RelicInspector} from './relic-inspector.js';
 import { GeorgeTerminal } from './george-terminal.js';
 import { GEORGE_TERMINAL_POINT } from './mystery-spaces.js';
 import { StoryProps, Drone } from './relics.js';
@@ -24,6 +25,7 @@ const dialogs=[welcome,directory,settings,about,characters,relic,conversation,sa
 let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
 let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null,talking=null,chapterEnteredAt=0,hintUntil=0;
 let terminal=new GeorgeTerminal(),workAction=null;
+const inspector=new RelicInspector($('relicCanvas'),$('relicControlsHint'));
 const pausingDialogs=dialogs.filter(d=>d!==conversation);
 let story=null,props=null,drone=null,wasOutside=false,lastChapter=null;
 let yaw=Math.PI/2,pitch=0,lookSensitivity=1,running=false,torchOn=false,quality='balanced';
@@ -224,7 +226,7 @@ function renderSatchel(){
   // objective, which is not what a player means by "where am I up to".
   const progress=document.createElement('div');progress.className='journal-chapters';
   const heading=document.createElement('h3');heading.textContent='The story so far';progress.append(heading);
-  for(const chapter of CHAPTERS){
+  for(const chapter of story.story?CHAPTERS:[]){
     if(chapter.id==='free')continue;
     const index=CHAPTERS.findIndex(c=>c.id===chapter.id);
     const state=index<story.chapterIndex?'done':index===story.chapterIndex?'now':'later';
@@ -235,14 +237,14 @@ function renderSatchel(){
     const title=document.createElement('strong');title.textContent=chapter.title;
     copy.append(title);
     if(state==='now'){
-      const line=document.createElement('p');line.textContent=chapter.objective;copy.append(line);
+      const line=document.createElement('p');line.textContent=story.objective;copy.append(line);
       for(const hint of story.shownHints){
         const h=document.createElement('p');h.className='journal-hint';h.textContent=hint;copy.append(h);
       }
     }
     row.append(mark,copy);progress.append(row);
   }
-  list.append(progress);
+  if(story.story)list.append(progress);
   for(const item of held){
     const has=story.has(item.id),row=document.createElement('div');row.className='satchel-item';
     const tick=document.createElement('span');tick.className='tick';tick.textContent=has?'✓':'·';
@@ -251,8 +253,15 @@ function renderSatchel(){
     const p=document.createElement('p');p.textContent=has?item.blurb:'Not found yet.';
     copy.append(h,p);
     if(has){const src=document.createElement('p');src.className='src';src.textContent=item.source;copy.append(src);}
-    row.append(tick,copy);list.append(row);
+    const inspect=document.createElement('button');inspect.className='secondary';inspect.textContent='Inspect in 3D';inspect.onclick=()=>inspectRelic(item.id);copy.append(inspect);row.append(tick,copy);list.append(row);
   }
+}
+function inspectRelic(id){
+  const item=COLLECTABLES.find(i=>i.id===id);if(!item)return;
+  $('relicName').textContent=item.name;$('relicDescription').textContent=item.blurb;$('relicSource').textContent=item.source;
+  openDialog(relic);
+  const source=id==='harddrive'?cast?.relic:id==='shotgun'?firearms.model:props?.inspectionModel(id);
+  try{inspector.show(source);}catch(error){$('relicControlsHint').textContent='3D inspection could not start. Close this view and try again.';}
 }
 function takeRelic(id){
   const item=story.take(id);
@@ -262,7 +271,7 @@ function takeRelic(id){
   notify(story.story?story.objective:`${item.name} — in your satchel.`);
   if(id==='suit')notify('The suit is on. The airlock will let you through now.');
   if(id==='shotgun'){takeWeapon('armoryShotgun02');notify('Billings’ shotgun is loaded. G or FIRE shoots; R reloads.');}
-  syncStoryHud(true);
+  syncStoryHud(true);if(['pez','watch','georgia','harddrive','crowbar','pipekit'].includes(id))inspectRelic(id);
 }
 function openingChanged(state){
   syncMusicGate();
@@ -436,7 +445,7 @@ function begin(mode){
   if(mode){
     story=new Story(mode);terminal=new GeorgeTerminal();world.story=story;lastChapter=null;drone?.reset();firearms.holster();workAction=null;wasOutside=false;world.resetStoryWorld();world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;
     if(mode==='story'&&opening.state!=='find-book')opening.reset();
-    if(mode==='explore'&&opening.state==='find-book')opening.finish();
+    if(mode==='explore'){opening.finish();world.openBreach();}
     saveStory();
   }
   if(story.armed&&!firearms.held)takeWeapon('armoryShotgun02');
@@ -505,7 +514,7 @@ function use(){
     else notify('Move closer to the ladder.');
     return;
   }
-  if(interaction.action==='hard-drive'){if(story?.story&&!story.has('harddrive')&&world.special==='excavator')takeRelic('harddrive');else{if(!story.has('harddrive'))story.take('harddrive');audio.click();openDialog(relic);}return;}
+  if(interaction.action==='hard-drive'){if(story?.story&&!story.has('harddrive')&&world.special==='excavator')takeRelic('harddrive');else{if(!story.has('harddrive'))takeRelic('harddrive');else inspectRelic('harddrive');}return;}
   if(interaction.action?.startsWith('relic:')){takeRelic(interaction.action.slice(6));return;}
   if(interaction.action?.startsWith('rack:')){takeWeapon(interaction.action.slice(5));return;}
   if(interaction.action==='range-resupply'){
@@ -536,6 +545,9 @@ function use(){
 }
 function toggleTorch(){torchOn=!torchOn;audio.torch(torchOn);torch.visible=torchOn;$('torchButton').classList.toggle('active',torchOn);$('torchButton').setAttribute('aria-pressed',String(torchOn));}
 
+$('relicReset').addEventListener('click',()=>inspector.reset());
+$('relicFlip').addEventListener('click',()=>inspector.flip());
+relic.addEventListener('close',()=>inspector.hide());
 for(const d of dialogs){d.addEventListener('cancel',e=>{e.preventDefault();if(d===welcome&&ready){if(started){d.close();syncPause();}else begin();}else closeDialog(d);});d.querySelector('[data-close]')?.addEventListener('click',()=>closeDialog(d));}
 $('terminalInsert').addEventListener('click',()=>{if(!terminal.insertDrive(story.has('harddrive')))notify('The cable needs an external drive.');renderTerminal();saveStory();});
 $('terminalBack').addEventListener('click',()=>{terminal.back();renderTerminal();saveStory();});
@@ -607,7 +619,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyV'){toggleView();return;}
   keys.add(e.code);if(e.code==='KeyE')use();if(e.code==='KeyF')toggleTorch();if(e.code==='Space')jumpQueued=true;if(e.code==='KeyG')fire();
   if(e.code==='KeyR'&&firearms.held){if(firearms.reload())updateWeaponHud();}
-  if(e.code==='KeyX'&&firearms.held&&!story.story){const name=firearms.held.name;firearms.holster();updateWeaponHud();notify(`${name} slung.`);}if(e.code==='KeyB'&&story?.story){renderSatchel();openDialog(satchel);}
+  if(e.code==='KeyX'&&firearms.held&&!story.story){const name=firearms.held.name;firearms.holster();updateWeaponHud();notify(`${name} slung.`);}if(e.code==='KeyB'&&story){renderSatchel();openDialog(satchel);}
   if(e.code==='KeyT'&&story?.story)askForHint();
   if(e.code==='Escape')openDialog(welcome);
 });
@@ -736,7 +748,7 @@ function frame(){
     if(drone.active){
       const event=drone.update(dt,eye);
       if(event==='fired')droneKill();
-      else if(event==='landed'){story.droneKilled();world.surface.setNetworkVisible(true);world.rebuildCollision();saveStory();syncStoryHud(true);notify('It is down. Beyond the ridge, other silo crowns break the horizon.');}
+      else if(event==='landed'){story.droneKilled();world.surface.setNetworkVisible(true);world.rebuildCollision();saveStory();syncStoryHud(true);notify('It is down. Beyond the ridge, more earthen bowls stretch toward the ruined skyline.');}
     }
     // The range's steel plates only exist on the top floor; the weapon keeps
     // working anywhere, but there is nothing to hit outside the room.
@@ -763,6 +775,7 @@ function frame(){
     const p=topPoint(...CAFETERIA_START);camera.position.copy(topPoint(0,1.85,10));camera.lookAt(topPoint(0,3.2,39));world.update(dt,p);population.update(dt,body,false,cast.selected);
   }else{if(workAction)workAction.until+=dt*1000;world.update(dt,body.position);cast?.update(0,body,started);}
   audio.setStoryPaused?.(document.hidden||(opening?.watching&&paused()));
+  if(relic.open)inspector.render();
   updateInterface(time);
   if(time-lastHUD>.25){
     updateHUD();lastHUD=time;
@@ -797,11 +810,11 @@ async function boot(){
     cast=new CharacterCast(scene,world);await cast.load(progress=>{$('enterButton').textContent=`Preparing characters · ${Math.round(45+progress*55)}%`;});cast.select(saved.character||'juliette');cast.thirdPerson=saved.thirdPerson!==false;body.standHeight=body.height=cast.active.definition.height;cast.active.heading=yaw+Math.PI;renderCharacters();
     world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;world.update(0,body.position);cast.update(0,body,false);
     population=new Population(scene,world);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);
-    story=Story.load(savedStory);terminal=GeorgeTerminal.load(savedStory?.terminal);world.story=story;props=new StoryProps(scene,world.m);drone=new Drone(scene,world.m);
+    story=Story.load(savedStory);terminal=GeorgeTerminal.load(savedStory?.terminal);world.story=story;props=new StoryProps(scene,world.m);const relicFailures=await props.loadAssets();if(relicFailures)notify('Some relic models could not load. Refresh to retry.');drone=new Drone(scene,world.m);
     if(story.story&&story.chapter!=='cleaning'){opening.finish();const cp=savedStory?.checkpoint;if(cp&&Number.isInteger(cp.level)&&cp.level>=1&&cp.level<=144&&Array.isArray(cp.position)&&cp.position.length===3&&cp.position.every(Number.isFinite)&&[null,'generator','mines','excavator','tunnel','pipe-gallery','silo17'].includes(cp.special)){world.setLevel(cp.level,cp.special);const [x,y,z]=cp.position;const floor=world.colliders.floorAt(x,z,.3,y+1);if(Number.isFinite(floor)&&Math.abs(floor-y)<2)body.teleport(x,floor+.05,z);else{const dest=world.destination(cp.special||cp.level);body.teleport(...dest.position.toArray());}yaw=Number.isFinite(cp.yaw)?cp.yaw:0;}if(story.hasFlag('hideout-open'))world.openBreach();if(story.chapter==='drone'){story.killedByDrone();const back=world.destination('airlock');world.setLevel(1);body.teleport(...back.position.toArray());}world.update(0,body.position);}
     openingChanged(opening.state);syncStoryHud(true);
     outsideTarget=world.surface.initFeed(renderer);renderer.compile(scene,camera);setDirectoryMode(true);
-    ready=true;$('resumeButton').hidden=!savedStory;$('enterButton').disabled=false;$('enterButton').textContent='New game · the story';
+    ready=true;$('resumeButton').hidden=!savedStory;$('enterButton').disabled=false;$('enterButton').textContent='Story · New game';
     if(world.materialFailures)notify('Some surface materials could not load. Refresh to retry.');
     if(world.assetFailures)notify('Some Lost Signal props could not load. The complete architectural reconstruction is still available.');
     frame();

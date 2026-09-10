@@ -77,7 +77,7 @@ export function createMaterials() {
     leafLight: standard(0x7a9352,{side:THREE.DoubleSide,roughness:.95}),
     rock: standard(0x656a64,{map:rockMap,bumpMap:rockMap,bumpScale:.35,roughness:1}),
     lamp: new THREE.MeshBasicMaterial({color:new THREE.Color(3,2.8,2.35),toneMapped:false}),
-    coldLamp: new THREE.MeshBasicMaterial({color:new THREE.Color(2.1,2.7,2.7),toneMapped:false}),
+    coldLamp: new THREE.MeshBasicMaterial({color:new THREE.Color(3,2.8,2.35),toneMapped:false}),
     indicator: new THREE.MeshBasicMaterial({color:0x85be86}),
     redLamp: new THREE.MeshBasicMaterial({color:0xff7951}),
     screen: standard(0xffffff,{map:terminalMap,emissive:0xd2dfc4,emissiveMap:terminalMap,emissiveIntensity:.8,roughness:.28}),

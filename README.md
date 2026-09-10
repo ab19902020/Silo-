@@ -1,19 +1,18 @@
 # Silo 18
 
-## Mystery expansion — review branch
+## Play the latest build
 
-George’s hidden-file terminal, crowbar access, pipe-capping sequence, Billings’
-shotgun handoff, escape/drone encounter, exterior Silos 0–50 and a flooded
-Silo 17 are integrated on `codex/mystery-expansion`. Interior atmosphere and
-reactive water have also been extended.
+[Play Silo 18](https://ab19902020.github.io/Silo-/)
 
-Claude’s fourteen-area mine network and hidden-library terminal are integrated.
-The current browser has WebGL disabled, so a full visual playthrough and device performance
-validation remain release gates. These changes have not been published. See
-[implementation, route, research and validation](docs/mystery-expansion.md) and
-[external agent integration](docs/AGENT_COORDINATION.md).
+Choose **Story · New game** for the mystery, or **Free Roam · All areas** to
+explore immediately. The integrated build includes Claude's mine, terminal,
+story guidance and audio work; Silos 0–50 outside; explorable flooded Silo 17;
+Blender-authored small relics with 3D inspection; earthen bowl terrain; and
+consistent artificial interior lighting.
 
-A browser-based, first- and third-person reconstruction of the television silo, built in Adam’s **Silo-** repository using the circular collision system and selected interior assets from **Lost Signal**.
+See [this release's changes and validation limits](docs/relic-world-polish.md),
+[the mystery route and research](docs/mystery-expansion.md), and
+[agent integration history](docs/AGENT_COORDINATION.md).
 
 ## Latest residents, conversation and cleaning work
 

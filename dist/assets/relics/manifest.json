@@ -1,0 +1,59 @@
+{
+  "pez": {
+    "file": "pez.glb",
+    "authoring": "Blender",
+    "source": "models/relics/pez.blend",
+    "units": "metres",
+    "boundsBlender": [
+      [
+        -0.018999990075826645,
+        -0.03399999439716339,
+        0.0
+      ],
+      [
+        0.018999995663762093,
+        0.017000000923871994,
+        0.13100001215934753
+      ]
+    ],
+    "bytes": 207848
+  },
+  "watch": {
+    "file": "watch.glb",
+    "authoring": "Blender",
+    "source": "models/relics/watch.blend",
+    "units": "metres",
+    "boundsBlender": [
+      [
+        -0.022199999541044235,
+        -0.10700000077486038,
+        0.0010000001639127731
+      ],
+      [
+        0.026499999687075615,
+        0.09800000488758087,
+        0.018400000408291817
+      ]
+    ],
+    "bytes": 910716
+  },
+  "georgia": {
+    "file": "georgia.glb",
+    "authoring": "Blender",
+    "source": "models/relics/georgia.blend",
+    "units": "metres",
+    "boundsBlender": [
+      [
+        -0.08150000125169754,
+        -0.10750000178813934,
+        -0.000100000761449337
+      ],
+      [
+        0.07900000363588333,
+        0.12050000578165054,
+        0.028099998831748962
+      ]
+    ],
+    "bytes": 118476
+  }
+}

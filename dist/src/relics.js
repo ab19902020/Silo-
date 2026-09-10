@@ -2,13 +2,12 @@ import * as THREE from '../vendor/three.module.js';
 import { Kit } from './kit.js';
 import { roomPoint } from './characters.js';
 import { COLLECTABLES } from './story.js';
+import {loadRelicModel} from './relic-assets.js';
 
 // The physical relics, and the thing that comes for you when you go outside.
 //
-// Each collectable is a small procedural prop standing where the story says it
-// is, with a slow turn and a lift so it reads as something to pick up rather
-// than set dressing. The hard drive is the exception: that one is a real
-// supplied model and is placed by `characters.js`, so this module leaves it be.
+// Blender-authored relics rest on their actual supporting surfaces. Procedural
+// tools remain as fallbacks; the supplied drive is placed by characters.js.
 
 const build={
   pez:(k)=>{
@@ -75,7 +74,7 @@ const build={
   },
 };
 
-const TURN=.55;
+
 
 // Somewhere for a story item to live.
 //
@@ -127,6 +126,13 @@ export class StoryProps{
       this.items.set(item.id,{item,group,base:group.position.y});
     }
   }
+  async loadAssets(){
+    const results=await Promise.allSettled(['pez','watch','georgia'].map(async id=>{
+      const model=await loadRelicModel(id),entry=this.items.get(id);if(!entry||!model)return;
+      entry.group.clear();entry.group.add(model);model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+    }));return results.filter(r=>r.status==='rejected').length;
+  }
+  inspectionModel(id){return this.items.get(id)?.group||null;}
   // Only what the story says is there, on the level you are standing on.
   update(dt,time,story,level,special){
     for(const {fixture,group} of this.fixtures)group.visible=!special&&fixture.level===level;
@@ -134,15 +140,9 @@ export class StoryProps{
       const on=!special&&story.visible(id)&&entry.item.level===level;
       entry.group.visible=on;
       if(!on)continue;
-      // Small things turn and lift, so they read as something to take rather
-      // than as part of the furniture. A crate, a crowbar and a shotgun are
-      // things somebody put down: they stay where they were left.
-      if(entry.item.float){
-        entry.group.rotation.y=time*TURN;
-        entry.group.position.y=entry.base+Math.sin(time*1.6)*.014;
-      }else{
-        entry.group.rotation.y=0;entry.group.position.y=entry.base;
-      }
+      // Relics rest on their support. Rotation belongs to the inspection view.
+      entry.group.rotation.y=Math.PI/2-entry.item.wing*Math.PI/3;
+      entry.group.position.y=entry.base;
     }
   }
   interactions(story,level,special){

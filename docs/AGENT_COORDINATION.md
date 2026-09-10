@@ -25,7 +25,10 @@ point. The terminal retains Claude's mundane files and concealed library, with
 its blueprint route and tools reconciled to the implemented pressure sequence.
 
 See `mystery-expansion.md` for validation and the remaining hardware playtest.
-Do not change the existing hosting identity or publish main as part of a handoff.
+The user subsequently authorized merging all work to main and publishing a playable
+link. The release preserves the existing GitHub Pages workflow and hosting identity.
+Claude’s subsequent story, pickup-visibility and consistent footstep fixes are
+included; see `relic-world-polish.md` for the final polish pass.
 
 ## Footsteps — a note for whoever touches the audio next
 

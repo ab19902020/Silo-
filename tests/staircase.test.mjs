@@ -73,3 +73,20 @@ test('143 flights meet successive bridges at three distinct bearings',()=>{
   assert.equal(new Set(Array.from({length:144},(_,i)=>landingAngle(i+1))).size,3);
   for(let level=2;level<=144;level++)assert.ok(Math.abs(Math.sin((landingAngle(level)+STAIR_SWEEP-landingAngle(level-1))/2))<1e-9);
 });
+
+test('actual bridge and landing wall faces have no overlapping run to flicker',async()=>{
+  const {SiloWorld}=await import('../dist/src/world.js');
+  const {BRIDGE_GUARD_START}=await import('../dist/src/staircase.js');
+  const {levelY}=await import('../dist/src/data.js');
+  const world=new SiloWorld(new T.Scene());
+  for(const level of [1,50,144]){
+    world.setLevel(level);world.scene.updateMatrixWorld(true);
+    const targets=[world.landings,world.stairs,world.loaded.get(level).root.getObjectByName('terminal-stair-parapet')].filter(Boolean);
+    for(const side of [-1,1])for(let x=SILO.stairRadius+.21;x<BRIDGE_GUARD_START+.6;x+=.173){
+      const a=-landingAngle(level),origin=new T.Vector3(x,0,0).applyAxisAngle(new T.Vector3(0,1,0),a);origin.y=levelY(level)+.57;
+      const direction=new T.Vector3(0,0,side).applyAxisAngle(new T.Vector3(0,1,0),a);
+      const hits=new T.Raycaster(origin,direction,0,2.4).intersectObjects(targets,true);
+      assert.equal(hits.length,1,`level ${level}, side ${side}, x ${x}: ${hits.length} overlapping/missing wall faces`);
+    }
+  }
+});

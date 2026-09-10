@@ -119,3 +119,5 @@ body.armed #crosshair{display:block}
 body:has(#chapterHud:not([hidden])) #toast{bottom:calc(24px + var(--card-h,0px) + 20px)}
 body:has(#chapterHud:not([hidden])) #interaction{top:auto;bottom:calc(24px + var(--card-h,0px) + 20px)}
 body:has(#chapterHud:not([hidden])) #toast.show ~ #interaction{bottom:calc(24px + var(--card-h,0px) + 92px)}
+
+.relic-panel{width:min(760px,95vw);max-height:94dvh;overflow:auto}.relic-stage{height:clamp(230px,43dvh,430px);background:#111819;margin:0 1.3rem;border:1px solid #3a4845;border-radius:8px;overflow:hidden}#relicCanvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}#relicCanvas:active{cursor:grabbing}#relicCanvas:focus-visible{outline:2px solid #d9ba78;outline-offset:-4px}.relic-controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.8rem 1.3rem}.relic-controls p{flex:1 1 220px;font-size:14px;color:#bdc9c3}.relic-controls button{min-height:44px}.satchel-item .secondary{margin-top:.7rem;min-height:44px}.relic-panel .about-content{font-size:16px}

@@ -90,17 +90,17 @@ Sources reviewed on 2026-09-09:
 The pressure gallery, its coordinates, interface, clues, sequence and required
 tools are **reconstructed for this game**. The terminal displays that status.
 No exact canonical gas-line coordinate is claimed. The user's 0–50 numbering
-includes **Silo 0 as an explicit game extension**. The staggered field and 178 m
-neighbour spacing are a coherent game layout, not a verified canon map. Only
-the 17/18 neighbouring relationship is used to guide placement. The flooded
+includes **Silo 0 as an explicit game extension**. The clustered field follows the supplied drawing with 178 m nearest-neighbour
+spacing at game scale. Its blurred labels do not establish an exact surveyed
+map. The 17/18 neighbouring relationship is preserved. The flooded
 interior's three accessible landings and all detailed room plans are invented.
 Billings' conversation and this escape/drone sequence are original game writing.
 The book establishes an earlier outside world; Billings does not claim a picture
 proves today's air is safe.
 
-## Validation and remaining release gates
+## Initial validation and subsequent release
 
-**135 automated tests pass** (`npm test`). Static validation checks 169 runtime
+The initial integration passed **135 automated tests** (`npm test`). Static validation checks 169 runtime
 files, local entrypoints, imports and JavaScript syntax (`npm run validate`).
 
 Automated checks cover terminal sequencing and recovery, progression gates,
@@ -113,9 +113,10 @@ The supervised browser reached the game but failed before renderer startup:
 WebGL is disabled in that browser (`GL_RENDERER = Disabled`). A single retry
 confirmed the limitation. **No successful 3D browser playthrough, visual QA,
 device FPS measurement or measured 30-minute run is claimed.** Run the release
-candidate on a WebGL 2 capable desktop and phone before merging or publishing.
+candidate on a WebGL 2 capable desktop and phone for those checks.
 
-The existing hosting project returned `Sites project not found`; its manifest
-has been preserved. This branch is a reviewable source update, not a new live
-publication. Remaining release gates: complete a real-time story run, check touch combat and visual quality on hardware,
-and resolve the existing hosting identity before any requested deployment.
+The user subsequently authorized publication to main for their own playtest.
+The existing GitHub Pages workflow publishes the game at
+https://ab19902020.github.io/Silo-/ . The hosting manifest is preserved.
+See `relic-world-polish.md` for the subsequent graphics, Free Roam, Blender
+relics and stairwell polish and their validation status.
