@@ -193,9 +193,16 @@ test('the fixtures dim and go amber on the night cycle, and come back in the mor
   };
   const noon=settle(12),night=settle(2),morning=settle(9);
   assert.ok(noon.lit>0&&noon.lamps>0,'nobody turned the lights on at noon');
-  assert.ok(night.lit<noon.lit*.72,`night burns ${night.lit.toFixed(0)} against noon's ${noon.lit.toFixed(0)}`);
-  assert.ok(night.key<noon.key*.72,'the shadow caster ignores the hour');
-  assert.ok(night.ambient<noon.ambient*.72,'the ambient fill ignores the hour');
+  // Half brightness at the fixture is not half a room — pale concrete, evenly
+  // spaced lamps and an ACES shoulder ate most of the first attempt, and a
+  // gallery at "half" still read as the afternoon. These are the numbers that
+  // actually make it look like two in the morning.
+  assert.ok(night.lit<noon.lit*.55,`night burns ${night.lit.toFixed(0)} against noon's ${noon.lit.toFixed(0)}`);
+  assert.ok(night.key<noon.key*.55,'the shadow caster ignores the hour');
+  // The fill has to fall faster than the fixtures, or the room dims evenly and
+  // no dark ever appears between the lamps. That contrast is what reads.
+  assert.ok(night.ambient<noon.ambient*.30,'the ambient fill does not fall faster than the fixtures');
+  assert.ok(night.ambient/noon.ambient<night.lit/noon.lit,'the fill and the fixtures fall together');
   assert.ok(night.warmth>noon.warmth+.02,'the night cycle is not warmer than the working day');
   // and it is a cycle, not a decay: the morning comes back up.
   assert.ok(morning.lit>night.lit*1.3&&Math.abs(morning.lit-noon.lit)<noon.lit*.25,'the lamps never recover');
