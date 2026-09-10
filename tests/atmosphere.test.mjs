@@ -193,19 +193,22 @@ test('the fixtures dim and go amber on the night cycle, and come back in the mor
   };
   const noon=settle(12),night=settle(2),morning=settle(9);
   assert.ok(noon.lit>0&&noon.lamps>0,'nobody turned the lights on at noon');
-  // Half brightness at the fixture is not half a room — pale concrete, evenly
-  // spaced lamps and an ACES shoulder ate most of the first attempt, and a
-  // gallery at "half" still read as the afternoon. These are the numbers that
-  // actually make it look like two in the morning.
-  assert.ok(night.lit<noon.lit*.55,`night burns ${night.lit.toFixed(0)} against noon's ${noon.lit.toFixed(0)}`);
-  assert.ok(night.key<noon.key*.55,'the shadow caster ignores the hour');
-  // The fill has to fall faster than the fixtures, or the room dims evenly and
-  // no dark ever appears between the lamps. That contrast is what reads.
-  assert.ok(night.ambient<noon.ambient*.30,'the ambient fill does not fall faster than the fixtures');
+  // Night is dimmer, and that is all it is. A cut that took the fixtures to
+  // 0.41 made a beautiful shaft nobody could walk down; you have to be able to
+  // see where you are going on a landing at three in the morning. Both bounds
+  // are asserted, and the lower one is the one that matters.
+  assert.ok(night.lit<noon.lit*.92,`night burns ${night.lit.toFixed(0)} against noon's ${noon.lit.toFixed(0)}`);
+  assert.ok(night.lit>noon.lit*.70,`night is down to ${(night.lit/noon.lit*100).toFixed(0)}% of noon — too dark to play`);
+  assert.ok(night.key<noon.key*.92&&night.key>noon.key*.70,'the shadow caster ignores the hour, or overdoes it');
+  assert.ok(night.ambient<noon.ambient*.88&&night.ambient>noon.ambient*.55,'the fill is wrong for a night you can walk');
+  // Slightly faster than the fixtures, so there is a little more shape between
+  // the lamps at night — enough to feel, not enough to lose the floor.
   assert.ok(night.ambient/noon.ambient<night.lit/noon.lit,'the fill and the fixtures fall together');
-  assert.ok(night.warmth>noon.warmth+.02,'the night cycle is not warmer than the working day');
+  // Colour is what actually carries the night, so it has to move a long way
+  // further than the level does.
+  assert.ok(night.warmth>noon.warmth+.05,'the night cycle is not meaningfully warmer than the working day');
   // and it is a cycle, not a decay: the morning comes back up.
-  assert.ok(morning.lit>night.lit*1.3&&Math.abs(morning.lit-noon.lit)<noon.lit*.25,'the lamps never recover');
+  assert.ok(morning.lit>night.lit*1.1&&Math.abs(morning.lit-noon.lit)<noon.lit*.25,'the lamps never recover');
   // With no clock at all the fixtures are exactly the tone every other test
   // in this repo asserts they are — an unscheduled silo is not a tinted one.
   const unscheduled=settle(null);

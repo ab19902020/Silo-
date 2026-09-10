@@ -480,12 +480,14 @@ export class SiloWorld {
     // fixture colour, the ambient fill and the light outside — comes off
     // these two numbers, so no part of the silo can be at a different hour.
     const hourly=this.schedule;
-    // Steeper than it looks like it should be. Half brightness measured at the
-    // fixture is not half a room: the concrete here is pale, the lamps are
-    // many and evenly spaced, and ACES rolls the top end off, so a gallery at
-    // "half" still read as the afternoon. The night cycle has to take a real
-    // bite out of the fixtures before the room agrees it is night.
-    this.lampScale=hourly?.14+.86*hourly.lamp:1;
+    // Deliberately shallow. An earlier cut took the fixtures to 0.41 and the
+    // shaft looked wonderful and was no use to anybody: this is a game, and you
+    // have to be able to see where you are going on a landing at three in the
+    // morning. The night reads as night through colour rather than through
+    // darkness — the warmth curve runs the filaments right down to amber while
+    // the level only comes off about a fifth. That is how a real building on a
+    // night setting behaves, and you can still walk it.
+    this.lampScale=hourly?.72+.28*hourly.lamp:1;
     this.lampWarmth=hourly?hourly.warmth:0;
     if(hourly)this.surface.sky.scheduledDay=hourly.daylight;
     this.surface.update(dt);const top=topLocal(position);this.outside=!this.special&&this.activeLevel===1&&(inRampCutout(top.x,top.z)?top.z>99&&top.y>10:top.y>=groundY(top.x,top.z)-.5);if(this.outside){this.surface.streamTerrain(top);this.surface.sky.mesh.position.set(top.x,top.y+1.7,top.z);}this.surface.sky.mesh.visible=this.outside;
@@ -499,11 +501,11 @@ export class SiloWorld {
     for(const [level,e]of this.loaded){e.root.visible=!this.special&&Math.abs(level-this.activeLevel)<=1;for(let i=0;i<e.rooms.length;i++){const room=e.rooms[i],center=new THREE.Vector3(0,1.5,10).applyMatrix4(room.matrixWorld);room.visible=level===this.activeLevel||center.distanceTo(position)<38;}}
     const y=levelY(this.activeLevel);if(this.special==='pipe-gallery'&&this.story)this.pressure.update(this.story);
     this.lightRig(position,top,dt);
-    this.sun.visible=this.outside;this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):0;// The fill falls faster than the fixtures do, which is what puts the dark
-    // back between the lamps. Dropping both together only dims the picture; the
-    // contrast between a lit pool and the space beside it is the thing that
-    // actually reads as night.
-    this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):(this.special==='silo17'?.28:.48)*Math.pow(this.lampScale,1.6);this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
+    this.sun.visible=this.outside;this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):0;
+    // The fill comes off slightly faster than the fixtures, so there is a
+    // little more shape between the lamps at night than in the middle of the
+    // day — but only a little. Enough to feel, not enough to lose the floor.
+    this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):(this.special==='silo17'?.28:.48)*Math.pow(this.lampScale,1.3);this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
     this.scene.environmentIntensity=this.outside?.9:this.special==='silo17'?.28:.48;
     const mood=floorAtmosphere(this.activeLevel);this.ambient.color.setHex(this.outside?0xb5c4c0:this.special==="silo17"?0x70948f:mood.light);
     this.scene.fog.density=this.outside?.0012:this.special==='excavator'?.004:this.special==='silo17'?.023:this.special?.009:mood.density;this.scene.fog.color.setHex(this.outside?0x929fa3:this.special==='silo17'?0x132526:mood.fog);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);if(this.outside)this.scene.fog.color.copy(this.surface.sky.fogColor);this.structure.visible=this.landings.visible=this.stairs.visible=this.distant.visible=this.distantLandings.visible=this.distantStairs.visible=this.topCore.visible=!this.special&&!this.outside;
