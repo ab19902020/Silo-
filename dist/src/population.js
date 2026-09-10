@@ -106,7 +106,7 @@ export function populationRecords(level){
 }
 
 export class Population{
-  constructor(scene,world){this.scene=scene;this.world=world;this.records=new Map();this.actors=new Map();this.level=null;this.time=0;this.rebalance=0;this.watch=false;this.count=0;this.talkingTo=null;this.total=[...Array.from({length:144},(_,i)=>i+1),'generator','mines'].reduce((total,level)=>total+populationRecords(level).length,0);}
+  constructor(scene,world){this.scene=scene;this.world=world;this.schedule=null;this.records=new Map();this.actors=new Map();this.level=null;this.time=0;this.rebalance=0;this.watch=false;this.count=0;this.talkingTo=null;this.total=[...Array.from({length:144},(_,i)=>i+1),'generator','mines'].reduce((total,level)=>total+populationRecords(level).length,0);}
   load(level){
     for(const actor of this.actors.values())this.remove(actor);this.actors.clear();this.level=level;
     if(!this.records.has(level)){
@@ -129,7 +129,11 @@ export class Population{
     this.time+=dt;this.watch=watch;this.world.residentInteractions=[];
     if(this.world.outside||['excavator','tunnel','silo17','pipe-gallery'].includes(this.world.special)){for(const a of this.actors.values())a.root.visible=false;this.count=0;return;}
     const level=this.world.special||this.world.activeLevel;if(this.level!==level)this.load(level);
-    const records=this.records.get(this.level),limit=CROWD_LIMITS[this.world.quality]||48;
+    // How many people are out is the hour's business, not the renderer's. The
+    // named residents sort first and survive any limit, so no part of the story
+    // can be locked out by the night cycle emptying the galleries.
+    const records=this.records.get(this.level),crowd=this.schedule?.crowd;
+    const limit=Math.max(6,Math.round((CROWD_LIMITS[this.world.quality]||48)*(Number.isFinite(crowd)?.25+.75*crowd:1)));
     this.rebalance-=dt;
     if(this.rebalance<=0){
       this.rebalance=.8;

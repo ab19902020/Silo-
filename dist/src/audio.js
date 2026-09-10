@@ -19,6 +19,7 @@
 // up; when it ends the bed takes over and loops from there on. The two are
 // mastered to the same loudness (-14.7 and -14.8 LUFS) so the hand-over is not
 // a step in level.
+import { AmbientDirector } from './ambient-events.js';
 const FOOTSTEP_URL = new URL('../assets/audio/footsteps/', import.meta.url);
 const MUSIC_URL = new URL('../assets/audio/silo-18-theme.mp3', import.meta.url);
 const OPENING_URL = new URL('../assets/audio/silo-18-opening.mp3', import.meta.url);
@@ -301,6 +302,10 @@ export class SiloAudio {
     this.context=null;this.enabled=true;this.musicVolume=.148;this.lastStep=0;this.foot=1;
     this.musicHeld=false;this.musicOffset=0;this.musicBuffer=null;this.musicCue=null;this.musicFade=5;this.openingPlaying=false;this.openingElement=null;
     this.place=INTERIOR;this.stepSurface='concrete';this.surfaceOverride=null;this.steps=null;this.guns=null;this.gunLoad=null;this.wade=null;this.musicRequested=false;this.musicPlaying=false;this.scrub=null;
+    // What the silo is doing around you. The director decides which noise
+    // comes next and when; this class only knows how to make each one.
+    this.director=new AmbientDirector();
+    this.ambience={place:'residential',inShaft:false,crowd:.6,bustle:.7,silent:false};
   }
 
   // Created on the first user gesture; browsers refuse an AudioContext before one.
@@ -308,7 +313,7 @@ export class SiloAudio {
     if(!this.context){
       const Context=globalThis.AudioContext||globalThis.webkitAudioContext;if(!Context)return;
       let context;try{context=new Context();}catch{return;}
-      this.context=context;this.build();this.loadFootsteps();this.loadMusic();this.scheduleEvent();
+      this.context=context;this.build();this.loadFootsteps();this.loadMusic();
     }
     this.context.resume?.().catch(()=>{});
   }
@@ -950,7 +955,118 @@ export class SiloAudio {
     if(!watching&&this.stepSurface==='concrete'&&Math.random()<.4)this.hit(out,'latch',t+.17,{gain:.006,rate:rand(1.4,1.8)});
   }
 
+  // --- the silo's own noises ----------------------------------------------
+  // What used to be here was a blind timer: every eleven to twenty-six seconds
+  // it picked one of four sounds from the ambience bed's family. It did not
+  // know the floor, the hour, or that ten thousand people live above and below
+  // you, so a landing at three in the morning sounded like the bazaar at noon.
+  // AmbientDirector decides now. This class only knows how to make each noise.
+  //
+  // Nothing in here speaks. There is no synthesised dialogue and no cloned
+  // voice: the public address is a chime, a carrier opening, a cadence with no
+  // words in it and a click, which is all that survives two hundred metres of
+  // concrete anyway.
+  setAmbience(context){this.ambience={...this.ambience,...context};}
+  ambientTick(dt){
+    if(!this.live()||this.context.state!=='running')return;
+    if(typeof document!=='undefined'&&document.hidden)return;
+    for(const event of this.director.update(dt,this.ambience))this.ambient(event);
+  }
+  ambient(event){
+    if(!this.live()||!event||!event.id)return;
+    const t=this.context.currentTime+.04,out=this.voice(event.pan||0,event.muffle||0,event.send??1);
+    const gain=event.gain||.03;
+    switch(event.id){
+      case 'pa':return this.tannoy(out,t,event);
+      case 'bell':return this.shiftBell(out,t,event);
+      case 'steps-above':case 'steps-below':return this.distantSteps(out,t,event);
+      case 'door':
+        // A door three floors down is the latch first and the leaf after it.
+        this.hit(out,'thunk',t,{gain,rate:rand(.74,.95)});
+        this.hit(out,'latch',t+.055,{gain:gain*.55,rate:rand(1.0,1.25)});
+        return;
+      case 'gate':
+        this.hit(out,'clunk',t,{gain,rate:event.rate||1});
+        for(let i=0;i<3;i++)this.hit(out,'latch',t+.09+i*rand(.05,.10),{gain:gain*(.42-i*.10),rate:rand(1.3,1.9)});
+        return;
+      case 'clank':return this.hit(out,'clank',t,{gain,rate:event.rate||1});
+      case 'drop':{
+        // Dropped, then bouncing: each bounce is quieter, sooner and higher.
+        let when=t,level=gain;
+        this.hit(out,'clank',when,{gain:level,rate:event.rate||1});
+        for(let i=0;i<(event.bounces||2);i++){
+          when+=rand(.12,.20)/(i+1);level*=.46;
+          this.hit(out,'clank',when,{gain:level,rate:(event.rate||1)*(1.15+i*.18)});
+        }
+        return;
+      }
+      case 'drip':
+        this.tone(out,t,{frequency:event.frequency||760,to:event.to||2100,gain,decay:.13,attack:.0015});
+        this.burst(out,t,{frequency:3300,q:2.2,gain:gain*.3,decay:.04,attack:.0015});
+        return;
+      case 'cough':
+        // Two bursts: the closure and the release. No pitch, no voice.
+        this.burst(out,t,{frequency:rand(380,520),q:1.5,gain,decay:.055,attack:.006,rate:.9});
+        this.burst(out,t+.075,{frequency:rand(700,1000),q:1.1,gain:gain*.5,decay:.10,attack:.010,rate:1.1});
+        return;
+      case 'chairs':
+        // A chair leg dragged over concrete, then set down.
+        this.burst(out,t,{frequency:rand(900,1300),to:rand(340,520),q:3.4,gain,decay:rand(.28,.46),attack:.03,rate:event.rate||1});
+        this.hit(out,'thunk',t+rand(.30,.48),{gain:gain*.7,rate:rand(1.0,1.3)});
+        return;
+    }
+    return this.settleGroan(out,t,event);
+  }
+  // The shaft taking up load: two hundred metres of concrete moving a hair.
+  settleGroan(out,t,event){
+    this.burst(out,t,{frequency:event.frequency||210,to:event.to||360,q:6,
+      gain:event.gain||.055,decay:event.decay||1.6,attack:.45,rate:.35});
+  }
+  // A run of feet on a steel flight, some floors off. The gain envelope is the
+  // whole trick: somebody crosses the landing and keeps going, so the run
+  // arrives, passes and leaves rather than simply stopping.
+  distantSteps(out,t,event){
+    const count=Math.max(2,Math.min(12,Math.round(event.steps||5))),interval=event.interval||.38;
+    for(let i=0;i<count;i++){
+      const through=(i+.5)/count,pass=Math.sin(through*Math.PI);
+      this.hit(out,'grating',t+i*interval*rand(.94,1.07),
+        {gain:(event.gain||.02)*(.45+.55*pass),rate:(event.rate||1)*rand(.95,1.06)});
+    }
+  }
+  // The tannoy. Two notes, the carrier opening, a cadence, the key let go.
+  tannoy(out,t,event){
+    const gain=event.gain||.055;
+    this.tone(out,t,{frequency:784,gain:gain*.55,decay:.55,attack:.008});
+    this.tone(out,t+.34,{frequency:587,gain:gain*.5,decay:.85,attack:.008});
+    const open=t+1.05;
+    this.hit(out,'switch',open,{gain:gain*.28,rate:1.4});
+    // Carrier hiss for as long as the key is held.
+    const syllables=Math.max(3,Math.min(14,Math.round(event.syllables||7))),rate=event.rate||1;
+    let when=open+.16;
+    for(let i=0;i<syllables;i++){
+      const length=rand(.10,.20)/rate;
+      // Speech-shaped, word-shaped, and deliberately without words in it: a
+      // band around the vowel formants, opening and closing at speech rate.
+      this.burst(out,when,{frequency:rand(300,560),to:rand(340,760),q:2.6,
+        gain:gain*rand(.30,.62),decay:length,attack:.020,rate:.8});
+      when+=length+rand(.05,.13)/rate;
+      if(i===Math.floor(syllables/2))when+=rand(.10,.26)/rate;   // he takes a breath
+    }
+    this.hit(out,'switch',when+.10,{gain:gain*.22,rate:.9});
+  }
+  // Shift change. Three strikes, and the partials of a real bell are not
+  // harmonics — a stack of octaves rings like an organ, not like a bell.
+  shiftBell(out,t,event){
+    const gain=event.gain||.09,strikes=Math.max(1,Math.min(5,Math.round(event.strikes||3)));
+    for(let s=0;s<strikes;s++){
+      const at=t+s*1.15;
+      this.hit(out,'clank',at,{gain:gain*.35,rate:1.5});
+      for(const [ratio,level,decay] of [[1,.9,3.4],[1.19,.5,2.6],[1.83,.42,2.0],[2.44,.3,1.5],[3.06,.2,1.1]])
+        this.tone(out,at,{frequency:522*ratio,gain:gain*level*.5,decay,attack:.004});
+    }
+  }
   // --- occasional life ----------------------------------------------------
+  // Kept so a caller can ask for one now — the frame loop uses ambientTick.
   scheduleEvent(){
     clearTimeout(this.eventTimer);
     this.eventTimer=setTimeout(()=>{this.fireEvent();this.scheduleEvent();},rand(11000,26000));

@@ -12,6 +12,9 @@ const PYLON_ANGLES=Array.from({length:24},(_,i)=>(Math.floor(i/4)+(i%4+1)/5)*TAU
 // The gallery's outer wall steps back above the door head: it is a ring
 // O-.2 .. O+.2 up to 3.35 m and O-.3 .. O+.3 above that. A sign hung at the
 // wrong one of these either floats off the wall or is swallowed by it.
+// Interior fixtures are dimmed and run down towards this on the night cycle.
+// A silo that drops its lamps without warming them just looks underexposed.
+const NIGHT_FILAMENT=new THREE.Color(0xff9a4e);
 const SIGN_WALL=SILO.deckOuter-.2-SIGN_DEPTH/2;
 const SIGN_WALL_HIGH=SILO.deckOuter-.3-SIGN_DEPTH/2;
 import { buildRoom } from './rooms.js';
@@ -39,7 +42,10 @@ export class SiloWorld {
     scene.background=new THREE.Color(0x121c19);scene.fog=new THREE.FogExp2(0x18221e,.0065);
     this.ambient=new THREE.HemisphereLight(0xb5c4c0,0x36332b,.42);scene.add(this.ambient);
     this.sun=new THREE.DirectionalLight(0xd7d9bc,2);this.sun.position.set(15,levelY(1)+20,-8);this.sun.target.position.set(0,levelY(1),0);scene.add(this.sun,this.sun.target);
-    this.localLights=Array.from({length:8},()=>{const l=new THREE.PointLight(0xf3d6a0,0,38,1.7);l.userData={key:null,goal:0};scene.add(l);return l;});
+    this.localLights=Array.from({length:8},()=>{const l=new THREE.PointLight(0xf3d6a0,0,38,1.7);l.userData={key:null,goal:0,baseColor:0xf3d6a0};scene.add(l);return l;});
+    // What hour the silo thinks it is, handed in by the frame loop. Null
+    // means no clock is running and the fixtures stay at working daylight.
+    this.schedule=null;this.lampScale=1;this.lampWarmth=0;
     this.buildStructure();this.surface=new SurfaceWorld(this.m);scene.add(this.surface.root);this.generator=buildGeneratorHall(this.m);scene.add(this.generator.root);this.generator.root.visible=false;
     this.keyLight=new THREE.SpotLight(0xffd6a0,0,48,1.05,.8,1.65);this.keyLight.userData={key:null};this.keyLight.castShadow=true;this.keyLight.shadow.mapSize.set(1024,1024);this.keyLight.shadow.bias=-.00015;this.keyLight.shadow.normalBias=.045;this.keyLight.shadow.camera.near=.4;scene.add(this.keyLight,this.keyLight.target);
     this.sun.castShadow=false;this.sun.visible=false;this.sun.intensity=0;
@@ -422,7 +428,7 @@ export class SiloWorld {
     const free=[];
     for(const l of lamps){
       const c=l.userData.key?wanted.get(l.userData.key):null;
-      if(c){l.userData.goal=c.intensity;wanted.delete(c.key);}else free.push(l);
+      if(c){l.userData.goal=c.intensity*this.lampScale;wanted.delete(c.key);}else free.push(l);
     }
     const spare=[...wanted.values()];
     for(const l of free){
@@ -430,9 +436,15 @@ export class SiloWorld {
       // relocates is invisible; a lit one changing position is not.
       if(!spare.length||l.intensity>.02){l.userData.goal=0;continue;}
       const c=spare.shift();
-      l.userData.key=c.key;l.position.copy(c.position);l.color.setHex(c.color);l.distance=c.distance;l.userData.goal=c.intensity;
+      l.userData.key=c.key;l.position.copy(c.position);l.userData.baseColor=c.color;l.distance=c.distance;l.userData.goal=c.intensity*this.lampScale;
     }
-    for(const l of lamps){l.intensity=THREE.MathUtils.damp(l.intensity,l.userData.goal,l.userData.goal?6:16,dt);l.visible=l.intensity>.4;}
+    // The tint is re-applied every frame rather than on relocation: a lamp
+    // that was placed at noon and is still burning at midnight has to go amber
+    // where it stands, not wait to be moved before it notices the hour.
+    for(const l of lamps){
+      l.intensity=THREE.MathUtils.damp(l.intensity,l.userData.goal,l.userData.goal?6:16,dt);l.visible=l.intensity>.4;
+      l.color.setHex(l.userData.baseColor).lerp(NIGHT_FILAMENT,this.lampWarmth*.55);
+    }
   }
   lightRig(position,top,dt){
     const candidates=this.lampCandidates(position,top);
@@ -455,14 +467,22 @@ export class SiloWorld {
     if(this.keyLight.userData.key!==target.key){
       this.keyLight.userData.key=target.key;this.keyLight.position.copy(target.position);
       this.keyLight.target.position.copy(target.position).add(new THREE.Vector3(0,-3,0));
-      this.keyLight.color.setHex(target.color);this.keyLight.distance=target.cone;
+      this.keyLight.userData.baseColor=target.color;this.keyLight.distance=target.cone;
     }
-    this.keyLight.intensity=THREE.MathUtils.damp(this.keyLight.intensity,target.keyIntensity??Math.min(190,target.intensity*1.35),7,dt);
+    this.keyLight.color.setHex(this.keyLight.userData.baseColor??target.color).lerp(NIGHT_FILAMENT,this.lampWarmth*.55);
+    this.keyLight.intensity=THREE.MathUtils.damp(this.keyLight.intensity,(target.keyIntensity??Math.min(190,target.intensity*1.35))*this.lampScale,7,dt);
   }
 
   update(dt,position){
     breach.amount=THREE.MathUtils.damp(breach.amount,breach.open?1:0,5,dt);
     const panel=this.loaded.get(SPUR.level)?.passages?.userData.breachPanel;if(panel)panel.rotation.y=Math.PI-breach.amount*Math.PI/2;
+    // One clock, read once. Everything downstream — fixture brightness,
+    // fixture colour, the ambient fill and the light outside — comes off
+    // these two numbers, so no part of the silo can be at a different hour.
+    const hourly=this.schedule;
+    this.lampScale=hourly?.32+.68*hourly.lamp:1;
+    this.lampWarmth=hourly?hourly.warmth:0;
+    if(hourly)this.surface.sky.scheduledDay=hourly.daylight;
     this.surface.update(dt);const top=topLocal(position);this.outside=!this.special&&this.activeLevel===1&&(inRampCutout(top.x,top.z)?top.z>99&&top.y>10:top.y>=groundY(top.x,top.z)-.5);if(this.outside){this.surface.streamTerrain(top);this.surface.sky.mesh.position.set(top.x,top.y+1.7,top.z);}this.surface.sky.mesh.visible=this.outside;
     const airlocks=this.loaded.get(1)?.rooms[0].userData.doors||[];
     for(const door of airlocks){const other=airlocks.find(d=>d!==door);if(door.requested&&other.amount<.01){door.open=true;door.requested=false;}door.amount=THREE.MathUtils.damp(door.amount,door.open?1:0,3.5,dt);door.pivot.position.y=door.amount*4.35;if(door.collider)door.collider.enabled=door.amount<.96;}
@@ -474,7 +494,7 @@ export class SiloWorld {
     for(const [level,e]of this.loaded){e.root.visible=!this.special&&Math.abs(level-this.activeLevel)<=1;for(let i=0;i<e.rooms.length;i++){const room=e.rooms[i],center=new THREE.Vector3(0,1.5,10).applyMatrix4(room.matrixWorld);room.visible=level===this.activeLevel||center.distanceTo(position)<38;}}
     const y=levelY(this.activeLevel);if(this.special==='pipe-gallery'&&this.story)this.pressure.update(this.story);
     this.lightRig(position,top,dt);
-    this.sun.visible=this.outside;this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):0;this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):this.special==='silo17'?.28:.48;this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
+    this.sun.visible=this.outside;this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):0;this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):(this.special==='silo17'?.28:.48)*this.lampScale;this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
     this.scene.environmentIntensity=this.outside?.9:this.special==='silo17'?.28:.48;
     const mood=floorAtmosphere(this.activeLevel);this.ambient.color.setHex(this.outside?0xb5c4c0:this.special==="silo17"?0x70948f:mood.light);
     this.scene.fog.density=this.outside?.0012:this.special==='excavator'?.004:this.special==='silo17'?.023:this.special?.009:mood.density;this.scene.fog.color.setHex(this.outside?0x929fa3:this.special==='silo17'?0x132526:mood.fog);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);if(this.outside)this.scene.fog.color.copy(this.surface.sky.fogColor);this.structure.visible=this.landings.visible=this.stairs.visible=this.distant.visible=this.distantLandings.visible=this.distantStairs.visible=this.topCore.visible=!this.special&&!this.outside;
