@@ -28,6 +28,9 @@ import { buildGeneratorHall } from './generator-hall.js';
 import { buildUnderground } from './underground.js';
 import { buildStairFlight, hasStairGuard, buildTerminalLanding, terminalStart, buildNewel, sweepParapet,
   straightPath, helixPath, stairOpening, railRadius, guardZ, PARAPET, PARAPET_TOP, NEWEL } from './staircase.js';
+import { buildSilo17 } from './silo17.js';
+import { addGeorgeDesk, buildPressureGallery } from './mystery-spaces.js';
+import { floorAtmosphere, dressFloor } from './atmosphere.js';
 import { VOID, voidLedgeGaps, tunnelPoint } from './void-access.js';
 
 export class SiloWorld {
@@ -39,7 +42,9 @@ export class SiloWorld {
     this.localLights=Array.from({length:8},()=>{const l=new THREE.PointLight(0xf3d6a0,0,38,1.7);l.userData={key:null,goal:0};scene.add(l);return l;});
     this.buildStructure();this.surface=new SurfaceWorld(this.m);scene.add(this.surface.root);this.generator=buildGeneratorHall(this.m);scene.add(this.generator.root);this.generator.root.visible=false;
     this.keyLight=new THREE.SpotLight(0xffd6a0,0,48,1.05,.8,1.65);this.keyLight.userData={key:null};this.keyLight.castShadow=true;this.keyLight.shadow.mapSize.set(1024,1024);this.keyLight.shadow.bias=-.00015;this.keyLight.shadow.normalBias=.045;this.keyLight.shadow.camera.near=.4;scene.add(this.keyLight,this.keyLight.target);
-    this.sun.castShadow=false;
+    this.sun.castShadow=false;this.sun.visible=false;this.sun.intensity=0;
+    this.silo17=buildSilo17(this.m);scene.add(this.silo17.root);this.silo17.root.visible=false;
+    this.pressure=buildPressureGallery(this.m);scene.add(this.pressure.root);this.pressure.root.visible=false;
     this.underground=buildUnderground(this.m);scene.add(this.underground.root);this.underground.root.visible=false;
   }
   async loadAssets(onProgress=()=>{}) {
@@ -146,7 +151,7 @@ export class SiloWorld {
     const root=new THREE.Group(),y=levelY(level),rooms=[],doors=[],interactions=[];root.position.y=y;
     for(let wing=0;wing<6;wing++){
       const a=wing*TAU/6,ry=Math.PI/2-a,type=roomType(level,wing),room=level===1&&wing===0?buildTopFloor(this.m):type==='bazaar'?buildBazaar(this.m):buildRoom(this.m,type,level,wing,this.assets);
-      room.position.set(Math.cos(a)*SILO.deckOuter,0,Math.sin(a)*SILO.deckOuter);room.rotation.y=ry;root.add(room);rooms.push(room);
+      room.position.set(Math.cos(a)*SILO.deckOuter,0,Math.sin(a)*SILO.deckOuter);room.rotation.y=ry;if(level===68&&wing===0)addGeorgeDesk(room,this.m);root.add(room);rooms.push(room);
       // Both plates are bolted to the gallery wall. Offsetting the level plate
       // along the ring keeps it flat on the curve; offsetting it in x and z, as
       // this once did, left it hanging in the walkway well clear of the wall.
@@ -178,7 +183,7 @@ export class SiloWorld {
       const gk=new Kit(this.m);buildTerminalLanding(gk,level===1?1:-1);
       const landing=gk.group();landing.name='terminal-stair-parapet';landing.rotation.y=-landingAngle(level);root.add(landing);
     }
-    this.scene.add(root);const entry={level,root,rooms,doors,interactions,passages};this.loaded.set(level,entry);return entry;
+    dressFloor(root,this.m,level);this.scene.add(root);const entry={level,root,rooms,doors,interactions,passages};this.loaded.set(level,entry);return entry;
   }
   setLevel(level,special=null){
     this.activeLevel=level;this.special=special;this.updateStructure(level);
@@ -186,14 +191,17 @@ export class SiloWorld {
     for(const [n,e]of this.loaded)if(Math.abs(n-level)>2){disposeGroup(e.root);this.loaded.delete(n);}
     this.doors=[...this.loaded.values()].flatMap(e=>e.doors);this.interactions=[...this.loaded.values()].flatMap(e=>e.interactions);
     this.animated=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>r.userData.animated));this.livestock=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>r.userData.livestock||[]));this.screens=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>[r.userData.outsideScreen,...(r.userData.extraScreens||[])])).filter(Boolean);
-    this.underground.root.visible=!!special&&special!=='generator';this.generator.root.visible=special==='generator';this.surface.root.visible=!special;
+    this.underground.root.visible=['mines','excavator','tunnel'].includes(special);this.silo17.root.visible=special==='silo17';this.pressure.root.visible=special==='pipe-gallery';this.generator.root.visible=special==='generator';this.surface.root.visible=!special;
+    for(const child of this.underground.root.children)child.visible=special==='mines'?child===this.underground.mines:child!==this.underground.mines;
     if(special==='generator')this.animated=this.generator.animated;
     this.rebuildCollision();
   }
+  specialSpace(){return this.special==='mines'?this.underground.mineSpace:this.special==='generator'?this.generator:this.special==='silo17'?this.silo17:this.special==='pipe-gallery'?this.pressure:this.underground;}
+  resetStoryWorld(){breach.open=breach.amount=false;for(const entry of this.loaded.values())for(const i of entry.interactions)if(i.destination==='excavator'){delete i.destination;i.action='breach';i.label='Inspect the concealed warning panel';}this.rebuildCollision();}
   rebuildCollision(){
     const c=new ColliderSet(),R=SILO.wellRadius,O=SILO.deckOuter,S=SILO.stairRadius,C=SILO.stairColumn,H=SILO.levelHeight;
     if(this.special){
-      const below=this.special==='generator'?this.generator:this.underground;
+      const below=this.specialSpace();
       for(const f of below.walkways){if(f.kind==='ring')c.addRing({innerRadius:f.r0,outerRadius:f.r1,minY:f.y-.5,maxY:f.y,climbable:true});else if(f.kind==='arc')c.addArc({innerRadius:f.r0,outerRadius:f.r1,minY:f.y-.17,maxY:f.y,centre:f.a,halfWidth:f.half,climbable:true});else c.addOrientedBox({cx:f.x,cz:f.z,halfX:f.w/2,halfZ:f.d/2,rotationY:f.ry||0,minY:f.y-.4,maxY:f.y,climbable:true});}
       for(const b of below.solids)if(b.arc)c.addArc({innerRadius:b.r0,outerRadius:b.r1,minY:b.y0,maxY:b.y1,centre:b.a,halfWidth:b.half});else if(b.ring)c.addRing({innerRadius:b.r0,outerRadius:b.r1,minY:b.y0,maxY:b.y1});else c.addOrientedBox({cx:b.x,cz:b.z,halfX:b.w/2,halfZ:b.d/2,rotationY:b.ry||0,minY:b.y0,maxY:b.y1});
       if(this.special==='excavator'||this.special==='tunnel'){
@@ -274,6 +282,7 @@ export class SiloWorld {
     }
     c.addRing({innerRadius:0,outerRadius:C,minY:0,maxY:levelY(1)+H});
     if(this.activeLevel===1){
+      if(this.surface.network.root.visible)for(const crown of this.surface.network.surfaces){const p=topPoint(crown.x,0,crown.z);c.addColumn({cx:p.x,cz:p.z,radius:28,minY:levelY(1)+crown.y-12,maxY:levelY(1)+crown.y});}
       for(const b of this.surface.solids){const p=topPoint(b.x,0,b.z);c.addOrientedBox({cx:p.x,cz:p.z,halfX:b.w/2,halfZ:b.d/2,rotationY:Math.PI/2,minY:levelY(1)+b.y0,maxY:levelY(1)+b.y1});}
       const floorAt=c.floorAt.bind(c);c.floorAt=(x,z,r,h)=>Math.max(floorAt(x,z,r,h),this.surface.floorAt(x,z,r,h));
     }
@@ -283,9 +292,12 @@ export class SiloWorld {
   destination(id){
     if(typeof id==='string'&&id.startsWith('room:')){const [,n,w]=id.split(':').map(Number);return {level:n,position:this.spawn(n,w),yaw:Math.PI/2-w*TAU/6+Math.PI};}
     if(id==='relic')return {level:144,position:new THREE.Vector3(-3.8,0,4.9).applyAxisAngle(new THREE.Vector3(0,1,0),Math.PI/6).add(new THREE.Vector3(SILO.deckOuter*.5,levelY(144),SILO.deckOuter*Math.sqrt(3)/2)),yaw:Math.PI*.786};
+    if(id==='silo17')return {level:1,special:id,position:this.silo17.spawn.clone(),yaw:Math.PI};
+    if(id==='pipe-gallery')return {level:144,special:id,position:new THREE.Vector3(0,48,-23),yaw:Math.PI};
+    if(id==='silo17-surface'){const entry=this.surface.network.interactions[0].position;return {level:1,position:topPoint(entry[0],groundY(entry[0],entry[2]-3),entry[2]-3),yaw:Math.PI};}
     if(id==='surface')return {level:1,position:topPoint(26,groundY(26,114),114),yaw:-Math.PI/2};
     if(id==='generator')return {level:144,special:id,position:new THREE.Vector3(0,52,-20),yaw:Math.PI};
-    if(id==='mines')return {level:144,special:id,position:new THREE.Vector3(105,48,-26),yaw:Math.PI};
+    if(id==='mines'||this.underground.mineSpace.destinations.some(d=>d.id===id)){const d=this.underground.mineSpace.destinations.find(d=>d.id===(id==='mines'?'mine-arrival':id));return {level:144,special:'mines',position:new THREE.Vector3(...d.position).add(new THREE.Vector3(105,48,0)),yaw:Math.PI+d.yaw};}
     if(id==='excavator')return {level:144,special:id,position:new THREE.Vector3(79.5,12,0),yaw:Math.PI/2};
     if(id==='digger-passage')return {level:144,position:new THREE.Vector3(Math.cos(SPUR.angle)*(SPUR.outer-1.2),levelY(144),Math.sin(SPUR.angle)*(SPUR.outer-1.2)),yaw:Math.PI/2-SPUR.angle};
     if(id==='tunnel')return {level:144,special:id,position:tunnelPoint(0,.7,12),yaw:-Math.PI/2-VOID.tunnelAngle};
@@ -293,15 +305,16 @@ export class SiloWorld {
     return {level:Number(id),position:this.spawn(Number(id)),yaw:Math.PI/2-landingAngle(Number(id))};
   }
   nearestInteraction(position,direction){
-    const pool=this.special?(this.special==='generator'?this.generator:this.underground).interactions.map(v=>({...v,position:new THREE.Vector3(...v.position)})):[...this.doors.map(d=>{const seal=this.story?.sealed(d.level,d.wing,d.type);
+    const pool=this.special?this.specialSpace().interactions.map(v=>({...v,position:new THREE.Vector3(...v.position)})):[...this.doors.map(d=>{const seal=this.story?.sealed(d.level,d.wing,d.type);
       return seal?{position:d.position,label:`${seal.label} — sealed`,sealed:seal}
                  :{position:d.position,label:`${d.open?'Close':'Open'} ${TYPE_NAMES[d.type].toLowerCase()} door`,door:d};}),...this.interactions];
     if(this.actorInteractions)pool.push(...this.actorInteractions);
     if(this.residentInteractions)pool.push(...this.residentInteractions);
     if(this.storyInteractions)pool.push(...this.storyInteractions);
-    if(!this.special&&this.activeLevel===1)pool.push({position:this.surface.cleaningPoint,label:this.surface.cleaning?'Cleaning lens…':this.surface.cleanliness>.99?'Clean camera lens again':'Clean the outside camera lens',action:'clean-camera'});
+    if(!this.special&&this.activeLevel===1&&this.outside)pool.push(...this.surface.networkInteractions);
+    if(!this.story?.story&&!this.special&&this.activeLevel===1)pool.push({position:this.surface.cleaningPoint,label:this.surface.cleaning?'Cleaning lens…':this.surface.cleanliness>.99?'Clean camera lens again':'Clean the outside camera lens',action:'clean-camera'});
     let nearest=null,best=5;
-    for(const i of pool){const delta=i.position.clone().sub(position),dist=delta.length();if(dist>best||dist<.05)continue;if(delta.normalize().dot(direction)<.32)continue;best=dist;nearest=i;}return nearest;
+    for(const i of pool){if(this.story?.story&&this.story.chapter==='cleaning'&&i.action!=='opening-book')continue;if(this.special==='pipe-gallery'&&i.action?.startsWith('pipe-')){const next=!this.story?.hasFlag('pipe-cover-open')?'cover':['isolate','collar','torque'][this.story?.pipeSteps.length||0];if(i.action!==`pipe-${next}`)continue;}const delta=i.position.clone().sub(position),dist=delta.length();if(dist>best||dist<.05)continue;if(delta.normalize().dot(direction)<.32)continue;best=dist;nearest=i;}return nearest;
   }
   cycleAirlock(id){
     const doors=this.loaded.get(1)?.rooms[0].userData.doors;if(!doors)return;
@@ -422,14 +435,16 @@ export class SiloWorld {
     const airlocks=this.loaded.get(1)?.rooms[0].userData.doors||[];
     for(const door of airlocks){const other=airlocks.find(d=>d!==door);if(door.requested&&other.amount<.01){door.open=true;door.requested=false;}door.amount=THREE.MathUtils.damp(door.amount,door.open?1:0,3.5,dt);door.pivot.position.y=door.amount*4.35;if(door.collider)door.collider.enabled=door.amount<.96;}
 
-    if(!this.special){const level=levelAt(position.y);if(level!==this.activeLevel)this.setLevel(level);}
+    if(!this.special&&!this.outside){const level=levelAt(position.y);if(level!==this.activeLevel)this.setLevel(level);}
     for(const door of this.doors){door.amount=THREE.MathUtils.damp(door.amount,door.open?1:0,6,dt);for(const leaf of door.leaves)leaf.pivot.rotation.y=-leaf.side*door.amount*Math.PI*.52;if(door.collider)door.collider.enabled=door.amount<.8;}
     for(const a of this.animated)a.object.rotation[a.axis]+=dt*a.speed;
-    this.clock=(this.clock||0)+dt;if(this.livestock?.length&&!this.special)updateLivestock(this.livestock,dt,this.clock);
+    this.clock=(this.clock||0)+dt;if(this.special==='mines')this.underground.updateMine(dt,this.clock,position,this.quality);if(this.livestock?.length&&!this.special)updateLivestock(this.livestock,dt,this.clock);
     for(const [level,e]of this.loaded){e.root.visible=!this.special&&Math.abs(level-this.activeLevel)<=1;for(let i=0;i<e.rooms.length;i++){const room=e.rooms[i],center=new THREE.Vector3(0,1.5,10).applyMatrix4(room.matrixWorld);room.visible=level===this.activeLevel||center.distanceTo(position)<38;}}
-    const y=levelY(this.activeLevel);
+    const y=levelY(this.activeLevel);if(this.special==='pipe-gallery'&&this.story)this.pressure.update(this.story);
     this.lightRig(position,top,dt);
-    this.sun.visible=this.outside;this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):0;this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):.60;this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
-    this.scene.fog.density=this.outside?.0029:this.special==='excavator'?.004:this.special?.007:.008;this.scene.fog.color.setHex(this.outside?0x929fa3:0x242d2b);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);if(this.outside)this.scene.fog.color.copy(this.surface.sky.fogColor);this.structure.visible=this.landings.visible=this.stairs.visible=this.distant.visible=this.distantLandings.visible=this.distantStairs.visible=this.topCore.visible=!this.special&&!this.outside;
+    this.sun.visible=this.outside;this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):0;this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):this.special==='silo17'?.28:.48;this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
+    this.scene.environmentIntensity=this.outside?.9:this.special==='silo17'?.28:.48;
+    const mood=floorAtmosphere(this.activeLevel);this.ambient.color.setHex(this.outside?0xb5c4c0:this.special==="silo17"?0x70948f:mood.light);
+    this.scene.fog.density=this.outside?.0012:this.special==='excavator'?.004:this.special==='silo17'?.023:this.special?.009:mood.density;this.scene.fog.color.setHex(this.outside?0x929fa3:this.special==='silo17'?0x132526:mood.fog);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);if(this.outside)this.scene.fog.color.copy(this.surface.sky.fogColor);this.structure.visible=this.landings.visible=this.stairs.visible=this.distant.visible=this.distantLandings.visible=this.distantStairs.visible=this.topCore.visible=!this.special&&!this.outside;
   }
 }

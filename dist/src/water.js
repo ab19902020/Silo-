@@ -13,7 +13,8 @@ export function reflectedCamera(source,height,target=new THREE.PerspectiveCamera
 // One stationary water surface shares the basin and the passage. Ripples
 // change its shading, never its vertices or collision height.
 export class VoidWater{
-  constructor(mesh){
+  constructor(mesh,{height=VOID.waterY}={}){
+    this.height=height;
     this.mesh=mesh;this.camera=new THREE.PerspectiveCamera();this.last=-Infinity;this.quality='balanced';
     this.target=new THREE.WebGLRenderTarget(512,256,{depthBuffer:true});
     // Six ripple rings, oldest overwritten. Each is [world x, world z, the time
@@ -21,6 +22,13 @@ export class VoidWater{
     // in about two and a half seconds and a step lands every half second.
     this.rippleSlots=6;this.nextRipple=0;
     this.ripples=new Float32Array(this.rippleSlots*4);
+    // Fixed-size ballistic splash pool. The water now throws actual droplets
+    // above the sheet at foot contact, as well as changing its reflected normal.
+    this.dropletCount=48;this.nextDroplet=0;this.droplets=new Float32Array(48*7);
+    this.dropletPositions=new Float32Array(48*3).fill(-10000);
+    const drops=new THREE.BufferGeometry();drops.setAttribute('position',new THREE.BufferAttribute(this.dropletPositions,3));
+    this.splash=new THREE.Points(drops,new THREE.PointsMaterial({color:0xa9cbc5,size:.052,transparent:true,opacity:.65,depthWrite:false}));
+    this.splash.name='water-contact-droplets';this.splash.frustumCulled=false;mesh.add(this.splash);
     this.uniforms={waterTime:{value:0},waterReflection:{value:this.target.texture},waterProjection:{value:new THREE.Matrix4()},waterReflectionReady:{value:0},
       waterRipples:{value:this.ripples},waterWade:{value:new THREE.Vector3(0,0,0)}};
     const material=mesh.material.clone();material.color.setHex(0x182d2b);material.roughness=.25;material.metalness=.08;material.opacity=.90;material.depthWrite=false;material.envMapIntensity=.65;
@@ -93,6 +101,12 @@ export class VoidWater{
     this.ripples[base+2]=this.uniforms.waterTime.value;
     this.ripples[base+3]=Math.max(.05,Math.min(2,strength));
     this.nextRipple++;
+    this.mesh.updateWorldMatrix(true,false);
+    const centre=this.mesh.worldToLocal(new THREE.Vector3(x,this.mesh.localToWorld(new THREE.Vector3(0,this.height,0)).y,z));
+    for(let j=0;j<8;j++){
+      const at=(this.nextDroplet++%this.dropletCount)*7,a=j*Math.PI/4+this.nextRipple*.71;
+      this.droplets.set([centre.x,centre.y,centre.z,Math.cos(a)*.55,1.05+Math.min(2,Math.max(.05,strength))*.7,Math.sin(a)*.55,this.uniforms.waterTime.value],at);
+    }
   }
   // Standing in it and moving: a patch of churn that follows the player.
   setWade(x,z,amount){
@@ -101,8 +115,15 @@ export class VoidWater{
   setQuality(quality){if(this.quality===quality)return;this.quality=quality;this.target.setSize(quality==='high'?768:512,quality==='high'?384:256);this.last=-Infinity;if(quality==='low')this.uniforms.waterReflectionReady.value=0;}
   update(renderer,scene,camera,time){
     this.uniforms.waterTime.value=time;
+    for(let i=0;i<this.dropletCount;i++){
+      const d=i*7,p=i*3,age=time-this.droplets[d+6],active=this.droplets[d+4]>0&&age>=0&&age<.55;
+      this.dropletPositions[p]=active?this.droplets[d]+this.droplets[d+3]*age:0;
+      this.dropletPositions[p+1]=active?this.droplets[d+1]+this.droplets[d+4]*age-4.905*age*age:-10000;
+      this.dropletPositions[p+2]=active?this.droplets[d+2]+this.droplets[d+5]*age:0;
+    }
+    this.splash.geometry.attributes.position.needsUpdate=true;
     if(this.quality==='low'||!this.mesh.parent?.visible||time-this.last<(this.quality==='high'?1/20:1/12))return;
-    this.mesh.updateWorldMatrix(true,false);const height=new THREE.Vector3(0,VOID.waterY,0).applyMatrix4(this.mesh.matrixWorld).y;
+    this.mesh.updateWorldMatrix(true,false);const height=new THREE.Vector3(0,this.height,0).applyMatrix4(this.mesh.matrixWorld).y;
     if(camera.getWorldPosition(new THREE.Vector3()).y<=height+.035){this.uniforms.waterReflectionReady.value=0;return;}
     this.last=time;const reflected=reflectedCamera(camera,height,this.camera);
     this.uniforms.waterProjection.value.set(.5,0,0,.5,0,.5,0,.5,0,0,.5,.5,0,0,0,1).multiply(reflected.projectionMatrix).multiply(reflected.matrixWorldInverse);

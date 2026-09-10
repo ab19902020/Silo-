@@ -1,6 +1,30 @@
 # Silo 18
 
+## Mystery expansion — review branch
+
+George’s hidden-file terminal, crowbar access, pipe-capping sequence, Billings’
+shotgun handoff, escape/drone encounter, exterior Silos 0–50 and a flooded
+Silo 17 are integrated on `codex/mystery-expansion`. Interior atmosphere and
+reactive water have also been extended.
+
+Claude’s fourteen-area mine network and hidden-library terminal are integrated.
+The current browser has WebGL disabled, so a full visual playthrough and device performance
+validation remain release gates. These changes have not been published. See
+[implementation, route, research and validation](docs/mystery-expansion.md) and
+[external agent integration](docs/AGENT_COORDINATION.md).
+
 A browser-based, first- and third-person reconstruction of the television silo, built in Adam’s **Silo-** repository using the circular collision system and selected interior assets from **Lost Signal**.
+
+## Latest residents, conversation and cleaning work
+
+- Rebuilt the head as one continuous sculpted surface. The face was two dozen ellipsoids and boxes laid over a sphere: the hair cap crossed the skull and cut torn bands across the forehead and cheeks, and the brows and age lines floated a centimetre off it. Brows, lashes, lips and stubble are painted onto the skin now, so nothing on a face can cross it.
+- Every resident on every floor walks a routine — a ring of stops with something to do at each one — instead of standing on one spot while twelve porters orbit the gallery.
+- Talking keeps you in the silo. The panel no longer pauses the world; the person stops, turns to face you and stays turned, the camera settles on them, and **1**–**4** ask while **E** or **Esc** steps away.
+- Restaged the cleaning so the cafeteria screen can actually see it: Holston is framed at the lens, steps in to wipe, and the rag blanks the picture on each pass. The helmet is a helmet rather than a pale sphere the size of a skull, and it comes off in his hands.
+- The directory book is on a front table and picking it up no longer snaps the camera into the screen.
+- The crater has a rim that closes the horizon and falls away behind, and the dead tree is grown rather than assembled from four dozen straight cylinders.
+
+See [the notes and reference limits](docs/residents-and-the-cleaning.md).
 
 ## Interface, conversations and rendering update
 
@@ -112,13 +136,13 @@ See [the range notes](docs/gun-range.md).
 
 The camp sits beside the outer ledge. Its ladder descends to the water; the hidden tunnel passes through the cavern perimeter and ends at a sealed door. The room’s exact position and dimensions remain reconstructed. Gallery signs stay mounted to their walls and the gallery pylons stay clear of doorway approaches. [The world notes](WORLD.md) retain the history of the earlier implementation.
 
-The directory’s travel feature is a visitor shortcut, not an in-world elevator. The central stairs physically connect every numbered floor. Lower maintenance hatches use explicit travel transitions into the mines and cavern. The cleaning route is continuously walkable in both directions. The hidden tunnel’s far door remains sealed. There is no combat.
+The directory’s travel feature is a visitor shortcut, not an in-world elevator. The central stairs physically connect every numbered floor. Lower maintenance hatches use explicit travel transitions into the mines and cavern. The cleaning route is continuously walkable in both directions. The hidden tunnel’s far door remains sealed. Explore mode remains open; Story mode includes a short drone encounter after escape.
 
 ## Accuracy
 
 **This is not a certified one-to-one production replica.** No complete dimensioned, room-by-room television blueprint was available in the reviewed sources. The 144-level count and principal architectural motifs are supported by the show’s production references. Room plans, many departmental placements and all exact modeled dimensions are estimates. Every unseen floor is furnished using reusable layouts rather than presented as a verified television floor plan.
 
-See [research and reconstruction decisions](docs/reconstruction.md), [the full level schedule](docs/level-schedule.json) and the in-world **Research & accuracy** panel. The project is an explorable environment, not a population simulation or a recreation of the show’s storyline.
+See [research and reconstruction decisions](docs/reconstruction.md), [the full level schedule](docs/level-schedule.json) and the in-world **Research & accuracy** panel. The project combines the existing explorable environment with an original mystery-adventure adaptation. Unseen architecture and invented story connections are identified as reconstructions.
 
 ## Controls
 

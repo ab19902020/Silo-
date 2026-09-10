@@ -42,6 +42,17 @@ const build={
     for(let i=0;i<5;i++)k.box('red',-.03+i*.014,.0192,-.05+i*.03,.05,.0007,.0014,0,0,.02);
     k.box('brass',-.086,.002,0,.008,.032,.255);
   },
+  crowbar:(k)=>{
+    k.beam('darkMetal',[0,0,-.34],[0,0,.30],.018);
+    k.beam('rust',[-.11,0,.36],[0,0,.30],.022);
+    k.box('darkMetal',-.14,0,.39,.17,.018,.045,0,-.22,0);
+  },
+  pipekit:(k)=>{
+    k.bevel('darkMetal',0,.09,0,.52,.18,.34);
+    k.box('rust',0,.19,0,.48,.04,.3);
+    for(const x of [-.13,.13])k.torus('metal',x,.25,0,.075,.018,Math.PI/2);
+    k.beam('brass',[-.17,.29,.06],[.17,.29,-.06],.018);
+  },
   suit:(k)=>{
     // Folded into an open crate: the helmet on top of the folded suit.
     k.bevel('wood',0,.16,0,.62,.32,.46);
@@ -69,21 +80,13 @@ export class StoryProps{
   constructor(scene,materials){
     this.scene=scene;this.m=materials;this.items=new Map();
     for(const item of COLLECTABLES){
-      if(item.prop||!build[item.id])continue;                  // the hard drive is a supplied model
+      if(item.prop||item.id==='shotgun'||!build[item.id])continue;                  // the hard drive is a supplied model
       const k=new Kit(materials);build[item.id](k);
       const group=new THREE.Group();group.add(k.group());group.name=`relic-${item.id}`;
       // A relic is a real object at its real size, and a PEZ dispenser on a bar
       // among forty mugs is genuinely hard to see. A faint glint above it is
       // the concession: enough to catch the eye down the room, not enough to
       // turn the silo into a trail of markers.
-      const glint=new THREE.Group();glint.name='glint';
-      const shaft=new THREE.Mesh(new THREE.CylinderGeometry(.012,.026,.62,8,1,true),
-        new THREE.MeshBasicMaterial({color:new THREE.Color(1.35,1.3,.85),transparent:true,opacity:.30,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide}));
-      shaft.position.y=.42;glint.add(shaft);
-      const bead=new THREE.Mesh(new THREE.OctahedronGeometry(.032,0),
-        new THREE.MeshBasicMaterial({color:new THREE.Color(1.8,1.7,1.1),toneMapped:false,transparent:true,opacity:.75,depthWrite:false}));
-      bead.position.y=.24;bead.name='bead';glint.add(bead);
-      group.add(glint);
       group.position.copy(roomPoint(item.level,item.wing,item.at[0],item.at[2]));
       group.position.y+=item.at[1];
       group.traverse(o=>{if(o.isMesh||o.isInstancedMesh){o.castShadow=true;o.receiveShadow=true;}});
@@ -99,14 +102,7 @@ export class StoryProps{
       if(!on)continue;
       // Small things turn and lift, so they read as something to take. A crate
       // and a shotgun stay on the floor where somebody left them and only turn.
-      entry.group.rotation.y=time*(entry.item.float?TURN:TURN*.42);
-      entry.group.position.y=entry.base+(entry.item.float?Math.sin(time*1.3)*.012:0);
-      const glint=entry.group.getObjectByName('glint'),bead=glint?.getObjectByName('bead');
-      if(glint){
-        glint.position.y=entry.item.float?0:.16;
-        glint.children[0].material.opacity=.20+.13*Math.sin(time*1.9);
-        if(bead){bead.rotation.set(time*1.5,time,0);bead.position.y=.24+Math.sin(time*1.7)*.025;}
-      }
+      entry.group.rotation.y=0;entry.group.position.y=entry.base;
     }
   }
   interactions(story,level,special){
@@ -154,7 +150,7 @@ export class Drone{
   reset(){this.active=false;this.state='idle';this.timer=0;this.group.visible=false;this.hits=0;}
   launch(from){
     this.active=true;this.state='closing';this.timer=0;this.hits=0;
-    this.group.position.copy(from);this.group.visible=true;
+    this.group.position.copy(from);this.group.rotation.set(0,0,0);this.group.visible=true;
   }
   // Returns 'fired' on the frame it kills you, 'down' when it has been shot.
   update(dt,target){

@@ -3,6 +3,8 @@ import { Kit, random, addSign } from './kit.js';
 import { SILO, levelY } from './data.js';
 import { ExteriorSky } from './sky.js';
 import { projectMaterial } from './materials.js';
+import { buildExteriorNetwork } from './exterior-network.js';
+import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 export const topPoint=(x,y,z)=>new THREE.Vector3(SILO.deckOuter+z,levelY(1)+y,-x);
 export const topLocal=p=>({x:-p.z,y:p.y-levelY(1),z:p.x-SILO.deckOuter});
 export const rampY=z=>THREE.MathUtils.clamp((z-64)/44,0,1)*14;
@@ -15,20 +17,29 @@ export const inRampCutout=(x,z)=>inRampPassage(x,z)&&z>=94;
 // Holston walks up; the far crest, at a quarter of a kilometre, closes the sky.
 const rise=(a,b,r)=>{const t=THREE.MathUtils.clamp((r-a)/(b-a),0,1);return t*t*(3-2*t);};
 export function groundY(x,z){
-  const r=Math.hypot(x-26,z-108);
-  const bowl=11*rise(30,96,r)+24*rise(130,320,r)+10*(1-Math.exp(-Math.max(0,r-320)/1500));
+  const r=Math.hypot(x-26,z-108),bearing=Math.atan2(z-108,x-26);
+  // Floor, near shoulder, the long climb, and then a crest that falls away
+  // behind it. The ground used to climb forever, which reads as the inside of
+  // a bowl but never as a rim: nothing stands against the sky. A crest that
+  // drops on its far side is a ridge line, and a ridge line 44 m up at 230 m
+  // out sits ten degrees above the exit — the horizon, on every bearing.
+  const bowl=10*rise(30,84,r)+34*rise(84,232,r)-11*rise(232,420,r)-5*rise(420,900,r);
+  // The rim is a ring of hills, not a cone: peaks and saddles run round it, and
+  // the fog takes the far side, so the eye reads a landform rather than a wall.
+  const crest=(Math.sin(bearing*2+2.4)*7.5+Math.sin(bearing*3+.7)*5.4+Math.sin(bearing*5-1.9)*3.1+Math.sin(bearing*8+.3)*1.6)*rise(110,220,r)*(1-rise(430,780,r));
   // Long, shallow folds across the slope, on wavelengths the 16 m outer terrain
   // tiles can still carry. They fade out past the fog, where nothing reads them.
-  const ridges=(Math.sin(x*.0175+z*.0132)*1.5+Math.cos(z*.0231-x*.0163)*1.15)*rise(34,150,r)*(1-rise(360,760,r));
+  const ridges=(Math.sin(x*.0175+z*.0132)*1.5+Math.cos(z*.0231-x*.0163)*1.15)*rise(34,150,r)*(1-rise(360,760,r))
+    +(Math.sin(bearing*11+1.1)*1.5+Math.sin(bearing*17-.4)*.9)*rise(46,150,r)*(1-rise(300,620,r));
   const detail=(Math.sin(x*.069+z*.022)*.75+Math.cos(z*.087-x*.031)*.52+Math.sin(x*.43+z*.24)*.15)*Math.min(1,Math.max(0,(z-111)/18));
   const entrance=Math.min(1,Math.hypot(x-26,z-108)/24);
-  return 14+(bowl+ridges+detail)*entrance;
+  return 14+(bowl+crest+ridges+detail)*entrance;
 }
 // Broad tonal drift across the ground, brightening with height so the far
 // crest hazes into the sky. The wavelengths are long on purpose: the terrain
 // samples every four metres, and the first pass shaded on a ten metre sine,
 // so what reached the screen was the aliasing rather than the shading.
-const terrainShade=(x,y,z)=>.80+.055*Math.sin(x*.031+z*.023)+.03*Math.cos(z*.047-x*.038)+(y-14)*.0055;
+const terrainShade=(x,y,z)=>.70+.105*Math.sin(x*.031+z*.023)+.062*Math.cos(z*.047-x*.038)+.038*Math.sin(z*.0121+x*.0094)+(y-14)*.0058;
 
 // Height of the walking surface: inside the open part of the ramp cutout that
 // is the incline itself, everywhere else it is the terrain. The cleaners walk
@@ -98,21 +109,59 @@ export class SurfaceWorld {
     this.sensorPoint=topPoint(...sensorLocal().toArray());
     addSign(this.root,'18',[sx,base+.6,sz+.12],.65,.48,0,{background:'#77796e',color:'#252c27',font:'bold 180px Arial',border:false});
     // Hatch boundaries are actual grid edges; no triangle bridges the opening.
-    this.groundMaterial=m.rock.clone();this.groundMaterial.color.setHex(0x9c9b94);this.groundMaterial.vertexColors=true;this.groundMaterial.normalScale.set(.42,.42);projectMaterial(this.groundMaterial,3.2);
+    this.groundMaterial=m.rock.clone();this.groundMaterial.color.setHex(0x7f7869);this.groundMaterial.vertexColors=true;this.groundMaterial.normalScale.set(.42,.42);projectMaterial(this.groundMaterial,3.2);
     this.terrainTiles=new Map();this.tileKey='';this.streamTerrain({x:26,z:140});this.ground=this.terrainTiles.get('0,0');
     // Angular scree with uneven silhouette, never a field of smooth spheres.
     const rockGeo=new THREE.IcosahedronGeometry(1,1),rp=rockGeo.attributes.position;for(let i=0;i<rp.count;i++){const v=new THREE.Vector3().fromBufferAttribute(rp,i).multiplyScalar(.78+rng()*.36);rp.setXYZ(i,v.x,v.y,v.z);}rockGeo.computeVertexNormals();
-    const rocks=new Kit(m);for(let i=0;i<620;i++){const x=26+(rng()-.5)*510,z=140+(rng()-.5)*510;if(Math.abs(x-26)<8&&z<125)continue;const size=.15+Math.pow(rng(),4)*2.9;rocks.mesh(rockGeo,'rock',x,groundY(x,z)+size*.17,z,size,size*.4,size*.8,rng(),rng()*6,rng()*.3);}
+    const rocks=new Kit(m);for(let i=0;i<900;i++){const x=26+(rng()-.5)*760,z=140+(rng()-.5)*760;if(Math.abs(x-26)<8&&z<125)continue;const far=Math.hypot(x-26,z-108)/260;const size=(.15+Math.pow(rng(),4)*2.9)*(1+far*2.2);rocks.mesh(rockGeo,'rock',x,groundY(x,z)+size*.17,z,size,size*.4,size*.8,rng(),rng()*6,rng()*.3);}
     const scree=rocks.group();scree.name='surface-scree';this.root.add(scree);
-    // The recognizable bare tree on the crater slope. Tapered branching mesh.
-    const branch=(a,b,r1,r2)=>{const v=new THREE.Vector3(...b).sub(new THREE.Vector3(...a)),o=new THREE.Mesh(new THREE.CylinderGeometry(r2,r1,v.length(),9),m.darkConcrete);o.position.copy(new THREE.Vector3(...a).addScaledVector(v,.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());o.name='dead-tree';o.castShadow=true;this.root.add(o);};
-    const tx=TREE.x,tz=TREE.z,ty=groundY(tx,tz);branch([tx,ty,tz],[tx-1,ty+10,tz+1],.42,.17);
-    const branchTree=(x,y,z,angle,length,r,depth)=>{const end=[x+Math.cos(angle)*length*.72,y+length*.68,z+Math.sin(angle)*length*.52];branch([x,y,z],end,r,r*.48);if(depth>0){branchTree(...end,angle+.65,length*.61,r*.48,depth-1);branchTree(...end,angle-.8,length*.55,r*.45,depth-1);}};
-    branchTree(tx-.6,ty+5,tz,2.3,6,.20,3);branchTree(tx-.9,ty+8,tz+1,-.5,5.9,.155,3);branchTree(tx-1,ty+9.8,tz+1,1.5,4.6,.12,2);
-    this.solids.push({x:tx,z:tz,w:1.2,d:1.2,y0:ty,y1:ty+8});
+    // The one dead tree on the crater slope. It was four dozen straight
+    // untapered cylinders, each its own mesh and its own draw call, forking
+    // twice into a Y. A dead tree is a trunk that thickens into its roots,
+    // splits into a few heavy limbs and then divides again and again into
+    // hundreds of thinning twigs, and none of it is straight. This grows one
+    // from a seeded rule and merges the whole thing into a single mesh.
+    const tx=TREE.x,tz=TREE.z,ty=groundY(tx,tz),trng=random(1553);
+    this.treeMaterial=m.rock.clone();this.treeMaterial.color.setHex(0x7a7263);this.treeMaterial.roughness=.98;
+    const limbs=[];
+    const limb=(from,to,r1,r2,sides)=>{
+      const v=to.clone().sub(from),g=new THREE.CylinderGeometry(r2,r1,v.length(),sides,1,true);
+      g.translate(0,v.length()/2,0);
+      g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),v.clone().normalize()));
+      g.translate(from.x,from.y,from.z);limbs.push(g);
+    };
+    // Every limb bends as it goes, and forks into two or three thinner ones.
+    const grow=(base,dir,length,radius,depth)=>{
+      const sides=depth>3?9:depth>1?7:5,segments=depth>2?4:2;let point=base.clone(),heading=dir.clone().normalize(),r=radius;
+      for(let i=0;i<segments;i++){
+        const next=r*(depth>2?.86:.72),step=length/segments;
+        const bend=new THREE.Vector3(trng()-.5,(trng()-.5)*.35,trng()-.5).multiplyScalar(.34/Math.max(1,depth-1));
+        heading=heading.add(bend).normalize();
+        const end=point.clone().addScaledVector(heading,step);
+        limb(point,end,r,next,sides);point=end;r=next;
+      }
+      if(depth<=0)return;
+      const forks=depth>3?3:trng()<.34?3:2;
+      for(let f=0;f<forks;f++){
+        const side=new THREE.Vector3(Math.cos(f*2.4+trng()*1.6),0,Math.sin(f*2.4+trng()*1.6));
+        const away=heading.clone().addScaledVector(side,.55+trng()*.55).add(new THREE.Vector3(0,.12,0)).normalize();
+        grow(point,away,length*(.58+trng()*.16),r*(.74+trng()*.12),depth-1);
+      }
+    };
+    // A trunk that leans off the slope, with root spurs flaring into the ground.
+    const lean=new THREE.Vector3(-.16,1,.10).normalize();
+    grow(new THREE.Vector3(tx,ty-.4,tz),lean,5.6,.44,4);
+    for(let i=0;i<7;i++){const a=i*Math.PI*2/7+trng()*.5,out=new THREE.Vector3(Math.cos(a),-1.5,Math.sin(a)).normalize();
+      limb(new THREE.Vector3(tx,ty+.5,tz),new THREE.Vector3(tx,ty+.5,tz).addScaledVector(out,1.15),.30,.10,7);}
+    const treeGeo=mergeGeometries(limbs,false);limbs.forEach(g=>g.dispose());
+    const tree=new THREE.Mesh(treeGeo,this.treeMaterial);tree.name='dead-tree';tree.castShadow=true;tree.receiveShadow=true;tree.userData.ownedGeometry=true;this.root.add(tree);
+    this.solids.push({x:tx,z:tz,w:1.1,d:1.1,y0:ty,y1:ty+7});
     // One tree, and only one. Nothing else grew back.
     // No city geometry: the exterior is a barren bowl.
     this.root.add(k.group());
+    // Kept out of the cafeteria feed: the network is the revelation after the
+    // player survives the ridge, not information Silo 18's sensor gives away.
+    this.network=buildExteriorNetwork(m,groundY);this.network.root.visible=false;this.root.add(this.network.root);
     // Sparse moving dust is visible in both views without adding inhabitants.
     const dustGeo=new THREE.BufferGeometry(),dp=[];for(let i=0;i<180;i++)dp.push(26+(rng()-.5)*180,15+rng()*18,130+(rng()-.5)*160);dustGeo.setAttribute('position',new THREE.Float32BufferAttribute(dp,3));this.dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({color:0xbdb8a0,size:.035,transparent:true,opacity:.23,depthWrite:false}));this.dust.name='wind-dust';this.root.add(this.dust);
     this.feedScene=new THREE.Scene();this.feedScene.background=new THREE.Color(0x929fa3);this.feedScene.fog=new THREE.FogExp2(0x929fa3,.0029);this.feedRoot=new THREE.Group();this.feedRoot.position.copy(this.root.position);this.feedRoot.rotation.copy(this.root.rotation);
@@ -150,11 +199,16 @@ export class SurfaceWorld {
     for(const key of keep)if(!this.terrainTiles.has(key)){const [x,z]=key.split(',').map(Number),mesh=new THREE.Mesh(this.terrainGeometry(x,z),this.groundMaterial);mesh.name='barren-ground';mesh.receiveShadow=true;this.root.add(mesh);this.terrainTiles.set(key,mesh);}
     for(const [key,mesh] of this.terrainTiles)if(!keep.has(key)){mesh.removeFromParent();mesh.geometry.dispose();this.terrainTiles.delete(key);}
   }
-  refreshMaterials(){const mat=this.groundMaterial;mat.map=this.m.rock.map;mat.normalMap=this.m.rock.normalMap;mat.roughnessMap=this.m.rock.roughnessMap;mat.roughness=.96;mat.normalScale.set(.42,.42);projectMaterial(mat,3.2);}
+  refreshMaterials(){const bark=this.treeMaterial;bark.map=this.m.rock.map;bark.normalMap=this.m.rock.normalMap;bark.roughnessMap=this.m.rock.roughnessMap;bark.normalScale.set(.9,.9);projectMaterial(bark,1.1);const mat=this.groundMaterial;mat.map=this.m.rock.map;mat.normalMap=this.m.rock.normalMap;mat.roughnessMap=this.m.rock.roughnessMap;mat.roughness=.96;mat.normalScale.set(.42,.42);projectMaterial(mat,3.2);}
+  setNetworkVisible(visible){this.network.root.visible=!!visible;}
+  get networkInteractions(){
+    if(!this.network.root.visible)return [];
+    return this.network.interactions.map(i=>({...i,position:topPoint(i.position[0],i.position[1],i.position[2])}));
+  }
   floorAt(x,z,radius,maxHeight){
     const p=topLocal({x,y:maxHeight,z}),terrain=levelY(1)+groundY(p.x,p.z);
     if(inRampPassage(p.x,p.z)&&(inRampCutout(p.x,p.z)||maxHeight<terrain-.001)){const y=levelY(1)+rampY(p.z);return y<=maxHeight+.001?y:0;}
-    return terrain<=maxHeight+.001?terrain:0;
+    const crown=this.network?.root.visible?this.network.floorAt(p.x,p.z,p.y):-Infinity;return Math.max(terrain<=maxHeight+.001?terrain:0,Number.isFinite(crown)?levelY(1)+crown:0);
   }
   setQuality(quality){
     this.quality=quality;if(!this.raw)return;const width=quality==='high'?1920:quality==='low'?1024:1536,height=Math.round(width*6.8/30),samples=Math.min(this.maxSamples||0,quality==='high'?4:quality==='low'?0:2);
@@ -175,6 +229,8 @@ export class SurfaceWorld {
     this.lensMaterial=new THREE.ShaderMaterial({uniforms:{source:{value:this.raw.texture},clean:{value:this.cleanliness},time:{value:0}},vertexShader:'varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:`
       uniform sampler2D source;uniform float clean,time;varying vec2 vUv;
       float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+        return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
       void main(){
         float grime=1.-clean;
         // Six taps on a widening ring: a cheap, stable blur whose radius is
@@ -182,12 +238,17 @@ export class SurfaceWorld {
         vec2 spread=vec2(.0085,.036)*grime;
         vec3 c=texture2D(source,vUv).rgb*.34;
         for(int i=0;i<6;i++){float a=float(i)*1.0471976;c+=texture2D(source,vUv+vec2(cos(a),sin(a))*spread).rgb*.11;}
-        float soil=smoothstep(.10,.92,hash(floor(vUv*vec2(70.,22.))));
-        float fine=smoothstep(.34,1.,hash(floor(vUv*vec2(230.,66.))+31.));
+        // Grime is not a mosaic. Hashing whole cells drew a 70 x 22 chequer over
+        // the whole picture; these are interpolated so the dirt has shape.
+        vec2 g0=vUv*vec2(46.,15.),g1=vUv*vec2(155.,44.)+31.;
+        float soil=smoothstep(.16,.90,noise(g0)*.68+noise(g0*2.7+7.)*.32);
+        float fine=smoothstep(.30,.95,noise(g1));
+        float streak=smoothstep(.35,.95,noise(vec2(vUv.x*9.,vUv.y*130.)));
         float edge=smoothstep(.10,.62,length((vUv-.5)*vec2(.65,1.)));
-        // The clean sweeps left to right across the glass as the count rises.
-        float wipe=smoothstep(clean-.10,clean+.05,vUv.x);
-        float dirt=grime*(.16+soil*.30+fine*.14+edge*.40)*(.55+wipe*.45);
+        // The clean sweeps left to right across the glass as the count rises,
+        // with a ragged edge where the cloth has and has not reached.
+        float wipe=smoothstep(clean-.16,clean+.09,vUv.x+(noise(vec2(vUv.y*26.,3.))-.5)*.05);
+        float dirt=grime*(.14+soil*.30+fine*.11+streak*.09+edge*.38)*(.50+wipe*.50);
         c=mix(c,vec3(.27,.23,.16),clamp(dirt,0.,.90));
         c*=1.-grime*.42*(.55+edge*.45);
         c=mix(vec3(dot(c,vec3(.2126,.7152,.0722))),c,1.-grime*.55);

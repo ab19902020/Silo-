@@ -18,8 +18,8 @@ test('every collectable is a real thing in a real room, and says where it came f
     assert.ok(item.blurb.length>80,`${item.id} has nothing to read`);
     assert.ok(item.source.length>30,`${item.id} does not say whether it is sourced or placed`);
   }
-  assert.equal(RELICS.length,5);
-  assert.equal(EQUIPMENT.length,2);
+  assert.equal(RELICS.length,4);
+  assert.equal(EQUIPMENT.length,4);
   // Spread across the silo: a run that only visits one end is not a run.
   const levels=[...new Set(COLLECTABLES.map(c=>c.level))];
   assert.ok(levels.length>=5,'the collectables are not spread through the silo');
@@ -35,37 +35,28 @@ test('explore mode opens everything and never runs the story',()=>{
   assert.equal(s.steppedOutside(),null,'explore mode sent a drone');
 });
 
-test('story mode gates the silo, and opens it in the right order',()=>{
+test('story mode follows George from relic clue to pipe and Billings',()=>{
   const s=new Story('story');
-  const sealedNow=()=>[[14,0],[19,0],[19,1],[144,3]].filter(([l,w])=>s.sealed(l,w,roomType(l,w)));
   assert.equal(s.chapter,'cleaning');
-  assert.equal(sealedNow().length,4,'nothing is sealed at the start of the story');
-  // Judicial's ledger and Supply's suit cannot even be seen yet.
-  assert.equal(s.visible('ledger'),false);
+  assert.ok(s.sealed(68,0,'residential'),'George’s home opened before the lead');
   assert.equal(s.visible('suit'),false);
   assert.equal(s.visible('shotgun'),false);
-  assert.equal(s.visible('pez'),true);
-
+  assert.equal(s.visible('pez'),false); // The opening cannot be skipped by collecting relics.
   s.beginSearch();
-  assert.equal(s.chapter,'relics');
-  for(const id of ['pez','watch','georgia'])s.take(id);
-  assert.equal(s.chapter,'relics','the chapter turned before the four relics were in');
-  s.take('harddrive');
-  assert.equal(s.chapter,'ledger','four relics did not open Judicial');
-  assert.equal(s.sealed(14,0,'judicial'),null,'Judicial is still sealed');
-  assert.equal(s.visible('ledger'),true);
-  assert.ok(s.sealed(144,3,'supply'),'Supply opened early');
-
-  s.take('ledger');
-  assert.equal(s.chapter,'suit');
-  assert.equal(s.sealed(144,3,'supply'),null,'the ledger did not open Supply');
-  s.take('suit');
-  assert.equal(s.wearing,true);
-  assert.equal(s.chapter,'shotgun');
-  assert.equal(s.visible('shotgun'),true);
-  s.take('shotgun');
-  assert.equal(s.armed,true);
-  assert.equal(s.chapter,'airlock');
+  assert.equal(s.chapter,'clues');
+  s.take('georgia');s.take('watch');
+  assert.equal(s.chapter,'void-lead');
+  assert.equal(s.inspectVoidDoor().needs,'crowbar');
+  assert.equal(s.visible('crowbar'),true);s.take('crowbar');
+  assert.equal(s.pryHideout(),true);assert.equal(s.visible('harddrive'),true);
+  s.take('harddrive');assert.equal(s.chapter,'george-home');
+  assert.equal(s.sealed(68,0,'residential'),null);
+  assert.equal(s.reachGeorgeHome(),true);assert.equal(s.terminalDiscovered(),true);
+  s.take('pipekit');s.openPipeCover();
+  assert.deepEqual(s.capPipe('collar').complete,false);
+  s.capPipe('isolate');s.capPipe('collar');assert.equal(s.capPipe('torque').complete,true);
+  assert.equal(s.speakToBillings().helped,true);assert.equal(s.visible('shotgun'),true);
+  s.take('shotgun');s.take('suit');assert.equal(s.chapter,'airlock');
 });
 
 test('you cannot walk out without a suit, and you do not survive the hill unarmed',()=>{
@@ -73,8 +64,7 @@ test('you cannot walk out without a suit, and you do not survive the hill unarme
   const stopped=bare.steppedOutside();
   assert.equal(stopped.stop,true,'the airlock let a man out in his shirtsleeves');
 
-  const s=new Story('story');s.beginSearch();
-  for(const item of COLLECTABLES)s.take(item.id);
+  const s=new Story('story');s.beginSearch();s.take('georgia');s.take('watch');s.inspectVoidDoor();s.take('crowbar');s.pryHideout();s.take('harddrive');s.reachGeorgeHome();s.terminalDiscovered();s.take('pipekit');s.openPipeCover();for(const step of ['isolate','collar','torque'])s.capPipe(step);s.speakToBillings();s.take('shotgun');s.take('suit');
   assert.equal(s.chapter,'airlock');
   const out=s.steppedOutside();
   assert.equal(out.drone,true,'nothing came for you');
@@ -87,15 +77,16 @@ test('you cannot walk out without a suit, and you do not survive the hill unarme
   assert.equal(s.complete,true);
 });
 
-test('the story survives being saved and reloaded',()=>{
-  const s=new Story('story');s.beginSearch();
-  for(const id of ['pez','watch','georgia','harddrive','ledger','suit'])s.take(id);
+test('the story survives being saved and rejects an invalid pipe sequence',()=>{
+  const s=new Story('story');s.beginSearch();s.take('georgia');s.take('watch');s.inspectVoidDoor();s.take('crowbar');s.pryHideout();s.take('harddrive');s.reachGeorgeHome();s.terminalDiscovered();s.take('pipekit');s.openPipeCover();s.capPipe('isolate');
   const back=Story.load(JSON.parse(JSON.stringify(s.save())));
   assert.equal(back.mode,'story');
   assert.equal(back.chapter,s.chapter);
-  assert.equal(back.wearing,true);
+  assert.equal(back.wearing,false);
   assert.equal(back.armed,false);
   assert.equal(back.relicsHeld,s.relicsHeld);
+  const forged=Story.load({...s.save(),pipeSteps:['torque','isolate']});
+  assert.deepEqual(forged.pipeSteps,[]);
 });
 
 test('every chapter has an objective a player can act on',()=>{
