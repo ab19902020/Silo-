@@ -10,7 +10,7 @@ import { topPoint, topLocal, rampY, groundY, TREE, SENSOR } from '../dist/src/su
 // coordinates. Pinning them meant that moving the sensor left this test walking
 // to a patch of empty ground and asserting it could clean a camera that was no
 // longer there.
-const CLEAN_SIDE=Math.sign(SENSOR.x-26)||-1;
+const CLEAN_BYPASS_X=31.4;
 const LENS=[SENSOR.x-.3,SENSOR.z+1.39];
 globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>({fillRect(){},strokeRect(){},fillText(){}})})};
 const world=new SiloWorld(new THREE.Scene());world.setLevel(1);
@@ -104,10 +104,10 @@ test('continuous walking route from cafeteria through Holding 3, airlock and ram
   const doors=world.loaded.get(1).rooms[0].userData.doors;assert.ok(doors.find(d=>d.id==='inner').amount<.01);assert.ok(doors.find(d=>d.id==='outer').amount>.96);
   for(const z of [66,85,103,108,115])walk(b,topPoint(26,z<=108?rampY(z):groundY(26,z),z));
   assert.ok(world.outside);assert.ok(Math.abs(b.position.y-levelY(1)-groundY(26,115))<.15);
-  for(const [x,z] of [[26,110.2],[LENS[0],110.2],LENS])walk(b,topPoint(x,groundY(x,z),z));
+  for(const [x,z] of [[26,110.2],[CLEAN_BYPASS_X,110.2],[CLEAN_BYPASS_X,96.55],[LENS[0],96.55],LENS])walk(b,topPoint(x,groundY(x,z),z));
   const p=b.position.clone();p.y+=1.65;const look=world.surface.cleaningPoint.clone().sub(p).normalize();assert.equal(world.nearestInteraction(p,look)?.action,'clean-camera');
   const before=world.surface.cleanliness;world.surface.beginCleaning();for(let i=0;i<250;i++)world.update(1/60,b.position);assert.ok(world.surface.cleanliness>before);assert.equal(world.surface.cleanliness,1);assert.equal(world.surface.cleaning,false);
-  for(const [x,z] of [[LENS[0],110.2],[26,110.2]])walk(b,topPoint(x,groundY(x,z),z));
+  for(const [x,z] of [[LENS[0],96.55],[CLEAN_BYPASS_X,96.55],[CLEAN_BYPASS_X,110.2],[26,110.2]])walk(b,topPoint(x,groundY(x,z),z));
   for(const z of [103,85,66,61])walk(b,topPoint(26,rampY(z),z));
   world.cycleAirlock('inner');for(let i=0;i<240;i++)world.update(1/60,b.position);walk(b,topPoint(26,0,50));assert.ok(!world.outside);assert.ok(Math.abs(b.position.y-levelY(1))<.02);
 });
@@ -145,10 +145,10 @@ test('barren terrain supports the old hatch gap and continues past the former ma
   }
 });
 
-test('camera feed contains only bowl terrain, debris and plants with the tree left of centre as in the supplied reference',()=>{
+test('camera feed contains only bowl terrain, debris and plants with the tree on the right slope as in the latest supplied reference',()=>{
   const surface=world.surface;surface.camera.updateMatrixWorld(true);
   for(const child of surface.feedRoot.children)assert.ok(['barren-ground','surface-scree','dead-tree','wind-dust','ramp-mouth'].includes(child.name));
   assert.ok(surface.feedRoot.getObjectByName('ramp-mouth'),'the panorama has to show the hatch the cleaner climbs out of');
-  const p=topPoint(TREE.x,groundY(TREE.x,TREE.z)+3,TREE.z).project(surface.camera);assert.ok(p.x>-.28&&p.x<-.07,`Tree composition ${p.x}`);
+  const p=topPoint(TREE.x,groundY(TREE.x,TREE.z)+3,TREE.z).project(surface.camera);assert.ok(p.x>.3&&p.x<.75,`Tree composition ${p.x}`);
   assert.ok(surface.camera.fov<30);assert.equal(surface.feedRoot.getObjectByName('18'),undefined);
 });

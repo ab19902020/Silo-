@@ -8,7 +8,7 @@ import { BOOK_TABLE, TABLE_TOP } from './top-floor.js';
 
 export const OPENING_DURATION=90;
 // The frame the suit's own helmet is hidden and the loose one takes over.
-export const HELMET_OFF=66.4;
+export const HELMET_OFF=69.4;
 // The book is on the front table — the row closest to the great screen — and
 // you start standing behind that table with the whole 30 m display in front of
 // you, so the cleaning is watched from inside the room, where the rest of the
@@ -38,7 +38,7 @@ function groundNormal(x,z,e=.6){
 // The beats are cut against the opening piece; the note below the cast list
 // gives the timings that decision rests on.
 export const ALLISON_REST=Object.freeze([TREE.x+1,TREE.z-1.6]);
-export const REST_HEADING=.36;
+export const REST_HEADING=1.37;
 export const HOLSTON_REST=Object.freeze([ALLISON_REST[0]+Math.cos(REST_HEADING)*.70,ALLISON_REST[1]-Math.sin(REST_HEADING)*.70]);
 // The scene is cut against assets/audio/silo-18-opening.mp3, which starts on
 // the frame the book is picked up. Measured off that file: spoken word runs to
@@ -52,49 +52,27 @@ export const HOLSTON_REST=Object.freeze([ALLISON_REST[0]+Math.cos(REST_HEADING)*
 // belong to it. Derived rather than written down: the route used to name the
 // lens by its coordinates, so moving the camera left the cleaner wiping a patch
 // of air ten metres from it.
-const CLEAN_SIDE=Math.sign(SENSOR.x-26)||-1;
-// He stands a little to one side of the lens so the wiping arm is across his
-// body rather than folded behind him. That offset belongs to the arm, not to
-// the side of the ramp the camera is on: mirroring it with the camera put the
-// lens on his other hand and the rag stopped covering it.
-const LENS_X=SENSOR.x-.3;
-// And two distances out from it, because the sensor is at eye height and looks
-// slightly up: a man closer than 1.8 m is entirely below the frame. He used to
-// do the whole clean from 44 cm away, which is why the cafeteria screen showed
-// an empty hillside wiping itself. He stands at 2.6 m, where the helmet and
-// shoulders are in shot, and steps in to 47 cm to reach the glass.
-const STAND_Z=SENSOR.z+3.55, REACH_Z=SENSOR.z+1.42;
+export const CLEAN_BYPASS_X=31.4;
+const LENS_X=SENSOR.x-.3, STAND_Z=SENSOR.z+3.55, REACH_Z=SENSOR.z+1.42;
 export const CLEAN_STAND=Object.freeze([LENS_X,STAND_Z]),CLEAN_REACH=Object.freeze([LENS_X,REACH_Z]);
+export const CLEAN_START=21,CLEAN_END=30;
 export function cleaningSample(time){
-  const t=clamp(time,0,OPENING_DURATION),entry=at(26,100),lip=at(26,110.2),corner=at(LENS_X,110.2),lens=at(...CLEAN_STAND),reach=at(...CLEAN_REACH),clear=at(LENS_X,111.5),slope=at(HOLSTON_REST[0]+3.4,HOLSTON_REST[1]-4.3),beside=at(...HOLSTON_REST);
-  // The sensor is beside the hatch. He emerges away from it, turns, and walks
-  // around the curb before approaching the lens. No backwards walking or
-  // scripted shortcut across the hole in the ramp.
-  const facing=CLEAN_SIDE*Math.PI/2, along=CLEAN_SIDE*Math.PI;
-  if(t<8)return {phase:'emerge',position:followGround(entry.lerp(lip,t/8)),heading:0,speed:1.275};
-  if(t<9)return {phase:'approach',position:lip,heading:facing*ease(t-8),speed:0};
-  if(t<12.5)return {phase:'approach',position:followGround(lip.lerp(corner,(t-9)/3.5)),heading:facing,speed:1.657};
-  if(t<13.5)return {phase:'approach',position:corner,heading:facing+facing*ease(t-12.5),speed:0};
-  if(t<18)return {phase:'approach',position:followGround(corner.lerp(lens,(t-13.5)/4.5)),heading:along,speed:2.18};
-  if(t<27){
-    // He steps in over the first fifth of the clean and back out over the last,
-    // so the music beats stay where they are and the wipe still happens up
-    // against the glass rather than from where the lens cannot see him.
-    const progress=(t-18)/9,close=Math.min(ease(progress/.20),ease((1-progress)/.20));
-    return {phase:'clean',position:followGround(lens.clone().lerp(reach,close)),heading:along,progress,speed:close>.02&&close<.98?1.15:0};
-  }
-  const heading=Math.atan2(clear.x-lens.x,clear.z-lens.z);
-  if(t<30)return {phase:'turn',position:lens,heading:along+(heading-along)*ease((t-27)/3),speed:0};
-  // Out past the head of the cutting before turning up the hill. The tree is on
-  // the far side of the ramp from the sensor, so a straight line from the lens
-  // to it crosses the open trench — he walked over the hole and the ground
-  // dropped fourteen metres under him.
-  if(t<38)return {phase:'walk',position:followGround(lens.clone().lerp(clear,(t-30)/8)),heading:Math.atan2(clear.x-lens.x,clear.z-lens.z),speed:1.39};
-  if(t<64)return {phase:'walk',position:followGround(clear.clone().lerp(slope,(t-38)/26)),heading:Math.atan2(slope.x-clear.x,slope.z-clear.z),speed:2.15};
-  if(t<70)return {phase:'helmet',position:slope,heading,progress:(t-64)/6,speed:0};
-  const finalHeading=Math.atan2(beside.x-slope.x,beside.z-slope.z);
-  if(t<82)return {phase:'crawl',position:followGround(slope.lerp(beside,(t-70)/12)),heading:finalHeading,progress:(t-70)/12,speed:.45};
-  return {phase:'rest',position:beside,heading:lerp(finalHeading,REST_HEADING,ease((t-82)/7)),progress:ease((t-82)/7),speed:0};
+  const t=clamp(time,0,OPENING_DURATION),entry=at(26,100),lip=at(26,110.2),corner=at(CLEAN_BYPASS_X,110.2),front=at(CLEAN_BYPASS_X,STAND_Z),lens=at(...CLEAN_STAND),reach=at(...CLEAN_REACH),slope=at(HOLSTON_REST[0]+3.4,HOLSTON_REST[1]-4.3),beside=at(...HOLSTON_REST);
+  const move=(from,to,start,end,phase='walk')=>({phase,position:followGround(from.clone().lerp(to,clamp((t-start)/(end-start),0,1))),heading:Math.atan2(to.x-from.x,to.z-from.z),speed:Math.hypot(to.x-from.x,to.z-from.z)/(end-start)});
+  if(t<8)return move(entry,lip,0,8,'emerge');
+  if(t<9)return {phase:'approach',position:lip,heading:Math.PI/2*ease(t-8),speed:0};
+  if(t<11.5)return move(lip,corner,9,11.5,'approach');
+  if(t<18.5)return move(corner,front,11.5,18.5,'approach');
+  if(t<CLEAN_START)return move(front,lens,18.5,CLEAN_START,'approach');
+  if(t<CLEAN_END){const progress=(t-CLEAN_START)/(CLEAN_END-CLEAN_START),close=Math.min(ease(progress/.2),ease((1-progress)/.2));return {phase:'clean',position:followGround(lens.clone().lerp(reach,close)),heading:Math.PI,progress,speed:close>.02&&close<.98?1.15:0};}
+  if(t<31)return {phase:'turn',position:lens,heading:Math.PI-Math.PI/2*ease(t-30),speed:0};
+  if(t<33.5)return move(lens,front,31,33.5);
+  if(t<41)return move(front,corner,33.5,41);
+  if(t<67)return move(corner,slope,41,67);
+  const heading=Math.atan2(beside.x-slope.x,beside.z-slope.z);
+  if(t<73)return {phase:'helmet',position:slope,heading,progress:(t-67)/6,speed:0};
+  if(t<85)return {...move(slope,beside,73,85,'crawl'),progress:(t-73)/12};
+  return {phase:'rest',position:beside,heading:lerp(heading,REST_HEADING,ease((t-85)/5)),progress:ease((t-85)/5),speed:0};
 }
 
 function settleOnSlope(actor){
@@ -134,7 +112,9 @@ export function createDirectoryBook(m){
 function posedCleaner(actor,sample,time,dt){
   const m=actor.motion;
   if(actor.lastPhase!==sample.phase&&actor.lastPhase){actor.blendFrom=Object.fromEntries(Object.entries(m.bones).map(([n,b])=>[n,{q:b.quaternion.clone(),p:b.position.clone()}]));actor.blendTime=0;}
-  actor.lastPhase=sample.phase;actor.root.position.copy(sample.position);actor.root.rotation.y=sample.heading;actor.model.rotation.set(0,0,0);actor.model.position.set(0,0,0);
+  actor.lastPhase=sample.phase;actor.root.position.copy(sample.position);
+  const facingDelta=Math.atan2(Math.sin(sample.heading-actor.root.rotation.y),Math.cos(sample.heading-actor.root.rotation.y));
+  actor.root.rotation.y=dt>0?actor.root.rotation.y+clamp(facingDelta*(1-Math.exp(-14*dt)),-5*dt,5*dt):sample.heading;actor.model.rotation.set(0,0,0);actor.model.position.set(0,0,0);
   const walking=sample.phase==='emerge'||sample.phase==='approach'||sample.phase==='walk';
   poseResident(actor,walking?'walk':'idle',time,dt,sample.speed);
   if(sample.phase==='clean'){
@@ -223,7 +203,7 @@ export class CafeteriaOpening{
     const [holston,allison]=this.cleaners,sample=cleaningSample(this.time);
     posedCleaner(holston,sample,this.time,dt);holston.root.visible=this.hasBook;
     if(!allison.settled){posedCleaner(allison,{phase:'rest',position:at(...ALLISON_REST),heading:REST_HEADING,progress:1,speed:0},0,0);allison.cloth.visible=false;allison.settled=true;}
-    if(this.watching||this.directoryReady)this.surface.cleanliness=this.time<18?.28:this.time<27?lerp(.28,1,(this.time-18)/9):1;
+    if(this.watching||this.directoryReady)this.surface.cleanliness=this.time<CLEAN_START?.28:this.time<CLEAN_END?lerp(.28,1,(this.time-CLEAN_START)/(CLEAN_END-CLEAN_START)):1;
     // The helmet used to blink off his head and reappear on the ground four
     // metres away in the same frame. It comes off in his hands now: the moment
     // the suit's own helmet is hidden, this one takes its place at his head and

@@ -147,7 +147,7 @@ export class Population{
       const cafeteria=this.level===1&&r.position.x>SILO.deckOuter&&-r.position.z<18&&r.position.x<SILO.deckOuter+40;
       const watching=watch&&cafeteria;a.tick+=dt;
       if(dist<5)this.world.residentInteractions.push({position:a.root.position.clone().add(new THREE.Vector3(0,1.25,0)),label:`Talk to ${a.definition.name}`,hint:a.definition.role||'Silo resident',action:`resident-${r.id}`,actor:r.id,resident:{...a.definition,kind:r.kind}});
-      const interval=r.id===this.talkingTo?0:dist<16?1/30:dist<40?1/15:1/8;if(a.tick<interval)continue;const step=Math.min(a.tick,.15);a.tick=0;
+      const interval=r.id===this.talkingTo?0:dist<16?0:dist<40?1/30:1/15;if(a.tick<interval)continue;const step=Math.min(a.tick,.15);a.tick=0;
       let pose=r.activity,speed=0;desired.set(0,0,0);
       // Whoever you are talking to stops what they were doing and turns to
       // face you, and stays turned until you walk away. Being addressed by
@@ -174,12 +174,13 @@ export class Population{
           // Residents yield to the player and one another, then keep walking.
           for(const other of this.actors.values())if(other!==a){unit.copy(a.root.position).sub(other.root.position).setY(0);const d=unit.length();if(d>0&&d<.85)desired.addScaledVector(unit,Math.min(1.4,(.85-d)*1.6)/d);}
           unit.copy(a.root.position).sub(body.position).setY(0);const d=unit.length();if(d>0&&d<1.25)desired.addScaledVector(unit,(1.25-d)*1.5/d);
-          if(desired.length()>1)desired.normalize();
+          if(desired.length()>1.4)desired.setLength(1.4);
+          a.root.rotation.y=steerResident(a.root.rotation.y,desired,step);
         }
         r.wait=Math.max(0,r.wait-step);
         for(let t=0;t<step;t+=1/60)a.body.step(Math.min(1/60,step-t),desired,this.world.colliders);
         speed=a.body.horizontalSpeed;a.root.position.copy(a.body.position);r.position.copy(a.body.position);
-        if(speed>.04){const heading=Math.atan2(a.body.velocity.x,a.body.velocity.z),delta=Math.atan2(Math.sin(heading-a.root.rotation.y),Math.cos(heading-a.root.rotation.y));a.root.rotation.y+=delta*(1-Math.exp(-7*step));}else if(pose==='walk')pose='idle';
+        if(speed<=.04&&pose==='walk')pose='idle';
         // A closed door or furniture blocks the route; choose a reachable
         // neighbour after a pause rather than teleporting through it.
         if(speed<.035&&desired.length()>.2){r.blocked=(r.blocked||0)+step;if(r.blocked>2){r.wait=1.5;r.holding='idle';r.blocked=0;if(r.stops){const candidates=r.stops.map((s,i)=>({s,i})).filter(v=>v.s.p.distanceTo(r.position)>.6&&clearSegment(this.world,r.position,v.s.p));if(candidates.length)r.goal=candidates[(r.seed+r.goal)%candidates.length].i;}}}
@@ -202,4 +203,14 @@ export class Population{
       if(clearResidentSpot(this.world,candidate,body.radius))body.position.copy(candidate);
     }
   }
+}
+
+// Turn toward the next path segment before accelerating into it. Mutating the
+// desired velocity here also keeps the capsule and visible gait in agreement.
+export function steerResident(heading,velocity,dt){
+  if(velocity.lengthSq()<.0001)return heading;
+  const target=Math.atan2(velocity.x,velocity.z),delta=Math.atan2(Math.sin(target-heading),Math.cos(target-heading));
+  const turn=THREE.MathUtils.clamp(delta*(1-Math.exp(-6*dt)),-3*dt,3*dt);
+  const remaining=delta-turn;velocity.multiplyScalar(Math.max(0,Math.cos(remaining))**2);
+  return heading+turn;
 }

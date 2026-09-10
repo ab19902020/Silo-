@@ -96,10 +96,10 @@ export class SkeletalMotion{
     // turning it further pulls the hips off their own feet and the stance leg
     // runs out of reach on a stair tread.
     this.rotate('Hips',Math.sin(p)*.040*weight,up);
-    this.rotate('Hips',Math.sin(p)*.045*weight,forward);            // pelvis lists onto the swing side
+    this.rotate('Hips',Math.sin(p)*.028*weight,forward);            // pelvis lists onto the swing side
     this.rotate('Spine',-.025*weight-.10*run-.065*Math.max(0,slope)*weight-.30*impact);
     this.rotate('Spine',Math.sin(p)*-.016*weight,forward);
-    this.rotate('Chest',Math.sin(p)*-.075*weight+clamp(turn,-1,1)*.035,up);   // shoulders counter the hips
+    this.rotate('Chest',Math.sin(p)*-.045*weight+clamp(turn,-1,1)*.025,up);   // shoulders counter the hips
     this.rotate('Chest',-.055*run-.12*impact);
     this.rotate('Chest',Math.sin(this.time*Math.PI*2/3.2)*.003);
     this.rotate('Head',Math.sin(this.time*Math.PI*2/3.2+.7)*.009,up);
@@ -135,7 +135,7 @@ export class SkeletalMotion{
       // Going up, the legs trail and tuck; coming down they reach for the floor.
       if(air){const ascent=ease((rise+.75)/1.5);ankle.y+=h*lerp(.018,.15,ascent)*air;ankle.z+=h*lerp(.040,-.08,ascent)*air+(i===0?1:-1)*h*.018*air*weight;}
       this.model.updateWorldMatrix(true,true);const goal=ankle.applyMatrix4(this.model.matrixWorld);
-      const canLock=lock&&weight>.45&&air<.10;
+      const canLock=lock&&weight>.45&&air<.10&&Math.abs(turn)<2.4;
       if(ground&&air<.10){
         const floor=ground(goal.x,goal.z);if(Number.isFinite(floor))goal.y=floor+leg.ankle.y+lift+toe+slopeLift;
         if(canLock&&on){
@@ -166,14 +166,14 @@ export class SkeletalMotion{
       const {goal,q,swing,i}=leg.goal;this.solve(leg,goal,q);
       // Arms oppose the advancing leg. Elbows remain soft and wrists follow,
       // while a small inward adjustment removes the old spread-arm silhouette.
-      this.rotate('UpperArm'+leg.side,(.52+.46*run)*swing*weight-(.24+.44*Math.max(0,rise))*air-.24*impact);
+      this.rotate('UpperArm'+leg.side,(.34+.38*run)*swing*weight-(.24+.44*Math.max(0,rise))*air-.24*impact);
       // Tuck the upper arms in as the pace rises. Left wide with the elbows
       // closed for a run, the hands end up parked in front of the chest.
       this.rotate('UpperArm'+leg.side,(i===0?-1:1)*(.16+.07*run+.14*air),forward);
       this.rotate('UpperArm'+leg.side,-.10*run*weight,up);
       // The elbow closes as the arm comes through and opens as it goes back;
       // at a run it never straightens.
-      this.rotate('Forearm'+leg.side,-.22-.86*run*weight-(.34+.42*run)*Math.max(0,-swing)*weight-.30*air-.45*impact);
+      this.rotate('Forearm'+leg.side,-.22-.86*run*weight-(.22+.32*run)*Math.max(0,-swing)*weight-.30*air-.45*impact);
       this.rotate('Hand'+leg.side,.04*weight*swing);
       this.rotate('Coat'+leg.side,clamp(-swing*.075*weight-.025*run,-.12,.12));
     }

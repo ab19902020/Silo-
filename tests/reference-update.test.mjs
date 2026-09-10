@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
 import { SiloWorld } from '../dist/src/world.js';
 import { SILO,STAIR_SWEEP,landingAngle,landingPoint,levelY } from '../dist/src/data.js';
-import { cleaningSample } from '../dist/src/opening.js';
-import { topPoint,groundY,sensorLocal } from '../dist/src/surface.js';
+import { cleaningSample,ALLISON_REST } from '../dist/src/opening.js';
+import { topPoint,groundY,sensorLocal,SENSOR,TREE } from '../dist/src/surface.js';
 import { readGLB,geometryGLTF } from '../scripts/glb.mjs';
 import { SkeletalMotion } from '../dist/src/locomotion.js';
 import { CharacterBody,ColliderSet } from '../dist/src/physics.js';
@@ -63,4 +63,15 @@ test('each landing has one visible top face, without overlapping flat treads',()
     const faces=ray.intersectObjects([world.landings,world.stairs],true).filter(h=>Math.abs(h.distance-.5)<.0001);
     assert.equal(faces.length,1,`level ${level} side ${side}: ${faces.length} coplanar top faces`);
   }
+});
+
+
+test('the centred sensor frames the whole cleaner, stair lip and body on the right slope',()=>{
+  const s=world.surface;s.camera.updateMatrixWorld(true);assert.equal(SENSOR.x,26);
+  const feet=cleaningSample(8).position,foot=topPoint(...feet.toArray()).project(s.camera),head=topPoint(feet.x,feet.y+1.8,feet.z).project(s.camera);
+  assert.ok(Math.abs(foot.x)<.001&&Math.abs(head.x)<.001);assert.ok(foot.y>-.98&&head.y<.9);
+  const lip=topPoint(26,14,108).project(s.camera);assert.ok(lip.y>-.98&&lip.y<-.55,`stair lip ${lip.y}`);
+  const body=topPoint(ALLISON_REST[0],groundY(...ALLISON_REST)+.25,ALLISON_REST[1]).project(s.camera);
+  assert.ok(body.x>.3&&body.x<.8&&Math.abs(body.y)<.85);
+  const tree=world.surface.feedRoot.getObjectByName('dead-tree'),bounds=new T.Box3().setFromObject(tree),tip=new T.Vector3(TREE.z+SILO.deckOuter,bounds.max.y,-TREE.x).project(s.camera);assert.ok(tip.y<1,'tree crown cropped');
 });

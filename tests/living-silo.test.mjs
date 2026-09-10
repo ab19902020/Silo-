@@ -5,9 +5,9 @@ import { SiloWorld } from '../dist/src/world.js';
 import { CharacterBody } from '../dist/src/physics.js';
 import { createResident,poseResident } from '../dist/src/resident-model.js';
 import { RESIDENT_CAST } from '../dist/src/resident-data.js';
-import { Population,populationRecords,CROWD_LIMITS } from '../dist/src/population.js';
+import { Population,populationRecords,CROWD_LIMITS,steerResident } from '../dist/src/population.js';
 import { PLAYABLE_CHARACTERS } from '../dist/src/characters.js';
-import { CafeteriaOpening,cleaningSample,OPENING_DURATION,CAFETERIA_START,BOOK_POSITION } from '../dist/src/opening.js';
+import { CafeteriaOpening,cleaningSample,OPENING_DURATION,CLEAN_START,CLEAN_END,CAFETERIA_START,BOOK_POSITION } from '../dist/src/opening.js';
 import { topPoint,groundY,surfaceY } from '../dist/src/surface.js';
 import { tunnelPoint } from '../dist/src/void-access.js';
 import { residentGLB } from '../scripts/export-residents.mjs';
@@ -57,7 +57,7 @@ test('the opening starts at an accessible book, plays once, releases the directo
   const camera=world.surface.camera,corner=new THREE.Vector3();
   for(let i=0;i<OPENING_DURATION*30;i++){
     opening.update(1/30);const s=cleaningSample(opening.time);phases.add(s.phase);assert.ok(s.position.distanceTo(previous)<.08,'Holston teleported');assert.ok(Math.abs(s.position.y-surfaceY(s.position.x,s.position.z))<1e-6,'Holston left the ground');previous=s.position;
-    if(opening.time>19.2&&opening.time<25.8){
+    if(opening.time>CLEAN_START+1.2&&opening.time<CLEAN_END-1.2){
       // The wipe has to be a wipe: the hand stays within one stretched arm of
       // the sensor it is cleaning, and the rag it is holding has to cross the
       // lens close enough to fill the whole frame — that momentary blackout on
@@ -178,4 +178,11 @@ test('the resident you are talking to stops and turns to face you',()=>{
   const off=Math.abs(Math.atan2(Math.sin(want-actor.root.rotation.y),Math.cos(want-actor.root.rotation.y)));
   assert.ok(off<.25,`they are facing ${(off*180/Math.PI).toFixed(0)}° away from you`);
   population.talkingTo=null;
+});
+
+
+test('residents turn before walking into a reversed route and retain their own walking speed',()=>{
+  let heading=0;const reverse=new THREE.Vector3(0,0,-1.3);heading=steerResident(heading,reverse,1/60);assert.ok(reverse.length()<.01);assert.ok(Math.abs(heading)<=3/60);
+  for(let i=0;i<120;i++){const velocity=new THREE.Vector3(0,0,-1.3),before=heading;heading=steerResident(heading,velocity,1/60);assert.ok(Math.abs(heading-before)<=3/60+.00001);}
+  const aligned=new THREE.Vector3(0,0,-1.3);steerResident(heading,aligned,1/60);assert.ok(aligned.length()>1.29&&aligned.length()<=1.3);
 });

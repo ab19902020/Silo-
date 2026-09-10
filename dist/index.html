@@ -29,7 +29,7 @@
     <div class="chapter-actions"><button id="openBookButton" hidden>Open your book</button><button id="hintButton" hidden>Think about it</button><button id="satchelButton" hidden>What you are carrying</button></div>
   </aside>
 
-  <div id="cinemaControls"><button id="focusScreenButton" hidden>Back to cafeteria</button><button id="skipOpening" hidden>Skip</button></div>
+  <div id="cinemaControls" role="group" aria-label="Cafeteria screen controls"><span id="cinemaStatus" aria-live="off">Holston’s cleaning</span><button id="focusScreenButton" aria-pressed="false" hidden>Back to cafeteria</button><button id="skipOpening" hidden>Skip</button></div>
   <dialog id="conversation" class="panel conversation-panel" aria-labelledby="speakerName"><div class="panel-head"><div><span id="speakerRole" class="eyebrow accent"></span><h2 id="speakerName"></h2></div><button class="close" data-close aria-label="Leave conversation">×</button></div><p id="dialogueLine" aria-live="polite"></p><div id="dialogueChoices"></div><p id="dialogueHint" class="help"><kbd>1</kbd>–<kbd>4</kbd> ask <span>·</span> <kbd>E</kbd> or <kbd>Esc</kbd> step away</p><button id="leaveConversation" class="secondary wide">Step away</button></dialog>
 
   <dialog id="welcome" class="welcome">
@@ -40,11 +40,12 @@
 
   <dialog id="directory" class="panel book-panel">
     <div class="panel-head"><div><span class="eyebrow accent">SILO 18 · RESIDENT’S HANDBOOK</span><h2>Your directory</h2></div><button class="close" data-close aria-label="Close directory">×</button></div>
-    <p class="book-inscription">One hundred and forty-four levels. Find your way through the world below.</p>
-    <div class="directory-tabs" role="tablist" aria-label="Directory view"><button id="allLevelsTab" class="active" role="tab" aria-selected="true">All 144 levels</button><button id="landmarksTab" role="tab" aria-selected="false">Landmarks & surface</button></div>
-    <label class="search"><span>⌕</span><input id="search" type="search" placeholder="Find a room, level or department" autocomplete="off"></label>
-    <div class="landmark-shortcuts" aria-label="Featured locations"><button data-travel="room:100:0">Bazaar</button><button data-travel="relic">Hard-drive relic</button><button data-travel="room:1:0">Cafeteria</button><button data-travel="surface">Surface</button></div>
-    <div id="locationList" class="location-list"></div>
+    <div class="directory-context"><span id="directoryContext">Your place in the silo</span>
+    <div class="directory-context-actions"><button id="directoryHere">Current level</button><button id="directoryLead" hidden>Show the lead</button></div></div>
+    <div class="directory-tabs" role="tablist" aria-label="Directory view"><button id="allLevelsTab" class="active" role="tab" aria-controls="locationList" tabindex="0" aria-selected="true">All 144 levels</button><button id="landmarksTab" role="tab" aria-controls="locationList" tabindex="-1" aria-selected="false">Landmarks & surface</button></div>
+    <label class="search"><span>⌕</span><input id="search" aria-label="Find a room, level or department" type="search" placeholder="Find a room, level or department" autocomplete="off"><button id="clearSearch" type="button" aria-label="Clear search" hidden>×</button></label>
+    <div class="landmark-shortcuts" aria-label="Featured locations"><button data-travel="room:100:0">Bazaar</button><button data-travel="room:144:0">Mechanical</button><button data-travel="room:1:0">Cafeteria</button><button data-travel="surface">Surface</button></div>
+    <p id="directoryResults" role="status" class="directory-results"></p><div id="locationList" class="location-list" role="tabpanel" aria-labelledby="allLevelsTab"></div>
     <div class="panel-foot"><span>144 levels · 864 enterable wings</span><small>Travel is an exploration shortcut. The central stairs connect all 144 levels.</small></div>
   </dialog>
 

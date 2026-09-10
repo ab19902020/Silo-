@@ -8,7 +8,7 @@ import { topLocal, topPoint, groundY } from './surface.js';
 import { CharacterCast, PLAYABLE_CHARACTERS } from './characters.js';
 import { LadderClimb } from './climbing.js';
 import { Population } from './population.js';
-import { CafeteriaOpening, CAFETERIA_START } from './opening.js';
+import { CafeteriaOpening, CAFETERIA_START, OPENING_DURATION } from './opening.js';
 import { conversationFor, ALGORITHM } from './conversations.js';
 import { RESIDENT_CAST } from './resident-data.js';
 import { Story, COLLECTABLES, RELICS, CHAPTERS } from './story.js';
@@ -287,7 +287,7 @@ function openingChanged(state){
   $('chapterHud').hidden=state==='explore';$('chapterTitle').textContent=state==='find-book'?'A book on the table':watching?'Holston’s cleaning':'The room falls quiet';
   $('chapterObjective').textContent=state==='find-book'?'The directory book is on the table in front of you.':watching?'Holston is outside. Watch from the room, or focus on the screen.':'Your directory is ready.';
   $('focusScreenButton').hidden=!watching;$('skipOpening').hidden=!watching;$('openBookButton').hidden=!reading;
-  $('focusScreenButton').textContent=opening?.focus?'Back to cafeteria':'Focus on screen';
+  $('focusScreenButton').textContent=opening?.focus?'Back to cafeteria':'Focus on screen';$('focusScreenButton').setAttribute('aria-pressed',String(!!opening?.focus));document.body.classList.toggle('watching-cleaning',watching);
   document.body.classList.toggle('screen-focused',!!opening?.focus);
   if(reading||state==='explore'){story?.beginSearch();if(story?.story)syncStoryHud(true);saveStory();}
   if(reading||state==='explore')try{localStorage.setItem('silo18-opening-complete','1');}catch{}
@@ -301,8 +301,12 @@ function replayOpening(){
   if(!ready)return;for(const d of dialogs)if(d.open)d.close();world.setLevel(1);const p=topPoint(...CAFETERIA_START);body.teleport(p.x,p.y,p.z);yaw=-Math.PI/2;pitch=-.06;running=false;opening.reset();population.load(1);started=true;audio.start();syncPause();canvas.focus();
 }
 function renderDirectory(){
-  const query=$('search').value.trim().toLowerCase(),items=showAll?LEVELS:LANDMARKS;const target=$('locationList');target.replaceChildren();
-  const selected=items.filter(i=>`${i.level} ${i.name} ${i.type} ${i.zone||''} ${roomsForLevel(i.level).map(r=>r.name).join(' ')}`.toLowerCase().includes(query));
+  const query=$('search').value.trim().toLowerCase(),numeric=/^\d+$/.test(query)?Number(query):null,items=showAll?LEVELS:LANDMARKS;const target=$('locationList');target.replaceChildren();
+  $('clearSearch').hidden=!query;
+  $('directoryContext').textContent=world?.special?`You are in ${SPECIALS.find(s=>s.id===world.special)?.name||world.special}`:`You are on Level ${String(world?.activeLevel||1).padStart(3,'0')} · ${LEVELS[(world?.activeLevel||1)-1].name.split(' · ')[0]}`;
+  $('directoryLead').hidden=!story?.destination;
+  $('locationList').setAttribute('aria-labelledby',showAll?'allLevelsTab':'landmarksTab');
+  const selected=items.filter(i=>numeric!==null?i.level===numeric:`${i.level} ${i.name} ${i.type} ${i.zone||''} ${roomsForLevel(i.level).map(r=>r.name).join(' ')}`.toLowerCase().includes(query));
   let lastZone='';
   const addItem=(item,special=false)=>{
     const zone=special?'BENEATH & BEYOND':item.level<50?'UP TOP · 001–049':item.level<=100?'THE MIDS · 050–100':'DOWN DEEP · 101–144';
@@ -315,15 +319,19 @@ function renderDirectory(){
     const isTarget=!special&&where&&where.level===item.level;
     if(isTarget)button.classList.add('objective');
     const copy=document.createElement('span');copy.className='location-copy';const title=document.createElement('strong');title.textContent=item.name;const sub=document.createElement('small');
-    sub.textContent=isTarget?`Your objective is here · ${item.placement}`:special?item.description:`6 enterable wings · ${item.placement}`;
-    copy.append(title,sub);const arrow=document.createElement('span');arrow.textContent='↗';button.append(n,copy,arrow);button.addEventListener('click',()=>travel(special?item.id:item.level));target.append(button);
-    if(!special){const rooms=document.createElement('div');rooms.className='room-links';for(const room of roomsForLevel(item.level)){const b=document.createElement('button');b.textContent=`${String.fromCharCode(65+room.wing)} · ${room.name.toLowerCase()}`;if(isTarget&&where.wing===room.wing)b.classList.add('objective');b.addEventListener('click',()=>travel(room.id));rooms.append(b);}target.append(rooms);}
+    const locked=special?story?.travelAllowed(item.id):null;
+    sub.textContent=locked|| (isTarget?story.objective:special?item.description:item.description||'Six wings around the central gallery.');
+    if(locked){button.disabled=true;button.classList.add('locked');}
+    if(!special&&item.level===world?.activeLevel){button.classList.add('current');button.setAttribute('aria-current','location');}
+    copy.append(title,sub);const arrow=document.createElement('span');arrow.className='travel-label';arrow.textContent=locked?'Locked':'Go';button.append(n,copy,arrow);button.addEventListener('click',()=>travel(special?item.id:item.level));const entry=document.createElement('section');entry.className='directory-entry';entry.append(button);target.append(entry);
+    if(!special){const details=document.createElement('details');details.className='wing-disclosure';details.open=!!query||item.level===world?.activeLevel||!!isTarget;const summary=document.createElement('summary');summary.textContent='Choose a wing';details.append(summary);const rooms=document.createElement('div');rooms.className='room-links';for(const room of roomsForLevel(item.level)){const b=document.createElement('button');b.textContent=`${String.fromCharCode(65+room.wing)} · ${room.name.toLowerCase()}`;if(isTarget&&where.wing===room.wing)b.classList.add('objective');b.addEventListener('click',()=>travel(room.id));rooms.append(b);}details.append(rooms);entry.append(details);}
   };
   selected.forEach(i=>addItem(i));
-  for(const i of SPECIALS.filter(i=>!query||`${i.name} ${i.type}`.toLowerCase().includes(query)))addItem(i,true);
+  const specialMatches=SPECIALS.filter(i=>!query||numeric!==null&&i.level===numeric||`${i.name} ${i.type}`.toLowerCase().includes(query));for(const i of specialMatches)addItem(i,true);
+  $('directoryResults').textContent=`${selected.length} ${selected.length===1?'level':'levels'} · ${specialMatches.length} special areas${query?' matching your search':''}`;
   if(!target.children.length){const p=document.createElement('p');p.className='help';p.textContent='No matching locations. Try a level number or department.';target.append(p);}
 }
-function setDirectoryMode(all){showAll=all;for(const [id,active]of [['allLevelsTab',all],['landmarksTab',!all]]){$(id).classList.toggle('active',active);$(id).setAttribute('aria-selected',String(active));}renderDirectory();}
+function setDirectoryMode(all){showAll=all;for(const [id,active]of [['allLevelsTab',all],['landmarksTab',!all]]){$(id).classList.toggle('active',active);$(id).setAttribute('aria-selected',String(active));$(id).tabIndex=active?0:-1;}renderDirectory();}
 
 async function travel(id){
   if(!ready||traveling)return;
@@ -571,7 +579,11 @@ $('satchelButton').addEventListener('click',()=>{renderSatchel();openDialog(satc
 $('directoryButton').addEventListener('click',requestDirectory);
 $('welcomeDirectory').addEventListener('click',()=>{if(!ready)return;requestDirectory();});
 $('replayOpening').addEventListener('click',replayOpening);
-$('focusScreenButton').addEventListener('click',()=>{opening.focus=!opening.focus;$('focusScreenButton').textContent=opening.focus?'Back to cafeteria':'Focus on screen';document.body.classList.toggle('screen-focused',opening.focus);keys.clear();stick.x=stick.y=0;});
+$('clearSearch').addEventListener('click',()=>{$('search').value='';renderDirectory();$('search').focus();});
+$('directoryHere').addEventListener('click',()=>{$('search').value=String(world.activeLevel);setDirectoryMode(true);$('locationList').scrollTop=0;});
+$('directoryLead').addEventListener('click',()=>{const lead=story.destination;if(lead){$('search').value=String(lead.level);setDirectoryMode(true);$('locationList').scrollTop=0;}});
+for(const id of ['allLevelsTab','landmarksTab'])$(id).addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const all=e.key==='Home'?true:e.key==='End'?false:!showAll;setDirectoryMode(all);$(all?'allLevelsTab':'landmarksTab').focus();}});
+$('focusScreenButton').addEventListener('click',()=>{opening.focus=!opening.focus;$('focusScreenButton').textContent=opening.focus?'Back to cafeteria':'Focus on screen';$('focusScreenButton').setAttribute('aria-pressed',String(opening.focus));document.body.classList.toggle('screen-focused',opening.focus);keys.clear();stick.x=stick.y=0;});
 $('skipOpening').addEventListener('click',()=>opening.finish());$('openBookButton').addEventListener('click',requestDirectory);
 $('characterButton').addEventListener('click',()=>{renderCharacters();openDialog(characters);});$('viewButton').addEventListener('click',toggleView);
 $('settingsButton').addEventListener('click',()=>openDialog(settings));$('aboutButton').addEventListener('click',()=>openDialog(about));
@@ -799,6 +811,7 @@ function frame(){
   }else{if(workAction)workAction.until+=dt*1000;world.update(dt,body.position);cast?.update(0,body,started);}
   audio.setStoryPaused?.(document.hidden||(opening?.watching&&paused()));
   if(relic.open)inspector.render();
+  if(opening?.watching)$('cinemaStatus').textContent=`Holston’s cleaning · ${Math.max(0,Math.ceil(OPENING_DURATION-opening.time))}s`;
   updateInterface(time);
   if(time-lastHUD>.25){
     updateHUD();lastHUD=time;
