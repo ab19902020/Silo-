@@ -462,9 +462,12 @@ function updateHUD(){
   $('modeLabel').textContent=`${cast?.active?.definition.short||'ON FOOT'}${body.climbing?' · CLIMBING':running?' · RUNNING':''}`;audio.setLocation(world.outside?'surface':world.special==='silo17'?'tunnel':world.special==='pipe-gallery'?'mines':world.special||roomType(n,wing));
   // The great stairway is open steel and runs through every level, so the floor
   // underfoot there is not the floor of the room the level counter is reporting.
-  // Wading owns the surface while it lasts, or this would clear it four times
-  // a second and put concrete footsteps under a player standing in water.
-  audio.setSurface(wading?'wet':!world.outside&&!world.special&&r<SILO.stairRadius+.6?'grating':null);
+  // Standing in the water is the only thing that overrides the room's own
+  // floor. The great stairway used to override it too, with steel grating, but
+  // the stairway runs through all 144 levels — so every trip between floors
+  // changed the footsteps twice, and it was a large part of why walking the
+  // silo sounded like several different games.
+  audio.setSurface(wading?'wet':null);
 }
 const inspectionText={
   'terminal-note':'A note under the unplugged cable: “The directory is not the collection. Ask for the whole library.” Nothing else is written.',

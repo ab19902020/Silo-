@@ -129,11 +129,22 @@ is the same object without the sleeve, plus a rock and settle.
 Each collectable in `story.js` carries a `sound` field naming its material, so
 adding a relic means adding one word. Unknown kinds fall back to `relic`.
 
-## The stairs
+## One floor, and the three that are not it
 
-`audio.setSurface('grating')` overrides the room's floor while the player is on
-the central staircase; `setSurface(null)` hands it back. One line in
-`updateHUD`, keyed off the radius that already decides the location name.
+Every room inside the silo walks on the same concrete, and that is deliberate.
+The rooms used to carry five surfaces between them — metal through Mechanical,
+carpet through the residences, grass on the farm — and the great stairway
+overrode all of them with steel grating as it passed through. Walking the silo
+end to end changed the footsteps at every door and twice more on the stairs
+between floors. It read as several different games rather than one building.
+
+Three things are not silo floor and keep their own: the mines and the void
+below Mechanical, which are cut rock, and the surface outside, which is grit.
+
+`audio.setSurface('wet')` is the only override left, for standing in the water
+at the bottom of the void; `setSurface(null)` hands the floor back to the room.
+The recordings for the surfaces no longer used by any room are still shipped and
+still work — nothing has been thrown away, only unassigned.
 
 ## What I did not touch
 

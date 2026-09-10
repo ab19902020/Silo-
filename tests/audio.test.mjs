@@ -234,22 +234,38 @@ test('a walking step lands heel then toe, the toe duller; a run lands flat',()=>
   assert.ok(flat<=.04,`a run landed ${(flat*1000).toFixed(0)} ms apart; it should land flat`);
 });
 
-test('the staircase overrides the floor of the room it passes through',()=>{
+test('the whole silo walks on one floor, and only the exceptions differ',()=>{
   const {audio}=silo();
-  audio.setLocation('residential');
-  assert.equal(audio.material(),'soft');
-  audio.setSurface('grating');
-  assert.equal(audio.material(),'grating','the great stairway is open steel wherever it runs');
-  audio.setLocation('farm');
-  assert.equal(audio.material(),'grating','the override must survive a change of level');
-  audio.setSurface(null);
-  assert.equal(audio.material(),'grass','a growing bed is not a carpeted floor');
-  audio.setLocation('residential');
-  assert.equal(audio.material(),'soft');
-  audio.setSurface('nonsense');
-  assert.equal(audio.material(),'soft','an unknown surface falls back rather than going silent');
+  // Walking the silo end to end used to change footstep character at every
+  // door: metal through Mechanical, carpet through the residences, grass on the
+  // farm, steel grating on the stairway between all of them. It read as several
+  // different games rather than one building.
+  const inside=['cafeteria','bazaar','residential','medical','it','vault','surveillance',
+                'farm','park','water','recycling','workshop','mechanical','generator','airlock'];
+  for(const place of inside){
+    audio.setLocation(place);
+    assert.equal(audio.material(),'concrete',`${place} does not walk on the same floor as the cafeteria`);
+  }
+  // The places that are genuinely not silo floor keep their own.
+  for(const [place,surface] of [['mines','rock'],['excavator','rock'],['tunnel','rock'],['surface','grit']]){
+    audio.setLocation(place);
+    assert.equal(audio.material(),surface,`${place} should still be ${surface}`);
+  }
 });
 
+test('standing in the water is the only thing that overrides the room floor',()=>{
+  const {audio}=silo();
+  audio.setLocation('cafeteria');
+  assert.equal(audio.material(),'concrete');
+  audio.setSurface('wet');
+  assert.equal(audio.material(),'wet','wading has to override the room, or you get concrete underwater');
+  audio.setLocation('mechanical');
+  assert.equal(audio.material(),'wet','the override must survive a change of level');
+  audio.setSurface(null);
+  assert.equal(audio.material(),'concrete');
+  audio.setSurface('nonsense');
+  assert.equal(audio.material(),'concrete','an unknown surface falls back rather than going silent');
+});
 test('picking something up is the object, not one interface click',()=>{
   const {audio,context}=silo();
   const before=context.created.source||0;

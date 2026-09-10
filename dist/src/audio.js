@@ -257,29 +257,39 @@ const PICKUPS={
 };
 
 // Ambience mix, reverb return, footstep material and occasional-sound family
-// per location. Keys are the special-location ids and the room types from
+// per location.
+//
+// Every room inside the silo walks on the same floor, deliberately. The rooms
+// used to carry five different surfaces between them — metal through
+// Mechanical, carpet through the residences, grass on the farm — and walking
+// the silo end to end meant the footsteps changed character every time you went
+// through a door. It read as five games rather than one building.
+//
+// The exceptions are the places that are not silo floor at all: the mines and
+// the void below Mechanical, which are cut rock, and the surface outside, which
+// is grit. Standing in the water is handled separately, by setSurface. Keys are the special-location ids and the room types from
 // data.js; anything unlisted falls back to the standard gallery interior.
 const INTERIOR={hum:.030,air:.016,wind:0,machine:0,tone:13000,space:.26,step:'concrete',event:'interior'};
 const PLACES={
   surface:   {hum:.004,air:.002,wind:.085,machine:0,   tone:15000,space:.04,step:'grit',    event:'surface'},
-  airlock:   {hum:.032,air:.022,wind:.018,machine:.008,tone:11000,space:.22,step:'metal',   event:'metal'},
-  generator: {hum:.052,air:.030,wind:0,   machine:.056,tone:8000, space:.40,step:'metal',   event:'metal'},
+  airlock:   {hum:.032,air:.022,wind:.018,machine:.008,tone:11000,space:.22,step:'concrete',   event:'metal'},
+  generator: {hum:.052,air:.030,wind:0,   machine:.056,tone:8000, space:.40,step:'concrete',   event:'metal'},
   excavator: {hum:.044,air:.028,wind:0,   machine:.040,tone:8000, space:.38,step:'rock',    event:'water'},
   mines:     {hum:.020,air:.020,wind:0,   machine:0,   tone:7500, space:.30,step:'rock',    event:'water'},
   tunnel:    {hum:.016,air:.014,wind:0,   machine:0,   tone:6500, space:.38,step:'rock',    event:'water'},
-  mechanical:{hum:.046,air:.026,wind:0,   machine:.026,tone:9500, space:.32,step:'metal',   event:'metal'},
-  workshop:  {hum:.034,air:.020,wind:0,   machine:.010,tone:11000,space:.24,step:'metal',   event:'metal'},
+  mechanical:{hum:.046,air:.026,wind:0,   machine:.026,tone:9500, space:.32,step:'concrete',   event:'metal'},
+  workshop:  {hum:.034,air:.020,wind:0,   machine:.010,tone:11000,space:.24,step:'concrete',   event:'metal'},
   water:     {hum:.034,air:.022,wind:0,   machine:.014,tone:9500, space:.30,step:'concrete',event:'water'},
-  recycling: {hum:.038,air:.024,wind:0,   machine:.018,tone:9000, space:.30,step:'metal',   event:'metal'},
-  farm:      {hum:.026,air:.030,wind:0,   machine:0,   tone:13000,space:.18,step:'grass',   event:'water'},
-  park:      {hum:.020,air:.028,wind:0,   machine:0,   tone:14000,space:.16,step:'grass',   event:'water'},
-  residential:{hum:.024,air:.016,wind:0,  machine:0,   tone:12000,space:.10,step:'soft',    event:'interior'},
+  recycling: {hum:.038,air:.024,wind:0,   machine:.018,tone:9000, space:.30,step:'concrete',   event:'metal'},
+  farm:      {hum:.026,air:.030,wind:0,   machine:0,   tone:13000,space:.18,step:'concrete',   event:'water'},
+  park:      {hum:.020,air:.028,wind:0,   machine:0,   tone:14000,space:.16,step:'concrete',   event:'water'},
+  residential:{hum:.024,air:.016,wind:0,  machine:0,   tone:12000,space:.10,step:'concrete',    event:'interior'},
   bazaar:    {hum:.026,air:.018,wind:0,   machine:0,   tone:13500,space:.20,step:'concrete',event:'interior'},
   cafeteria: {hum:.026,air:.018,wind:0,   machine:0,   tone:14000,space:.24,step:'concrete',event:'interior'},
-  medical:   {hum:.030,air:.024,wind:0,   machine:0,   tone:12500,space:.12,step:'soft',    event:'interior'},
-  it:        {hum:.036,air:.030,wind:0,   machine:.010,tone:11500,space:.14,step:'soft',    event:'interior'},
-  vault:     {hum:.034,air:.026,wind:0,   machine:.008,tone:10500,space:.16,step:'soft',    event:'interior'},
-  surveillance:{hum:.030,air:.024,wind:0, machine:.006,tone:11000,space:.10,step:'soft',    event:'interior'},
+  medical:   {hum:.030,air:.024,wind:0,   machine:0,   tone:12500,space:.12,step:'concrete',    event:'interior'},
+  it:        {hum:.036,air:.030,wind:0,   machine:.010,tone:11500,space:.14,step:'concrete',    event:'interior'},
+  vault:     {hum:.034,air:.026,wind:0,   machine:.008,tone:10500,space:.16,step:'concrete',    event:'interior'},
+  surveillance:{hum:.030,air:.024,wind:0, machine:.006,tone:11000,space:.10,step:'concrete',    event:'interior'},
 };
 
 export class SiloAudio {

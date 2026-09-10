@@ -78,24 +78,30 @@
       ]
     },
     "rock": {
-      "source": "default_hard_footstep",
+      "source": "default_gravel_footstep",
       "takes": [
         {
           "file": "rock-1.wav",
-          "bytes": 26968,
-          "seconds": 0.28,
+          "bytes": 25686,
+          "seconds": 0.267,
           "rate": 48000
         },
         {
           "file": "rock-2.wav",
-          "bytes": 26970,
-          "seconds": 0.28,
+          "bytes": 40364,
+          "seconds": 0.42,
           "rate": 48000
         },
         {
           "file": "rock-3.wav",
-          "bytes": 21596,
-          "seconds": 0.225,
+          "bytes": 28566,
+          "seconds": 0.297,
+          "rate": 48000
+        },
+        {
+          "file": "rock-4.wav",
+          "bytes": 34604,
+          "seconds": 0.36,
           "rate": 48000
         }
       ]
