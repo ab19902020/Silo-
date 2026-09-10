@@ -237,7 +237,11 @@ const FOOTFALL={
   soil:    {level:0.032,sample:0.06,toe:.07,scuff:.34},
   soft:    {level:0.025,sample:0.04,toe:.10,scuff:.08},
   grass:   {level:0.028,sample:0.052,toe:.09,scuff:.20},
-  wet:     {level:0.043,sample:0.061,toe:.15,scuff:.30},
+  // Water is the loudest thing you can put a foot into, and it has to beat the
+  // wading loop running underneath it — at 0.061 the splash sat inside the loop
+  // rather than on top of it, and walking through the basin sounded like
+  // nothing was happening underfoot.
+  wet:     {level:0.043,sample:0.112,toe:.15,scuff:.30},
 };
 
 
@@ -832,7 +836,7 @@ export class SiloAudio {
     const swell=c.createGain(),lfo=c.createOscillator(),depth=c.createGain();
     source.buffer=this.noise;source.loop=true;
     filter.type='bandpass';filter.frequency.value=900;filter.Q.value=.85;
-    envelope.gain.setValueAtTime(.0001,t);envelope.gain.linearRampToValueAtTime(.020,t+.35);
+    envelope.gain.setValueAtTime(.0001,t);envelope.gain.linearRampToValueAtTime(.013,t+.35);
     swell.gain.value=.55;lfo.frequency.value=.9;depth.gain.value=.4;
     lfo.connect(depth);depth.connect(swell.gain);
     source.connect(filter);filter.connect(swell);swell.connect(envelope);
@@ -851,7 +855,10 @@ export class SiloAudio {
   setWadeLevel(amount){
     if(!this.wade)return;
     const t=this.context.currentTime;
-    this.wade.envelope.gain.setTargetAtTime(.006+clamp(amount,0,1)*.030,t,.18);
+    // Kept under the footsteps deliberately: the loop is the water closing back
+    // over you between steps, and if it reaches the level of a splash it simply
+    // masks every one of them.
+    this.wade.envelope.gain.setTargetAtTime(.004+clamp(amount,0,1)*.020,t,.18);
   }
 
   // --- interactions -------------------------------------------------------

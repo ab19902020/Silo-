@@ -6,7 +6,7 @@
     "url": "https://github.com/luanti-org/minetest_game",
     "licence": "CC BY-SA 3.0 — see LICENSE.txt beside this file"
   },
-  "changes": "Decoded from Ogg Vorbis to 16-bit PCM WAV, leading and trailing silence trimmed, level-matched within each surface. No other processing.",
+  "changes": "Decoded from Ogg Vorbis to 16-bit PCM WAV, leading and trailing silence trimmed, level-matched within each surface. The water recordings are continuous wading rather than single steps, so individual splashes were cut out of them: a 0.46 s window opening 20 ms before each transient, with a 4 ms attack and a 160 ms tail fade, peak-normalised. `soft` is additionally low-passed at 2.2 kHz. No other processing.",
   "materials": {
     "concrete": {
       "source": "default_hard_footstep",
@@ -107,30 +107,24 @@
       ]
     },
     "grit": {
-      "source": "default_gravel_footstep",
+      "source": "default_sand_footstep",
       "takes": [
         {
           "file": "grit-1.wav",
-          "bytes": 25686,
-          "seconds": 0.267,
+          "bytes": 26932,
+          "seconds": 0.28,
           "rate": 48000
         },
         {
           "file": "grit-2.wav",
-          "bytes": 40364,
-          "seconds": 0.42,
+          "bytes": 27908,
+          "seconds": 0.29,
           "rate": 48000
         },
         {
           "file": "grit-3.wav",
-          "bytes": 28566,
-          "seconds": 0.297,
-          "rate": 48000
-        },
-        {
-          "file": "grit-4.wav",
-          "bytes": 34604,
-          "seconds": 0.36,
+          "bytes": 26436,
+          "seconds": 0.275,
           "rate": 48000
         }
       ]
@@ -171,29 +165,6 @@
           "file": "soft-3.wav",
           "bytes": 40364,
           "seconds": 0.42,
-          "rate": 48000
-        }
-      ]
-    },
-    "wet": {
-      "source": "default_water_footstep",
-      "takes": [
-        {
-          "file": "wet-1.wav",
-          "bytes": 72044,
-          "seconds": 0.75,
-          "rate": 48000
-        },
-        {
-          "file": "wet-2.wav",
-          "bytes": 72044,
-          "seconds": 0.75,
-          "rate": 48000
-        },
-        {
-          "file": "wet-3.wav",
-          "bytes": 72044,
-          "seconds": 0.75,
           "rate": 48000
         }
       ]
@@ -257,6 +228,35 @@
           "file": "grass-3.wav",
           "bytes": 46124,
           "seconds": 0.48,
+          "rate": 48000
+        }
+      ]
+    },
+    "wet": {
+      "source": "default_water_footstep",
+      "takes": [
+        {
+          "file": "wet-1.wav",
+          "bytes": 44204,
+          "seconds": 0.46,
+          "rate": 48000
+        },
+        {
+          "file": "wet-2.wav",
+          "bytes": 44204,
+          "seconds": 0.46,
+          "rate": 48000
+        },
+        {
+          "file": "wet-3.wav",
+          "bytes": 44204,
+          "seconds": 0.46,
+          "rate": 48000
+        },
+        {
+          "file": "wet-4.wav",
+          "bytes": 44204,
+          "seconds": 0.46,
           "rate": 48000
         }
       ]

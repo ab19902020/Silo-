@@ -812,5 +812,6 @@ async function boot(){
 window.__silo={begin,fire,use,travel,takeRelic,stepOutside,firearms,takeWeapon,camera,
   look(y,p=0){yaw=y;pitch=p;},
   get story(){return story;},get world(){return world;},get body(){return body;},
-  get drone(){return drone;},get opening(){return opening;},get ready(){return ready;}};
+  get drone(){return drone;},get opening(){return opening;},get ready(){return ready;},
+  get audio(){return audio;},get wading(){return wading;}};
 boot();
