@@ -24,7 +24,12 @@ export function makeEnvironment(renderer,scene){
 // a camera hunting for a new exposure every time you turn your head.
 const LUMA_SIZE=32;                    // first reduction, full frame to 32x32
 const EXPOSURE_KEY=.11;                // the average the adaptation aims at
-const EXPOSURE_FLOOR=.72,EXPOSURE_CEILING=1.42;   // never more than half a stop
+// Asymmetric on purpose. The eye is allowed to pull a blown room back a long
+// way, and to lift a dark one only a little: a symmetric clamp let the gain run
+// up as the night cycle dimmed the fixtures and handed back most of the
+// darkness the schedule had just taken away, so two in the morning looked like
+// the afternoon with warmer lamps.
+const EXPOSURE_FLOOR=.70,EXPOSURE_CEILING=1.12;
 const EXPOSURE_RATE=.9;                // how fast the eye gives in, per second
 const encodeLuma='float encodeLuma(float l){return clamp((log2(max(l,1e-5))+12.)/24.,0.,1.);}';
 const decodeLuma='float decodeLuma(float e){return exp2(e*24.-12.);}';
@@ -125,7 +130,7 @@ export class Rendering {
         // stepping off a lit gallery into the shaft and letting their eyes go,
         // not a camera hunting a new exposure every time you turn your head.
         float average=decodeLuma(texture2D(exposureMap,vec2(.5)).r);
-        c*=mix(1.,clamp(.11/max(average,1e-4),.72,1.42),look);
+        c*=mix(1.,clamp(.11/max(average,1e-4),.70,1.12),look);
 
         float light=dot(c,vec3(.2126,.7152,.0722));
         // Cold concrete in the shadows, tungsten in the highlights. Two lines,
