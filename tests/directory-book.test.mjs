@@ -119,6 +119,29 @@ test('the pickup prompt is on the book and is there the moment the game starts',
   assert.equal(opening.book.visible,false);
 });
 
+// The other way a prompt lies to you. Range and facing were the only tests an
+// interaction had to pass, and the gun room's racks stand less than two metres
+// beyond the cafeteria's east wall — so walking up to blank blockwork offered
+// you a rifle through it, with nothing on the wall to explain the prompt.
+test('a prompt only appears for something you can actually see',()=>{
+  const world=new SiloWorld(new THREE.Scene());world.setLevel(1);world.update(0,topPoint(0,0,20));
+  // The top floor's local +x is the world's -z, so this looks along the local
+  // x axis in whichever direction is asked for.
+  const look=(x,z,towards)=>world.nearestInteraction(topPoint(x,1.6,z),new THREE.Vector3(0,0,-towards));
+  for(const z of [12,16,20,25]){
+    const through=look(17.2,z,1);
+    assert.ok(!through,`standing in the cafeteria at z=${z}, the east wall offers "${through?.label}" through it`);
+  }
+  // ...and the check has not simply switched the racks off: from inside the
+  // range, with the same racks in front of you, they are still there.
+  const inside=look(20,16,-1);
+  assert.match(inside?.label||'nothing',/Take the /,'the gun racks cannot be reached from inside the range either');
+
+  // A clear line across an empty room is never blocked.
+  const eye=topPoint(2,1.6,20),near=topPoint(2,1.2,23);
+  assert.equal(world.blockedFromView(eye,near,eye.distanceTo(near)),false,'an empty three metres of cafeteria blocks the view');
+});
+
 // The bug this file exists for. The book was correct, the prompt was correct,
 // and the frame loop reassigned world.storyInteractions a few lines after the
 // opening had filled it — so the only interaction in a new game was silently

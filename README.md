@@ -23,6 +23,7 @@ A browser-based, first- and third-person reconstruction of the television silo, 
 - Restaged the cleaning so the cafeteria screen can actually see it: Holston is framed at the lens, steps in to wipe, and the rag blanks the picture on each pass. The helmet is a helmet rather than a pale sphere the size of a skull, and it comes off in his hands.
 - The directory book is on a front table and picking it up no longer snaps the camera into the screen.
 - Fixed the book itself: the frame loop was overwriting the pickup prompt every tick, so a new game could not be started at all. The book is also findable now — a tan, brass-cornered volume with a lit title plate, on a table laid with nothing else, off the line the player character stands on.
+- A prompt now only appears for something you can see. The gun room's racks sit under two metres behind the cafeteria's east wall, so walking up to blank blockwork offered you a rifle through it.
 - The crater has a rim that closes the horizon and falls away behind, and the dead tree is grown rather than assembled from four dozen straight cylinders.
 
 See [the notes and reference limits](docs/residents-and-the-cleaning.md).

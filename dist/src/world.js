@@ -313,8 +313,37 @@ export class SiloWorld {
     if(this.storyInteractions)pool.push(...this.storyInteractions);
     if(!this.special&&this.activeLevel===1&&this.outside)pool.push(...this.surface.networkInteractions);
     if(!this.story?.story&&!this.special&&this.activeLevel===1)pool.push({position:this.surface.cleaningPoint,label:this.surface.cleaning?'Cleaning lens…':this.surface.cleanliness>.99?'Clean camera lens again':'Clean the outside camera lens',action:'clean-camera'});
-    let nearest=null,best=5;
-    for(const i of pool){if(this.story?.story&&this.story.chapter==='cleaning'&&i.action!=='opening-book')continue;if(this.special==='pipe-gallery'&&i.action?.startsWith('pipe-')){const next=!this.story?.hasFlag('pipe-cover-open')?'cover':['isolate','collar','torque'][this.story?.pipeSteps.length||0];if(i.action!==`pipe-${next}`)continue;}const delta=i.position.clone().sub(position),dist=delta.length();if(dist>best||dist<.05)continue;if(delta.normalize().dot(direction)<.32)continue;best=dist;nearest=i;}return nearest;
+    const seen=[];
+    for(const i of pool){if(this.story?.story&&this.story.chapter==='cleaning'&&i.action!=='opening-book')continue;if(this.special==='pipe-gallery'&&i.action?.startsWith('pipe-')){const next=!this.story?.hasFlag('pipe-cover-open')?'cover':['isolate','collar','torque'][this.story?.pipeSteps.length||0];if(i.action!==`pipe-${next}`)continue;}const delta=i.position.clone().sub(position),dist=delta.length();if(dist>5||dist<.05)continue;if(delta.normalize().dot(direction)<.32)continue;seen.push({i,dist});}
+    // Range and direction are not enough on their own: the gun room's racks sit
+    // less than two metres behind the cafeteria's east wall, so walking up to
+    // blank blockwork offered you a rifle through it. Nearest first, and the
+    // first one you can actually see wins.
+    seen.sort((a,b)=>a.dist-b.dist);
+    for(const {i,dist} of seen)if(!this.blockedFromView(position,i.position,dist))return i;
+    return null;
+  }
+  // True when something solid stands between the eye and the marker. The walk
+  // stops short of both ends: the thing itself, and whatever it rests on or is
+  // fixed to, must not be what hides it — a book on a table and a sign on a
+  // wall are both reached along a line that ends inside their own collider.
+  blockedFromView(eye,target,distance){
+    const colliders=this.colliders;
+    if(!colliders||!(distance>1))return false;
+    const far=distance-.5,near=Math.min(.35,far);
+    if(!(far>near))return false;
+    // The cafeteria's walls are 350 mm thick, so a sample every 350 mm can step
+    // clean over one depending on where the samples happen to land. Spacing is
+    // 200 mm and the probe carries 60 mm of its own, which leaves no gap wider
+    // than 80 mm between samples and is still far too small to catch the jamb
+    // of a door you are walking through.
+    const steps=Math.max(1,Math.ceil((far-near)/.2));
+    for(let s=0;s<=steps;s++){
+      const t=(near+(far-near)*s/steps)/distance;
+      const x=eye.x+(target.x-eye.x)*t,y=eye.y+(target.y-eye.y)*t,z=eye.z+(target.z-eye.z)*t;
+      if(colliders.contains(x,z,.06,y-.04,y+.04))return true;
+    }
+    return false;
   }
   cycleAirlock(id){
     const doors=this.loaded.get(1)?.rooms[0].userData.doors;if(!doors)return;

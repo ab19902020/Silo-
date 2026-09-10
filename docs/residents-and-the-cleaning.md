@@ -155,6 +155,36 @@ a new game rather than at the coordinates:
 closest to the screen, the column closest to the middle of the room. The book,
 the start position and the clear table all come off it.
 
+### Prompts through walls
+
+The other way a prompt lies to you, and the other half of *it comes on the wall
+and there is nothing there*. Range and facing were the only tests an
+interaction had to pass:
+
+```js
+if(dist>best||dist<.05)continue;
+if(delta.normalize().dot(direction)<.32)continue;
+```
+
+The gun room's racks stand less than two metres beyond the cafeteria's east
+wall, so walking up to blank blockwork inside the cafeteria offered you *Take
+the BOLT-ACTION RIFLE* and *Resupply* through it. `nearestInteraction` now
+takes the candidates nearest-first and returns the first one you can actually
+see: `blockedFromView` walks the line from the eye to the marker and asks the
+collision set whether anything solid stands on it.
+
+The walk stops short at both ends — 35 cm from the eye, 50 cm from the marker —
+because the thing itself, and whatever it rests on or is fixed to, must not be
+what hides it. A book on a table and a sign on a wall are both reached along a
+line that ends inside their own collider. Sampling is every 20 cm with a 6 cm
+probe, so no gap wider than 8 cm goes unexamined and a 35 cm wall cannot fall
+between two samples; 6 cm is far too little to catch the jamb of a door you are
+walking through.
+
+Checked both ways in the test: from inside the cafeteria the rifles are gone,
+and from inside the range, with the same racks in front of you, they still
+work.
+
 ## The crater
 
 The ground climbed away from the silo and never came back down. That reads as
