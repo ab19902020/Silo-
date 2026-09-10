@@ -849,5 +849,6 @@ window.__silo={begin,fire,use,travel,takeRelic,stepOutside,firearms,takeWeapon,c
   look(y,p=0){yaw=y;pitch=p;},
   get story(){return story;},get world(){return world;},get body(){return body;},
   get drone(){return drone;},get opening(){return opening;},get ready(){return ready;},
-  get audio(){return audio;},get wading(){return wading;}};
+  get audio(){return audio;},get wading(){return wading;},
+  get clock(){return siloClock;},get rendering(){return rendering;}};
 boot();

@@ -14,6 +14,14 @@ See [this release's changes and validation limits](docs/relic-world-polish.md),
 [the mystery route and research](docs/mystery-expansion.md), and
 [agent integration history](docs/AGENT_COORDINATION.md).
 
+## Atmosphere
+
+- **The silo keeps time.** One clock, one schedule, and it is the only thing that knows what hour it is — lighting, crowd, ambience and the view out of the great screen all read it, so no part of the silo can be at a different hour from another. Fixtures dim and run down towards a warm filament on the night cycle, the galleries empty and fill again, the cafeteria fills three times, and three shift bells ring at 0600, 1400 and 2200.
+- **Something to listen to.** The silo's own noises are chosen by where you are, what hour it is and whether anyone is awake to make them, instead of a blind timer picking one of four sounds. On the stairs — the one place the silo is really audible — you hear runs of feet on steel one to four floors off, quieter and duller the further away they are. Nothing in it speaks: the public address is a chime, a carrier, a cadence with no words in it and a click.
+- **The look.** Halation off the practicals, cold concrete shadows against tungsten highlights, contrast that lets the dark actually go dark, vignette and shadow grain — and an eye that adapts by about half a stop when you step off a lit gallery into the shaft.
+
+See [the atmosphere notes](docs/atmosphere.md).
+
 ## Latest residents, conversation and cleaning work
 
 - Rebuilt the head as one continuous sculpted surface. The face was two dozen ellipsoids and boxes laid over a sphere: the hair cap crossed the skull and cut torn bands across the forehead and cheeks, and the brows and age lines floated a centimetre off it. Brows, lashes, lips and stubble are painted onto the skin now, so nothing on a face can cross it.
