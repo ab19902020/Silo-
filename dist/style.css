@@ -228,3 +228,88 @@ body:has(#chapterHud:not([hidden])) #toast.show ~ #interaction{bottom:calc(24px 
   #dialogueChoices button{min-height:40px;padding:8px 10px}
   .dialogue-foot{padding:8px 14px 9px 18px}
 }
+
+/* --- the directory book on a short screen ------------------------------
+   Turn a phone sideways and the book had no book in it. The head, the
+   context bar, the tabs, the search field, the shortcuts and the footer are
+   every one of them fixed height, and on a 390px-tall viewport they add up
+   to more than the panel does: the level list was laid out past the bottom
+   edge and clipped away entirely, the footer with it. Nothing scrolled,
+   because the clipping happened on the panel and not inside the list — so
+   the directory opened onto no levels at all and no way to reach them.
+
+   A landscape screen is short but wide, so the fix is to stop stacking. The
+   book opens into two pages: the apparatus you use down the left, the
+   levels down the right at the panel's full height. That is what the width
+   is for, and it is what a book looks like anyway. */
+@media (max-height:560px) and (min-height:300px) and (min-width:560px){
+  .book-panel[open]{
+    display:grid;
+    grid-template-columns:minmax(190px,min(18rem,42%)) minmax(0,1fr);
+    grid-template-rows:auto auto auto auto auto minmax(0,1fr) auto;
+    width:min(940px,96vw);height:98dvh;max-height:98dvh;
+    /* the board and the spine are the cheapest 14px on the screen */
+    border-width:5px;border-left-width:12px}
+
+  /* the left page: everything you do to the list */
+  .book-panel .panel-head{grid-column:1;grid-row:1;padding:12px 17px 10px;border-bottom:1px solid #a89c7e}
+  .book-panel .panel-head h2{font-size:21px;margin-top:2px}
+  /* SILO 18 · RESIDENT'S HANDBOOK is the one line here that wraps, and where
+     it wraps depends on the width — which made the head 68px on one phone and
+     86px on another and left the whole budget guessing. The board, the spine
+     and the footer all say what this is. */
+  .book-panel .panel-head .eyebrow{display:none}
+  .book-panel .directory-context{grid-column:1;grid-row:2;flex-direction:column;align-items:stretch;
+    gap:5px;padding:8px 17px;font-size:12px}
+  .book-panel .directory-context-actions button{flex:1;min-height:38px;padding:5px 9px;font-size:12px}
+  .book-panel .search{grid-column:1;grid-row:3;margin:9px 17px 0;min-height:40px}
+  .book-panel .search input{min-height:36px}
+  .book-panel .landmark-shortcuts{grid-column:1;grid-row:4;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:5px;padding:9px 17px 0}
+  .book-panel .landmark-shortcuts button{min-height:38px;padding:5px 4px;font-size:13px}
+  .book-panel #directoryResults{grid-column:1;grid-row:5;padding:9px 17px 0;font-size:12px}
+  .book-panel .panel-foot{grid-column:1;grid-row:7;align-self:end;padding:9px 17px;font-size:12px}
+  .book-panel .panel-foot small{display:none}
+
+  /* the right page: the levels, floor to ceiling */
+  .book-panel .directory-tabs{grid-column:2;grid-row:1;margin:0;padding:0 17px;
+    border-bottom:1px solid #a89c7e;border-left:1px solid #b7ac90}
+  .book-panel .directory-tabs button{min-height:0;padding:13px 0 10px;font-size:13px}
+  .book-panel .location-list{grid-column:2;grid-row:2/-1;min-height:0;padding:0 9px 10px;
+    border-left:1px solid #b7ac90}
+  .book-panel .location-item{min-height:0;padding:10px;gap:10px}
+  .book-panel .location-number{font-size:21px;min-width:34px}
+  .book-panel .location-copy strong{font-size:15px}
+  .book-panel .location-copy small{font-size:12px;line-height:1.4}
+  .book-panel .wing-disclosure summary{min-height:0;padding:8px 14px;font-size:13px}
+  .book-panel .room-links{padding:0 10px 10px}
+  .book-panel .room-links button{min-height:36px;padding:6px 7px;font-size:13px}
+}
+
+/* Shorter still and the left page has to give up the result count too — the
+   list says the same thing, at more length. It is a live region, so it comes
+   out of the layout rather than out of the document, and still announces. */
+@media (max-height:365px) and (min-height:300px) and (min-width:560px){
+  .book-panel #directoryResults{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .book-panel .directory-context{padding:6px 17px}
+  .book-panel .directory-context-actions button{min-height:32px}
+  .book-panel .landmark-shortcuts{gap:4px;padding-top:8px}
+  .book-panel .landmark-shortcuts button{min-height:30px;font-size:12px}
+  .book-panel .panel-foot{padding:6px 17px;font-size:11px}
+}
+
+/* Narrower than two pages, or shorter than one will go, and there is no
+   layout left to find. Rather than clip anything, collapse the book to a
+   single column that scrolls as one document — the head scrolls away with
+   it, but everything in the book stays reachable, which is the part that
+   was broken in the first place. */
+@media (max-height:299px), (max-height:560px) and (max-width:559px){
+  .book-panel[open]{overflow:auto;overscroll-behavior:contain}
+  .book-panel .panel-head{padding:12px 16px 9px}
+  .book-panel .panel-head h2{font-size:21px}
+  .book-panel .directory-context{padding:8px 16px;font-size:13px}
+  .book-panel .search{margin:9px 16px}
+  .book-panel .location-list{flex:none;min-height:0;overflow:visible}
+  .book-panel .panel-foot small{display:none}
+}

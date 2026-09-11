@@ -14,6 +14,36 @@ See [this release's changes and validation limits](docs/relic-world-polish.md),
 [the mystery route and research](docs/mystery-expansion.md), and
 [agent integration history](docs/AGENT_COORDINATION.md).
 
+## Talking to people, and the book in your hand
+
+- **Everyone named has their own questions.** The dialogue was one list of five
+  questions handed to all twenty residents, so you learned the questionnaire in
+  your first conversation and there was nothing after it. Walker is asked about
+  his bench and about teaching Juliette; Knox is asked whether the upper levels
+  listen; Lukas is asked what he is counting. The list itself now tells you who
+  you are standing in front of.
+- **Questions open into follow-ups.** Ask Juliette about George and you can
+  then ask what happened to him and what he showed her. Two levels deep, with a
+  way back up. The named cast also have opinions of each other, and the unnamed
+  are composed from a trade, a home level, someone they know and a thing they
+  keep, so the hundredth resident is a different person from the first.
+- **The panel is a typeset card** rather than a box of boxes: the name is the
+  loudest thing on it, what they said is set in a serif with a rule of its own,
+  and the questions are quiet rows you can scan. Asked rows dim so you can see
+  your way through a long conversation.
+- **The directory book works sideways.** Turn a phone to landscape and the book
+  had no directory in it — its fixed furniture came to more than the panel's
+  own height, so the level list and the footer were laid out past the bottom
+  edge and clipped away, with nothing to scroll. The book now opens into two
+  pages on a short screen: the search and shortcuts down the left, the levels
+  down the right at full height. A landscape phone gets more of the list than a
+  1024×768 tablet does.
+- Searching the directory also takes you back to the top of the results, rather
+  than leaving you scrolled a thousand pixels below the four matches.
+
+See [the conversation notes](docs/conversations.md) and
+[the directory book notes](docs/directory-book.md).
+
 ## Atmosphere
 
 - **The silo keeps time.** One clock, one schedule, and it is the only thing that knows what hour it is — lighting, crowd, ambience and the view out of the great screen all read it, so no part of the silo can be at a different hour from another. Fixtures dim and run down towards a warm filament on the night cycle, the galleries empty and fill again, the cafeteria fills three times, and three shift bells ring at 0600, 1400 and 2200.
@@ -26,7 +56,7 @@ See [the atmosphere notes](docs/atmosphere.md).
 
 - Rebuilt the head as one continuous sculpted surface. The face was two dozen ellipsoids and boxes laid over a sphere: the hair cap crossed the skull and cut torn bands across the forehead and cheeks, and the brows and age lines floated a centimetre off it. Brows, lashes, lips and stubble are painted onto the skin now, so nothing on a face can cross it.
 - Every resident on every floor walks a routine — a ring of stops with something to do at each one — instead of standing on one spot while twelve porters orbit the gallery.
-- Talking keeps you in the silo. The panel no longer pauses the world; the person stops, turns to face you and stays turned, the camera settles on them, and **1**–**4** ask while **E** or **Esc** steps away.
+- Talking keeps you in the silo. The panel no longer pauses the world; the person stops, turns to face you and stays turned, the camera settles on them, and **1**–**9** ask, **0** goes back a level, **E** or **Esc** steps away.
 - Restaged the cleaning so the cafeteria screen can actually see it: Holston is framed at the lens, steps in to wipe, and the rag blanks the picture on each pass. The helmet is a helmet rather than a pale sphere the size of a skull, and it comes off in his hands.
 - The directory book is on a front table and picking it up no longer snaps the camera into the screen.
 - Fixed the book itself: the frame loop was overwriting the pickup prompt every tick, so a new game could not be started at all. The book is also findable now — a tan, brass-cornered volume with a lit title plate, on a table laid with nothing else, off the line the player character stands on.

@@ -369,6 +369,10 @@ function renderDirectory(){
   const specialMatches=SPECIALS.filter(i=>!query||numeric!==null&&i.level===numeric||`${i.name} ${i.type}`.toLowerCase().includes(query));for(const i of specialMatches)addItem(i,true);
   $('directoryResults').textContent=`${selected.length} ${selected.length===1?'level':'levels'} · ${specialMatches.length} special areas${query?' matching your search':''}`;
   if(!target.children.length){const p=document.createElement('p');p.className='help';p.textContent='No matching locations. Try a level number or department.';target.append(p);}
+  // Every caller of this is the player changing what the list shows — opening
+  // the book, switching tabs, typing a search. Leaving the old scroll position
+  // behind means searching for Mechanical and landing below the four results.
+  target.scrollTop=0;
 }
 function setDirectoryMode(all){showAll=all;for(const [id,active]of [['allLevelsTab',all],['landmarksTab',!all]]){$(id).classList.toggle('active',active);$(id).setAttribute('aria-selected',String(active));$(id).tabIndex=active?0:-1;}renderDirectory();}
 
@@ -619,8 +623,8 @@ $('directoryButton').addEventListener('click',requestDirectory);
 $('welcomeDirectory').addEventListener('click',()=>{if(!ready)return;requestDirectory();});
 $('replayOpening').addEventListener('click',replayOpening);
 $('clearSearch').addEventListener('click',()=>{$('search').value='';renderDirectory();$('search').focus();});
-$('directoryHere').addEventListener('click',()=>{$('search').value=String(world.activeLevel);setDirectoryMode(true);$('locationList').scrollTop=0;});
-$('directoryLead').addEventListener('click',()=>{const lead=story.destination;if(lead){$('search').value=String(lead.level);setDirectoryMode(true);$('locationList').scrollTop=0;}});
+$('directoryHere').addEventListener('click',()=>{$('search').value=String(world.activeLevel);setDirectoryMode(true);});
+$('directoryLead').addEventListener('click',()=>{const lead=story.destination;if(lead){$('search').value=String(lead.level);setDirectoryMode(true);}});
 for(const id of ['allLevelsTab','landmarksTab'])$(id).addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const all=e.key==='Home'?true:e.key==='End'?false:!showAll;setDirectoryMode(all);$(all?'allLevelsTab':'landmarksTab').focus();}});
 $('focusScreenButton').addEventListener('click',()=>{opening.focus=!opening.focus;$('focusScreenButton').textContent=opening.focus?'Back to cafeteria':'Focus on screen';$('focusScreenButton').setAttribute('aria-pressed',String(opening.focus));document.body.classList.toggle('screen-focused',opening.focus);keys.clear();stick.x=stick.y=0;});
 $('skipOpening').addEventListener('click',()=>opening.finish());$('openBookButton').addEventListener('click',requestDirectory);
