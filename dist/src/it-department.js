@@ -1,20 +1,11 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit, fixture, desk, chair, table, shelf, bed } from './kit.js';
 
-// Level 19: IT.
-//
-// Sourced, not invented. The IT offices are on Level 19 and are a large
-// central office of workstations, with the Head of IT's own office separated
-// from that workspace by a corridor. The server room connects through to a
-// vault behind a locked door, and Bernard keeps a concealed radio in there to
-// reach Silo 1. The vault itself is deliberately unlike everywhere else in the
-// silo — smooth and lit rather than poured concrete — with the servers and
-// their power banks raised on steps to one side so the machine keeps running
-// through a cut, living quarters stocked to hold a lot of people for a long
-// time, and an AI called Legacy that answers through a holographic interface
-// and raises alerts of its own accord. Everything below is built to that
-// description; the exact dimensions are inferred, as they are everywhere else
-// in this reconstruction.
+// Level 19 is reconstructed within the existing six-wing game layout.
+// Legacy is the archive; the Algorithm is its interface. Visual reference:
+// https://territorystudio.com/project/silo/ . Dimensions and routes are adapted.
+import { deskDressing } from './environment-details.js';
+import { createAlgorithmInterface } from './algorithm-interface.js';
 
 const rack=(k,x,y,z,w=1.65,h=3,d=1.1,mat='darkMetal')=>{
   k.box(mat,x,y+h/2,z,w,h,d);
@@ -33,8 +24,7 @@ export function buildITOffices(k,{box,solids,interactions,label}){
     const z=4.4+row*4.2,x=side*4.6;
     desk(k,x,z);chair(k,x,z+1.15,side>0?0:Math.PI);solids.push({x,z,w:2,d:1,y0:0,y1:1.6});
     desk(k,x,z+2.1);chair(k,x,z+.95);solids.push({x,z:z+2.1,w:2,d:1,y0:0,y1:1.6});
-    k.box('darkMetal',x-.42,1.16,z-.02,.52,.42,.4);k.box('screen',x-.42,1.16,z-.21,.44,.34,.012);
-    k.box('darkMetal',x-.42,1.16,z+2.08,.52,.42,.4);k.box('screen',x-.42,1.16,z+2.27,.44,.34,.012);
+    deskDressing(k,x,z,row);deskDressing(k,x,z+2.1,row+3);
   }
   for(const side of [-1,1]){
     box('panel',side*8.9,1.0,9,.14,2,17,true);
@@ -45,11 +35,14 @@ export function buildITOffices(k,{box,solids,interactions,label}){
   // A glazed screen down the left of the entrance makes a lobby of the near
   // end of the floor. The way in stays clear: the wing doorway is the 4 m gap
   // in the middle of the gallery wall and nothing may stand in it.
-  box('panel',-6.1,1.85,2.6,7.6,3.7,.16,true);
+  for(const x of [-8.35,-3.85])box('panel',x,1.85,2.6,3.1,3.7,.16,true);
   k.box('glass',-6.1,3.05,2.6,7.4,1.2,.1);
   k.portal('panel',-6.1,.02,2.6,1.4,2.4,.22,0,.18,.08);
-  label('HEAD OF IT · LEVEL 19 WING C  →',4.6,2.9,2.45,4.4,.32,Math.PI);
+  label('HEAD OF IT · WING C  →',8.79,2.9,3.8,2.8,.32,-Math.PI/2);
 
+  k.box('paper',-4.1,.889,4.55,.42,.018,.28);
+  for(let j=0;j<9;j++)k.box('darkMetal',-4.25+(j%3)*.10,.9,4.46+Math.floor(j/3)*.06,.025,.002,.003);
+  interactions.push({position:[-4.1,1.05,4.55],label:'Examine the sky observation sheet',action:'lore:stars'});
   // Server aisle across the back, then the vault door.
   for(const x of [-7.4,-4.9,-2.4,2.4,4.9,7.4])rack(k,x,0,17.4);
   for(const x of [-7.4,-4.9,-2.4,2.4,4.9,7.4])solids.push({x,z:17.4,w:1.7,d:1.15,y0:0,y1:3});
@@ -62,7 +55,7 @@ export function buildITOffices(k,{box,solids,interactions,label}){
   k.box('indicator',0,2.62,20.16,.1,.06,.03);
   label('INFORMATION TECHNOLOGY',0,4.3,23.92,6,.7);
   label('SERVER ROOM · AUTHORISED ENTRY',0,3.5,20.14,4.6,.4);
-  interactions.push({position:[0,1.4,19.6],label:'Read the server room notice',action:'it-servers'});
+  interactions.push({position:[0,1.4,19.6],label:'Enter the IT vault',destination:'room:19:1'});
 }
 
 // --- the Head of IT's office ----------------------------------------------
@@ -73,7 +66,7 @@ export function buildHeadOffice(k,{box,solids,interactions,label}){
   for(const side of [-1,1])box('panel',side*5.6,1.85,3.4,8.8,3.7,.18,true);
   box('panel',0,3.35,3.4,2.4,.7,.18,false);
   k.portal('panel',0,.02,3.4,2.2,2.9,.26,0,.2,.09);
-  label('HEAD OF INFORMATION TECHNOLOGY',0,3.05,3.25,6.4,.4);
+  label('HEAD OF INFORMATION TECHNOLOGY',0,3.38,3.25,6.4,.32);
   const dz=15;
   box('wood',0,.76,dz,3.6,.14,1.6);for(const x of [-1.5,1.5])box('wood',x,.38,dz,.5,.76,1.3);
   chair(k,0,dz+1.5,0);chair(k,-1.1,dz-1.6,Math.PI);chair(k,1.1,dz-1.6,Math.PI);
@@ -91,9 +84,11 @@ export function buildVault(k,{box,solids,interactions,label,animated}){
   // Panelled throughout: this room does not look like the rest of the silo,
   // and that is the point of it.
   for(const side of [-1,1])box('panel',side*9.6,2.4,12,.7,4.8,24,false);
-  box('panel',0,2.4,23.7,20,4.8,.6,false);box('panel',0,2.4,.3,20,4.8,.6,false);
+  box('panel',0,2.4,23.7,20,4.8,.6,false);
+  for(const side of [-1,1])box('panel',side*5.85,2.4,.3,8.3,4.8,.6,false);
+  box('panel',0,4.05,.3,3.4,1.5,.6,false);
   box('panel',0,4.9,12,20,.5,24,false);
-  box('panel',0,.02,12,19.4,.1,24,false);
+  box('panel',0,-.038,12,19.4,.1,24,false);
   // Cove lighting behind a lip rather than fittings hung in the room. It is
   // deliberately gentle: the first pass had this at emissive-lamp brightness
   // and the whole vault blew out to a white sheet.
@@ -101,11 +96,15 @@ export function buildVault(k,{box,solids,interactions,label,animated}){
   k.box('cove',0,4.6,23.3,17,.05,.06);
 
   // The blast door you come in through, standing open against the wall.
-  box('panelDark',-3.4,1.6,1.5,3.2,3.2,.5,true);
+  k.cylinder('metal',-3.4,1.65,1.5,1.62,.5,Math.PI/2);
+  k.torus('panelDark',-3.4,1.65,1.22,1.43,.08);
+  solids.push({x:-3.4,z:1.5,w:3.24,d:.5,y0:0,y1:3.27});
   k.cylinder('metal',-3.4,1.6,1.22,.62,.14,Math.PI/2);
   for(let i=0;i<5;i++){const a=i*Math.PI*2/5;k.beam('brass',[-3.4+Math.cos(a)*.12,1.6+Math.sin(a)*.12,1.14],[-3.4+Math.cos(a)*.5,1.6+Math.sin(a)*.5,1.14],.03);}
   for(let i=0;i<6;i++)k.cylinder('brass',-1.9,.5+i*.5,1.5,.075,.32,0,0,Math.PI/2);
-  label('VAULT · SILO 18',0,3.6,.2,5,.5);
+  label('VAULT · SILO 18',0,3.6,-.04,3.1,.36);
+  for(const side of [-1,1])k.box('metal',side*1.7,1.65,.0,.16,3.3,.22);
+  k.box('metal',0,3.28,0,3.5,.12,.22);
 
   // Living quarters: bunks, a galley and enough stores to sit out a long stay.
   for(const row of [0,1])for(const bunk of [0,1]){
@@ -117,50 +116,50 @@ export function buildVault(k,{box,solids,interactions,label,animated}){
   }
   box('panel',-2.0,1.3,7,.14,2.6,7.6,true);
   for(let i=0;i<3;i++){shelf(k,3.6+i*2.6,3.1,2.4,2.2);solids.push({x:3.6+i*2.6,z:3.1,w:2.4,d:.5,y0:0,y1:2.2});
-    for(let j=0;j<10;j++)for(const y of [.5,1.06,1.62])k.box(j%2?'enamel':'white',2.6+i*2.6+j*.22,y,3.1,.16,.3,.34);}
+    for(let j=0;j<10;j++)for(const y of [.33,.98,1.63])k.box(j%2?'enamel':'white',2.6+i*2.6+j*.22,y,3.1,.16,.3,.34);}
   k.bevel('metal',6.4,.46,7.4,3.6,.92,1.1);solids.push({x:6.4,z:7.4,w:3.6,d:1.1,y0:0,y1:.92});
   k.cylinder('metal',5.4,.98,7.4,.24,.12);k.box('darkMetal',7.4,1.06,7.4,.9,.28,.7);
   table(k,5.2,10.4,2.4,1.2);solids.push({x:5.2,z:10.4,w:2.4,d:1.2,y0:0,y1:.78});
   for(const dx of [-.7,.7]){chair(k,5.2+dx,9.4,Math.PI);chair(k,5.2+dx,11.4,0);}
-  label('QUARTERS',-4.6,2.9,2.6,2.4,.34);
+  label('QUARTERS',-4.6,2.9,.64,2.4,.34,0);
 
   // Servers and their power banks, up two steps to either side, so a cut to
   // the silo's own generator never reaches the machine.
   for(const side of [-1,1]){
-    for(let step=0;step<2;step++){
-      const y=step*.42,x=side*(6.0+step*1.5),w=1.5;
-      k.bevel('panel',x,y+.21,16.4,w,.42+y,9.6);
-      solids.push({x,z:16.4,w,d:9.6,y0:0,y1:y+.42});
+    for(const [x,w,h] of [[4.25,.6,.24],[4.85,.6,.48],[7.35,4.4,.72]]){
+      k.box('panel',side*x,h/2,16.4,w,h,9.6);solids.push({x:side*x,z:16.4,w,d:9.6,y0:0,y1:h});
     }
-    for(let i=0;i<4;i++)rack(k,side*7.5,.84,13.0+i*2.1,1.5,2.5,1.0,'panelDark');
-    for(let i=0;i<4;i++)solids.push({x:side*7.5,z:13.0+i*2.1,w:1.55,d:1.05,y0:.84,y1:3.34});
-    for(let i=0;i<3;i++){k.box('panelDark',side*5.6,.84+.7,13.6+i*2.6,1.1,1.4,1.9);k.box('indicator',side*5.6,1.9,13.6+i*2.6,.5,.05,.02);}
-    for(let i=0;i<3;i++)solids.push({x:side*5.6,z:13.6+i*2.6,w:1.15,d:1.95,y0:.42,y1:2.24});
+    for(let i=0;i<4;i++){
+      rack(k,side*7.5,.72,13.0+i*2.1,1.5,2.5,1.0,'panelDark');
+      solids.push({x:side*7.5,z:13.0+i*2.1,w:1.55,d:1.05,y0:.72,y1:3.22});
+    }
+    for(let i=0;i<3;i++){
+      k.box('panelDark',side*5.6,1.42,13.6+i*2.6,1.1,1.4,1.9);k.box('indicator',side*5.6,1.9,12.64+i*2.6,.5,.05,.02);
+      solids.push({x:side*5.6,z:13.6+i*2.6,w:1.15,d:1.95,y0:.72,y1:2.12});
+    }
   }
-  label('POWER BANK · UNINTERRUPTED',-6.6,3.5,11.6,3.4,.3);
+  label('POWER BANK · UNINTERRUPTED',-9.22,3.5,16.4,3.4,.3,Math.PI/2);
 
-  // The Algorithm. A low dais, a ring console, and the interface standing in
-  // the air above it. Legacy answers when it is asked and speaks when it is
-  // not, which is the unnerving part.
-  k.cylinder('panel',0,.11,20.2,2.9,.22);solids.push({x:0,z:20.2,w:5.8,d:5.8,y0:0,y1:.22});
-  k.cylinder('panel',0,.34,20.2,2.35,.24);
-  k.torus('metal',0,.46,20.2,2.35,.06,Math.PI/2);
-  k.cylinder('panelDark',0,.72,20.2,1.15,.72);
-  k.torus('brass',0,1.09,20.2,1.15,.045,Math.PI/2);
-  for(let i=0;i<8;i++){const a=i*Math.PI/4;k.box('screen',Math.cos(a)*1.12,.88,20.2+Math.sin(a)*1.12,.5,.34,.02,-a+Math.PI/2);}
-  const halo=new THREE.Group();
-  const core=new Kit(k.m);
-  core.cylinder('holo',0,0,0,.40,2.0);
-  core.cylinder('holoCore',0,0,0,.07,2.1);
-  // Rings wider than the column, so it reads as something projected into the
-  // air rather than a jar with shelves in it.
-  for(let i=0;i<7;i++){const t=i/6;core.torus('holoCore',0,-.95+i*.32,0,.30+Math.sin(t*Math.PI)*.55,.008,Math.PI/2);}
-  for(let i=0;i<3;i++)core.torus('holo',0,-.4+i*.4,0,.86,.02,Math.PI/2);
-  halo.add(core.group());halo.position.set(0,2.2,20.2);halo.name='algorithm-interface';
-  animated.push({object:halo,axis:'y',speed:.22});
-  k.box('holoCore',0,1.13,20.2,.9,.02,.9);
-  label('LEGACY',0,3.9,23.9,3.2,.6);
-  interactions.push({position:[0,1.5,17.9],label:'Address the Algorithm',action:'algorithm'});
+  // A tactile dark table, pale concentric ribs and a quiet sand interface.
+  k.cylinder('panelDark',0,.5,20.2,1.65,1.0);
+  k.cylinder('black',0,1.025,20.2,1.85,.05);
+  k.torus('metal',0,1.05,20.2,1.84,.035,Math.PI/2);
+  solids.push({x:0,z:20.2,w:3.7,d:3.7,y0:0,y1:1.08});
+  const curved=new Kit(k.m);curved.arc('panelDark',3.14,3.3,4.3,0,0,Math.PI,48);
+  for(let j=0;j<6;j++){
+    curved.arc('panel',3.0,3.15,.36,1.3+j*.46,0,Math.PI,48);
+  }
+  curved.arc('panel',2.35,3.3,.15,.96,0,Math.PI,48);
+  curved.arc('cove',2.34,2.37,.11,.98,0,Math.PI,48);
+  for(const part of curved.parts)k.parts.push({...part,matrix:new THREE.Matrix4().makeTranslation(0,0,20.2).multiply(part.matrix)});
+  for(let j=0;j<24;j++){const a=(j+.5)*Math.PI/24;solids.push({x:Math.cos(a)*2.83,z:20.2+Math.sin(a)*2.83,w:.47,d:.96,y0:0,y1:1.11,ry:-a-Math.PI/2});solids.push({x:Math.cos(a)*3.22,z:20.2+Math.sin(a)*3.22,w:.45,d:.18,y0:0,y1:4.3,ry:-a-Math.PI/2});}
+  k.cylinder('metal',0,4.59,20.2,.16,.18);
+  k.cylinder('panelDark',0,4.42,20.2,2.25,.2);
+  k.torus('cove',0,4.29,20.2,2.1,.025,Math.PI/2);
+  const halo=createAlgorithmInterface();
+  animated.push({object:halo,update:halo.userData.update});
+  label('LEGACY',0,4.48,23.36,2.0,.20);
+  interactions.push({position:[0,1.5,18.0],label:'Address the Algorithm',action:'algorithm'});
 
   // The concealed radio: a panel in the server steps that is not quite flush.
   k.box('panelDark',8.4,1.35,21.6,1.9,2.2,.7);

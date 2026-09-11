@@ -497,7 +497,7 @@ export class SiloWorld {
 
     if(!this.special&&!this.outside){const level=levelAt(position.y);if(level!==this.activeLevel)this.setLevel(level);}
     for(const door of this.doors){door.amount=THREE.MathUtils.damp(door.amount,door.open?1:0,6,dt);for(const leaf of door.leaves)leaf.pivot.rotation.y=-leaf.side*door.amount*Math.PI*.52;if(door.collider)door.collider.enabled=door.amount<.8;}
-    for(const a of this.animated)a.object.rotation[a.axis]+=dt*a.speed;
+    for(const a of this.animated){if(a.update)a.update(dt);else a.object.rotation[a.axis]+=dt*a.speed;}
     this.clock=(this.clock||0)+dt;if(this.special==='mines')this.underground.updateMine(dt,this.clock,position,this.quality);if(this.livestock?.length&&!this.special)updateLivestock(this.livestock,dt,this.clock);
     for(const [level,e]of this.loaded){e.root.visible=!this.special&&Math.abs(level-this.activeLevel)<=1;for(let i=0;i<e.rooms.length;i++){const room=e.rooms[i],center=new THREE.Vector3(0,1.5,10).applyMatrix4(room.matrixWorld);room.visible=level===this.activeLevel||center.distanceTo(position)<38;}}
     const y=levelY(this.activeLevel);if(this.special==='pipe-gallery'&&this.story)this.pressure.update(this.story);

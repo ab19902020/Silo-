@@ -14,7 +14,10 @@ export function buildRoom(materials,type,level,wing,assets) {
   let livestock=null;
   const rng=random(level*107+wing*7919), H=SILO.roomHeight, W=SILO.roomHalf, D=SILO.roomDepth;
   const box=(mat,x,y,z,w,h,d,solid=true,ry=0)=>{(Math.min(w,h,d)>.22&&Math.max(w,h,d)<6?k.bevel.bind(k):k.box.bind(k))(mat,x,y,z,w,h,d,ry);if(solid)solids.push({x,z,w,d,y0:y-h/2,y1:y+h/2,ry});};
-  const label=(text,x,y,z,w=3,h=.5,ry=Math.PI)=>addSign(root,text,[x,y,z],w,h,ry);
+  const label=(text,x,y,z,w=3,h=.5,ry=Math.PI)=>{
+    if(z>.8&&z<1.2&&y>3.4){k.box('darkMetal',x,y,z+.06,w+.12,h+.12,.08);for(const dx of [-w*.38,w*.38])k.beam('metal',[x+dx,y+h/2,z+.06],[x+dx,H-.1,z+.06],.012);}
+    return addSign(root,text,[x,y,z],w,h,ry);
+  };
   const prop=(name,x,z,scale=1,ry=0)=>{const source=assets[name];if(!source)return false;const model=source.clone(true);model.position.set(x,0,z);model.scale.setScalar(scale);model.rotation.y=ry;root.add(model);const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());if(size.x<8&&size.z<8)solids.push({x:center.x,z:center.z,w:size.x,d:size.z,y0:0,y1:size.y});return true;};
   // Six actual wings extend outward from every numbered gallery.
   box('darkConcrete',-6,H/2,0,8,H,.24);box('darkConcrete',6,H/2,0,8,H,.24);
@@ -23,11 +26,12 @@ export function buildRoom(materials,type,level,wing,assets) {
   if(hasRearPassage(level,type)){
     for(const side of [-1,1])box('darkConcrete',side*5.775,H/2,D+.12,8.45,H,.24);
     box('darkConcrete',0,4.65,D+.12,3.1,2.3,.24);
-    label('SERVICE GALLERY  ↔',0,3.1,D-.03,2.8,.32);
+    label('SERVICE GALLERY  ↔',0,3.8,D-.03,2.8,.32);
   }else box('darkConcrete',0,H/2,D+.12,W*2,H,.24);
   box('darkConcrete',0,H+.15,D/2,W*2,.3,D,false);
   for(const z of [3,10,17,23]){box('concrete',-W+.35,H/2,z,.7,H,.65);box('concrete',W-.35,H/2,z,.7,H,.65);k.box('concrete',0,H-.25,z,W*2,.5,.7);fixture(k,0,H-.6,z,3.2,false,type==='medical'||type==='water');}
   for(const x of [-8.8,8.8])pipe(k,x,D/2,H-.6,D,.12);
+  k.box('darkMetal',0,3.7,.12,5.2,.82,.15);
   label(TYPE_NAMES[type]||type.toUpperCase(),0,3.7,.24,5,.68);
 
   const furnishings={
@@ -238,7 +242,8 @@ export function buildRoom(materials,type,level,wing,assets) {
   };
   function serverRack(x,z){box('darkMetal',x,1.5,z,1.65,3,1.1);for(let y=.3;y<2.9;y+=.24){k.box('metal',x,y,z-.58,1.45,.17,.08);for(let j=0;j<4;j++)k.box(j===0?'indicator':'brass',x-.56+j*.14,y,z-.63,.045,.03,.01);}}
   (furnishings[type]||furnishings.residential)();
-  for(const x of [-W+.18,W-.18]){k.box('green',x,.75,D/2,.09,1.5,D-.3);k.box('darkMetal',x,.08,D/2,.12,.16,D-.3);k.box('metal',x,1.51,D/2,.1,.05,D-.3);}
+  if(level===144&&wing===1){k.box('metal',-5.35,.8525,6,.52,.035,.32);for(const dx of [-.12,.12])k.box(dx<0?'linen':'black',-5.35+dx,.874,6,.08,.008,.26);interactions.push({position:[-5.35,1.1,6],label:'Examine the heat-tape samples',action:'lore:tape'});}
+  for(const x of (type==='vault'?[]:[-W+.18,W-.18])){k.box('green',x,.75,D/2,.09,1.5,D-.3);k.box('darkMetal',x,.08,D/2,.12,.16,D-.3);k.box('metal',x,1.51,D/2,.1,.05,D-.3);}
   for(const z of [4.5,11.5,18.5])for(const x of [-W+.22,W-.22]){k.cylinder('metal',x,2.3,z,.035,4.6);k.bevel('green',x<0?x+.08:x-.08,1.6,z,.19,.36,.25);}
   for(const x of [-7,-3.5,3.5,7]){k.box('metal',x,H-.13,D/2,.055,.05,D-.4);}
   for(const x of [-1.96,1.96]){k.bevel('metal',x,1.62,.05,.15,3.26,.27);for(const y of [.3,1.4,2.8])k.cylinder('brass',x,y,-.12,.035,.06,Math.PI/2);}

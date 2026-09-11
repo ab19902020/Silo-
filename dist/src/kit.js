@@ -179,13 +179,24 @@ const textCache=new Map();
 export const SIGN_DEPTH=.05;
 const plateMaterial=new THREE.MeshStandardMaterial({color:0x23282a,roughness:.62,metalness:.42});
 const frameMaterial=new THREE.MeshStandardMaterial({color:0x3b423d,roughness:.5,metalness:.55});
+export function signTextLayout(ctx,text,width,height,font='bold 54px Arial'){
+  const lines=String(text).split('\n'),padding=Math.max(7,Math.min(width,height)*.10);
+  const requested=Number(font.match(/(\d+)px/)?.[1]||54);
+  let size=Math.min(requested,(height-padding*2)/(lines.length*1.25));
+  const set=()=>{ctx.font=font.replace(/\d+px/,`${size}px`);};set();
+  const measured=Math.max(...lines.map(line=>ctx.measureText?.(line).width??line.length*size*.62),1);
+  size=Math.max(1,Math.min(size,size*(width-padding*2)/measured));set();
+  const gap=size*1.25;
+  return {size,padding,lines:lines.map((text,i)=>({text,x:width/2,y:height/2+(i-(lines.length-1)/2)*gap}))};
+}
 export function sign(text,w=3,h=.65,{color='#ddd7b5',background='#2d3e35',font='bold 54px Arial',border=true,glow=.34}={}){
   const key=[text,w,h,color,background,font,border,glow].join('|');
   let material=textCache.get(key);
   if(!material){
-    const canvas=document.createElement('canvas');canvas.width=512;canvas.height=Math.max(32,Math.round(512*h/w));const ctx=canvas.getContext('2d');
+    const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=Math.max(48,Math.min(1536,Math.round(1024*h/w)));const ctx=canvas.getContext('2d');
     ctx.fillStyle=background;ctx.fillRect(0,0,canvas.width,canvas.height);if(border){ctx.strokeStyle='#b7b797';ctx.lineWidth=1.5;ctx.strokeRect(5,5,canvas.width-10,canvas.height-10);}
-    ctx.fillStyle=color;ctx.font=font.replace(/(\d+)px/,(_,n)=>`${Number(n)/2}px`);ctx.textAlign='center';ctx.textBaseline='middle';const lines=text.split('\n');lines.forEach((line,i)=>ctx.fillText(line,256,canvas.height*(.5+(i-(lines.length-1)/2)*.16),485));
+    ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';
+    const layout=signTextLayout(ctx,text,canvas.width,canvas.height,font);for(const line of layout.lines)ctx.fillText(line.text,line.x,line.y);
     const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4;
     material=new THREE.MeshStandardMaterial({map:texture,emissive:0xffffff,emissiveMap:texture,emissiveIntensity:glow,roughness:.58,metalness:.05});
     material.userData.signRefs=0;material.userData.signCached=true;textCache.set(key,material);

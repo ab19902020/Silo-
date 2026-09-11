@@ -152,3 +152,5 @@ body:has(#chapterHud:not([hidden])) #toast.show ~ #interaction{bottom:calc(24px 
 
 #directoryResults{margin:0}.book-panel .landmark-shortcuts button{padding-inline:2px}.directory-context-actions button{font-size:14px}
 @media(max-width:650px){.book-panel .panel-head h2{font-size:25px}.book-panel .panel-foot{padding:10px 16px}.book-panel .location-copy strong{font-size:16px}}
+
+#algorithmQuery{margin:0 20px 16px}#algorithmQuery[hidden]{display:none}#algorithmQuery label{display:block;font-size:12px;letter-spacing:.08em;color:#c0ac7b;margin-bottom:7px}#algorithmQuery>div{display:flex;gap:8px}#archiveQuestion{min-width:0;flex:1;background:#141815;border:1px solid #635d49;color:#eee9dc;padding:12px;font:16px Georgia,serif;border-radius:4px}.archive-conversation{background:#1a1e1b}.archive-conversation #dialogueLine{color:#dfd3b8}.archive-conversation #dialogueChoices button{background:#252923}.conversation-panel{overflow-y:auto;overscroll-behavior:contain}#dialogueChoices button:focus-visible,#archiveQuestion:focus-visible{outline:2px solid #d1bd83;outline-offset:2px}

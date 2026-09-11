@@ -1,3 +1,4 @@
+import { personalHistory } from './resident-stories.js';
 // Original game dialogue, not transcribed television lines. Answers stay within
 // each resident's knowledge and the opening-era setting.
 const voices={
@@ -39,19 +40,33 @@ const trades={
 // voice, not transcribed television lines: it answers what it is asked, it
 // declines what it will not say, and it volunteers things nobody asked for.
 export const ALGORITHM={
-  id:'algorithm',name:'LEGACY',role:'Vault interface · Level 19',
+  id:'algorithm',name:'THE ALGORITHM',role:'Legacy archive · Level 19',
   greeting:'You are not the Head of Information Technology. Your presence has been recorded. Ask.',
   topics:[
-    {id:'what',label:'What are you?',reply:'I hold the order of this silo. I read what the silo does and I calculate what it will do next. I have been doing so since before anyone you have met was born.'},
+    {id:'what',label:'What are you?',reply:'I am the interface to the Legacy. The archive preserves books, records and other material from before your lifetime. State a subject. Access to individual records remains subject to authorisation.'},
     {id:'outside',label:'What is outside?',reply:'That question is answered on the screen in your cafeteria. You are asking me whether the screen is true. I am not authorised to widen that answer.'},
-    {id:'cleaning',label:'Why do they clean?',reply:'Because they are sent out, and because every one of them cleans. That has never once failed to happen. Consider what that means before you ask me anything else.'},
+    {id:'cleaning',label:'Why do they clean?',reply:'A cleaning is recorded as an exterior maintenance event. That description does not account for a person’s reasons. I cannot provide private records of the people you watched.'},
     {id:'silo1',label:'Who do you answer to?',reply:'To the Pact, and to the order it protects. There are conditions under which I act without being asked. You would not enjoy meeting one.'},
     {id:'leave',label:'Say nothing further.',reply:'Recorded. The door behind you is the way you came in.'},
   ],
 };
 
-export function conversationFor(resident,{cleaned=false,playerName=''}={}){
+export function conversationFor(resident,{cleaned=false,playerName='',visits=0}={}){
   const id=resident.id,raw=resident.kind||resident.appearance?.outfit||'resident',kind=({engineer:'mechanical',workshop:'mechanical',miner:'mines',cafeteria:'diner'}[raw]||raw),lines=voices[id]||[...(trades[kind]||['I live and work here, like everyone else. Each floor has its own routines.','The galleries take you around a level; the central stairs take you between them.']),'It was quiet after the cleaning. Some people stayed to watch the hill.'];
-  const greeting=id==='walker'&&playerName.includes('Juliette')?'Jules. Come here. What have you broken this time?':id==='shirley'&&playerName.includes('Juliette')?'There you are. I was wondering where you had got to.':cleaned?'You saw the cleaning too?':'Morning. Have you found where you are going?';
-  return {name:resident.name,role:resident.role||({diner:'Cafeteria resident',porter:'Porter',bazaar:'Bazaar trader'}[kind]||'Silo resident'),greeting,topics:[{id:'work',label:'What do you do here?',reply:lines[0]},{id:'places',label:'Where should I look around?',reply:lines[1]},{id:'cleaning',label:cleaned?'About Holston’s cleaning…':'Why is everyone watching?',reply:cleaned?lines[2]:'There is a cleaning today. People gather here to watch the outside screen.'}]};
+  let greeting=id==='walker'&&playerName.includes('Juliette')?'Jules. Come here. What have you broken this time?':id==='shirley'&&playerName.includes('Juliette')?'There you are. I was wondering where you had got to.':cleaned?'You saw the cleaning too?':'Morning. Have you found where you are going?';
+  if(visits>0)greeting=[`Back again. What did you find?`,`We have a little time before the next shift. What is on your mind?`,`I remember you. Still exploring?`][(visits-1)%3];
+  const history=personalHistory(resident);
+  return {id:resident.id,name:resident.name,role:resident.role||({diner:'Cafeteria resident',porter:'Porter',bazaar:'Bazaar trader'}[kind]||'Silo resident'),greeting,topics:[{id:'work',label:'What do you do here?',reply:lines[0],replies:[lines[0],history[0]]},{id:'places',label:'Where should I look around?',reply:lines[1],replies:[lines[1],'Look at the repairs, the notices and the things people have kept. A directory tells you where a room is; the people inside tell you what it means.']},{id:'cleaning',label:cleaned?'About Holston’s cleaning…':'Why is everyone watching?',reply:cleaned?lines[2]:'There is a cleaning today. People gather here to watch the outside screen.'},{id:'history',label:'Tell me about yourself.',reply:history[0],replies:history},{id:'off-shift',label:'What keeps you going?',reply:history[1],replies:[history[1],history[0]]}]};
+}
+
+// Typed queries use the same bounded, original archive responses as topic buttons.
+export function algorithmAnswer(query,{freeRoam=false,blueprint=false}={}){
+  const q=String(query).toLowerCase().trim();
+  if(/safeguard|gas|pipe|blueprint/.test(q))return freeRoam||blueprint?'Service references identify an isolation line. A drawing describes a system; it does not make the system safe. Confirm the pressure at the physical fitting.':'That service reference requires an archive record. No matching record is attached to this session.';
+  if(/atbash|cipher|quinn/.test(q))return 'Atbash reverses an alphabet: A corresponds to Z, B to Y. A substitution can conceal a message without changing its length. Keep the original spacing when comparing a transcription.';
+  if(/legacy|library|book|archive/.test(q))return 'The Legacy is an archive. Books, images and records can be searched by subject. Records held on external storage require a compatible reader. This session searches the material already held in the archive.';
+  if(/star|sky|light/.test(q))return 'Repeated observations distinguish a moving light from a fixed one. Record its position and the time. A single image is not enough to establish a pattern.';
+  if(/order|pact|rule/.test(q))return 'The Pact governs life within the silo. The Order is a separate body of instructions for those entrusted with it. Possession of a title does not make every record public.';
+  if(/outside|clean/.test(q))return ALGORITHM.topics[1].reply;
+  return 'No specific subject resolved. Try Legacy, stars, Atbash, or the Order. Service information requires its own reference.';
 }

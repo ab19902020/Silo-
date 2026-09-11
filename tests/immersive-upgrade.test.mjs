@@ -21,7 +21,7 @@ globalThis.document={createElement:()=>({getContext:()=>({fillRect(){},strokeRec
 test('every playable resident and department worker has complete conversations before and after the cleaning',()=>{
   const people=[...PLAYABLE_CHARACTERS,...['porter','diner','cafeteria','bazaar','farm','medical','mechanical','workshop','engineer','miner','it','water','recycling'].map(kind=>({id:'crowd-0',name:'Resident',kind}))];
   for(const person of people)for(const cleaned of [false,true]){
-    const text=conversationFor(person,{cleaned,playerName:'Juliette Nichols'});assert.equal(text.name,person.name);assert.equal(text.topics.length,3);assert.equal(new Set(text.topics.map(t=>t.id)).size,3);
+    const text=conversationFor(person,{cleaned,playerName:'Juliette Nichols'});assert.equal(text.name,person.name);assert.equal(text.topics.length,5);assert.equal(new Set(text.topics.map(t=>t.id)).size,5);
     for(const line of [text.role,text.greeting,...text.topics.flatMap(t=>[t.label,t.reply])])assert.ok(typeof line==='string'&&line.length>3&&!line.includes('undefined'));
   }
   assert.match(conversationFor({name:'Miner',kind:'miner'}).topics[0].reply,/Mining/);
@@ -140,7 +140,7 @@ test('Level 19 carries the IT floor, the Head of IT behind a corridor, and the v
   const actions=r=>r.userData.interactions.map(i=>i.action);
   assert.ok(actions(vault).includes('algorithm'),'you cannot address the Algorithm');
   assert.ok(actions(vault).includes('vault-radio'),'the concealed radio is missing');
-  assert.ok(actions(it).includes('it-servers'),'the server room notice is missing');
+  assert.ok(it.userData.interactions.some(i=>i.destination==='room:19:1'),'the server aisle must lead into the vault');
   assert.ok(actions(office).includes('head-of-it'));
   assert.ok(vault.getObjectByName('algorithm-interface'),'the interface is not in the room');
   assert.ok(world.animated.some(a=>a.object.name==='algorithm-interface'),'the interface is not turning');
@@ -159,7 +159,7 @@ test('Level 19 carries the IT floor, the Head of IT behind a corridor, and the v
 });
 
 test('the Algorithm answers, and does not read out television lines',()=>{
-  assert.equal(ALGORITHM.name,'LEGACY');
+  assert.equal(ALGORITHM.name,'THE ALGORITHM');
   assert.ok(ALGORITHM.topics.length>=4);
   for(const t of ALGORITHM.topics){assert.ok(t.label&&t.reply&&t.reply.length>30,`thin reply for ${t.id}`);}
 });

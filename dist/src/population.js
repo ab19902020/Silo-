@@ -4,6 +4,7 @@ import { roomPoint } from './characters.js';
 import { topPoint } from './surface.js';
 import { CharacterBody } from './physics.js';
 import { RESIDENT_CAST, CROWD_APPEARANCES } from './resident-data.js';
+import { residentName } from './resident-stories.js';
 import { createResident, poseResident } from './resident-model.js';
 
 export const CROWD_LIMITS=Object.freeze({low:28,balanced:48,high:72});
@@ -122,7 +123,7 @@ export class Population{
   remove(actor){actor.root.removeFromParent();actor.model.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.dispose();});}
   spawn(r){
     const index=r.seed%CROWD_APPEARANCES.length;
-    const definition=r.definition||{id:`crowd-${index}`,name:r.kind==='porter'?'Silo porter':r.kind==='diner'?'Cafeteria resident':r.kind==='bazaar'?'Market resident':`${r.kind[0].toUpperCase()+r.kind.slice(1)} worker`,height:1.63+(index%5)*.045,appearance:CROWD_APPEARANCES[index]};
+    const definition=r.definition||{id:`crowd-${index}`,name:residentName(r.seed),role:r.kind==='porter'?'Porter':r.kind==='diner'?'Cafeteria resident':`${r.kind[0].toUpperCase()+r.kind.slice(1)} worker`,height:1.63+(index%5)*.045,appearance:CROWD_APPEARANCES[index]};
     const actor=createResident(definition);actor.record=r;actor.root.position.copy(r.position);actor.root.rotation.y=r.heading??(r.seed%628)/100;actor.heading=actor.root.rotation.y;actor.body=new CharacterBody({radius:.26,standHeight:definition.height,stepHeight:.3});actor.body.teleport(r.position.x,r.position.y,r.position.z);actor.tick=0;this.scene.add(actor.root);this.actors.set(r.id,actor);return actor;
   }
   update(dt,body,watch=false,selected=null){
@@ -146,7 +147,7 @@ export class Population{
       const r=a.record,dist=a.root.position.distanceTo(body.position);a.root.visible=r.id!==selected;if(!a.root.visible)continue;
       const cafeteria=this.level===1&&r.position.x>SILO.deckOuter&&-r.position.z<18&&r.position.x<SILO.deckOuter+40;
       const watching=watch&&cafeteria;a.tick+=dt;
-      if(dist<5)this.world.residentInteractions.push({position:a.root.position.clone().add(new THREE.Vector3(0,1.25,0)),label:`Talk to ${a.definition.name}`,hint:a.definition.role||'Silo resident',action:`resident-${r.id}`,actor:r.id,resident:{...a.definition,kind:r.kind}});
+      if(dist<5)this.world.residentInteractions.push({position:a.root.position.clone().add(new THREE.Vector3(0,1.25,0)),label:`Talk to ${a.definition.name}`,hint:a.definition.role||'Silo resident',action:`resident-${r.id}`,actor:r.id,resident:{...a.definition,id:r.definition?.id||r.id,level:r.level,kind:r.kind}});
       const interval=r.id===this.talkingTo?0:dist<16?0:dist<40?1/30:1/15;if(a.tick<interval)continue;const step=Math.min(a.tick,.15);a.tick=0;
       let pose=r.activity,speed=0;desired.set(0,0,0);
       // Whoever you are talking to stops what they were doing and turns to

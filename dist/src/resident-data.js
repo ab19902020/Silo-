@@ -10,7 +10,7 @@ export const RESIDENT_CAST=Object.freeze([
   person('jahns','Ruth Jahns','Mayor',3,0,{skin:0xc19d85,hair:0xbbb9af,outfit:'robe',coat:0x414b49,hairStyle:'bun',female:true,age:.8,chain:true},{height:1.70,activity:'read',opening:true}),
   person('marnes','Sam Marnes','Chief deputy',1,0,{skin:0xb38d72,hair:0x938e7e,outfit:'uniform',coat:0x695945,moustache:true,age:.8},{height:1.78,top:[25,33],opening:true}),
   person('billings','Paul Billings','Deputy · Judicial administrator',1,0,{skin:0x714e39,hair:0x211d1a,outfit:'uniform',coat:0x665a45,beard:.35,hairStyle:'curls'},{height:1.80,top:[29,38]}),
-  person('lukas','Lukas Kyle','IT systems analyst',19,2,{skin:0x947256,hair:0x25201d,outfit:'vest',coat:0x66767b,hairStyle:'waves',beard:.4},{height:1.78,activity:'read'}),
+  person('lukas','Lukas Kyle','IT systems analyst',19,2,{skin:0x947256,hair:0x25201d,outfit:'work',coat:0x8d7950,quilted:true,hairStyle:'waves',beard:.4},{height:1.78,activity:'read'}),
   person('camille','Camille Sims','Former raider · Sims family',15,0,{skin:0x865f47,hair:0x211a18,outfit:'knit',coat:0x8f7970,hairStyle:'longCurls',female:true},{height:1.72}),
   person('meadows','Judge Mary Meadows','Head of Judicial',14,1,{skin:0x845e49,hair:0x393531,outfit:'robe',coat:0xaa9c6c,hairStyle:'curls',female:true,chain:true,age:.4},{height:1.72,activity:'read'}),
   person('carla','Carla McLain','Head of Supply',126,2,{skin:0x835f49,hair:0x42433d,outfit:'work',coat:0x6b7470,hairStyle:'waves',female:true,age:.5},{height:1.68,activity:'work'}),

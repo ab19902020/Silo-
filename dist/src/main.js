@@ -9,7 +9,9 @@ import { CharacterCast, PLAYABLE_CHARACTERS } from './characters.js';
 import { LadderClimb } from './climbing.js';
 import { Population } from './population.js';
 import { CafeteriaOpening, CAFETERIA_START, OPENING_DURATION } from './opening.js';
-import { conversationFor, ALGORITHM } from './conversations.js';
+import { conversationFor, ALGORITHM, algorithmAnswer } from './conversations.js';
+import { LORE } from './environment-lore.js';
+import { ConversationMemory } from './resident-stories.js';
 import { RESIDENT_CAST } from './resident-data.js';
 import { Story, COLLECTABLES, RELICS, CHAPTERS } from './story.js';
 import { Firearms } from './firearms.js';
@@ -27,6 +29,9 @@ const dialogs=[welcome,directory,settings,about,characters,relic,conversation,sa
 let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
 let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null,talking=null,chapterEnteredAt=0,hintUntil=0;
 let terminal=new GeorgeTerminal(),workAction=null;
+let conversationStorage=null;try{conversationStorage=localStorage;}catch{}
+const conversationMemory=new ConversationMemory(conversationStorage);
+function animateAlgorithm(){for(const a of world.animated)if(a.object.name==='algorithm-interface')a.object.userData.respond?.();}
 const inspector=new RelicInspector($('relicCanvas'),$('relicControlsHint'));
 const pausingDialogs=dialogs.filter(d=>d!==conversation);
 let story=null,props=null,drone=null,wasOutside=false,lastChapter=null;
@@ -58,16 +63,21 @@ function updateInterface(time){
 }
 function askTopic(button){
   if(!button)return;
-  $('dialogueLine').textContent=button.dataset.reply;
+  if(!button._topic&&!button.dataset.reply){button.click();return;}
+  $('dialogueLine').textContent=button._topic?conversationMemory.reply(talking?.id,button._topic):button.dataset.reply;
+  if(talking?.id==='algorithm')animateAlgorithm();
   for(const other of $('dialogueChoices').children)other.setAttribute('aria-pressed',String(other===button));
   audio.click();
 }
 function startConversation(person,actor=null){
   if(person.id==='billings'&&story?.story){billingsConversation();return;}
-  const text=person===ALGORITHM?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name});
+  const visits=conversationMemory.visit(person.id);
+  const text=person.topics?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name,visits});
+  $('algorithmQuery').hidden=person.id!=='algorithm';conversation.classList.toggle('archive-conversation',person.id==='algorithm');
+  $('dialogueHint').innerHTML='<kbd>1</kbd>–<kbd>'+text.topics.length+'</kbd> ask <span>·</span> <kbd>E</kbd> or <kbd>Esc</kbd> step away';
   $('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;$('dialogueChoices').replaceChildren();
   text.topics.forEach((topic,i)=>{
-    const b=document.createElement('button');b.dataset.reply=topic.reply;b.setAttribute('aria-pressed','false');
+    const b=document.createElement('button');b.dataset.reply=topic.reply;b._topic=topic;b.setAttribute('aria-pressed','false');
     const key=document.createElement('kbd');key.textContent=String(i+1);
     b.append(key,document.createTextNode(topic.label));
     b.addEventListener('click',()=>askTopic(b));$('dialogueChoices').append(b);
@@ -76,16 +86,18 @@ function startConversation(person,actor=null){
   // person turns to face you and the camera settles on them while you talk.
   hudOpen=false;document.body.classList.remove('hud-open');
   for(const d of pausingDialogs)if(d.open)d.close();
-  talking={actor,name:text.name};population.talkingTo=actor;
+  talking={actor,name:text.name,id:person.id};population.talkingTo=actor;
   if(!conversation.open)conversation.show();
   document.body.classList.add('talking');audio.click();syncPause();
 }
+$('algorithmQuery').addEventListener('submit',event=>{event.preventDefault();const input=$('archiveQuestion');if(!input.value.trim())return;$('dialogueLine').textContent=algorithmAnswer(input.value,{freeRoam:!story?.story,blueprint:story?.hasFlag('blueprint-found')});input.value='';animateAlgorithm();audio.click();});
 function endConversation(){
   if(!talking)return;
   talking=null;population.talkingTo=null;conversation.close();
   document.body.classList.remove('talking');syncPause();if(started)canvas.focus();
 }
 function billingsConversation(){
+  $('algorithmQuery').hidden=true;conversation.classList.remove('archive-conversation');
   $('speakerName').textContent='Officer Paul Billings';$('speakerRole').textContent='SHERIFF’S STATION';
   $('dialogueLine').textContent=story.hasFlag('billings-helped')?'I have put my name against that weapon. Get your suit, and come back with something we can believe.':'There are rules about the things you have been carrying. Tell me why I should hear you out.';
   const choices=$('dialogueChoices');choices.replaceChildren();
@@ -497,7 +509,6 @@ const inspectionText={
   'silo17-crate':'Tools are wrapped in oilcloth above ruined ration packets. Someone kept preparing for a repair crew long after the voices stopped.',
   generator:'Six removable panels protect the turbine. The rear panel is held open for inspection; the rotor, gantry and crane can be seen around the housing.',
   water:'Filter vessels, treatment lines and pump controls keep water circulating through the silo. This department is associated with Level 55.',
-  'it-servers':'The server room is behind this door and only IT opens it. Level 19 is the department’s floor in the published material; the room plan beyond that is inferred.',
   'head-of-it':'The Head of IT works apart from the floor, down the corridor from it. The desk, the shelved records and the motto are reconstructed.',
   'vault-radio':'A panel in the vault’s server steps that does not sit quite flush with the rest. Behind it is a radio set, and it is not tuned to anything inside this silo.',
   surveillance:'The concealed observation room watches the residences. Its exact floor plan is reconstructed.',
@@ -520,6 +531,7 @@ function use(){
   if(interaction.action==='enter-silo17'){travel('silo17');return;}
   if(interaction.action?.startsWith('pipe-')){const step=interaction.action.slice(5);if(story.story&&(!story.has('crowbar')||!story.has('pipekit'))){notify('Bring the crowbar and Water Filtration’s service kit before opening the line.');return;}workAction={until:performance.now()+2400,step};notify(step==='cover'?'Levering the inspection cover…':step==='isolate'?'Turning the isolation wheel…':step==='collar'?'Seating the split collar…':'Tightening the collar to the witness mark…');return;}
   if(interaction.resident){startConversation(interaction.resident,interaction.actor||null);return;}
+  if(interaction.action?.startsWith('lore:')){const entry=LORE[interaction.action.slice(5)];if(entry)startConversation(entry);return;}
   if(interaction.action==='algorithm'){startConversation(ALGORITHM);return;}
   if(interaction.ladder){
     const ladder=world.underground.ladders.find(l=>l.id===interaction.ladder);
@@ -620,6 +632,7 @@ addEventListener('keydown',e=>{
   // The conversation panel is not modal, so it holds focus while the silo runs.
   // Bailing out on any dialog ancestor meant 1-4 and Esc died inside it.
   const inPanel=e.target.closest('dialog');
+  if(e.code==='Escape'&&talking&&inPanel===conversation){e.preventDefault();endConversation();return;}
   if(e.target.matches('input,select,textarea')||inPanel&&inPanel!==conversation||e.code==='Space'&&e.target.matches('button'))return;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
   if(e.repeat){keys.add(e.code);return;}

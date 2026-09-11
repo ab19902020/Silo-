@@ -49,10 +49,13 @@ export function buildTopFloor(m) {
     // black table read as three pieces of crockery, and the one you have to
     // find is the middle one. That table is left clear.
     if(x===BOOK_TABLE[0]&&z===BOOK_TABLE[1])continue;
-    k.cylinder('white',x+.6,.91,z,.11,.13);k.cylinder('white',x-.6,.84,z,.22,.02);
+    k.bevel('metal',x,TABLE_TOP+.009,z,1.65,.018,.64);
+    k.cylinder('white',x+.6,TABLE_TOP+.018+.065,z,.085,.13);k.cylinder('white',x-.6,TABLE_TOP+.028,z,.22,.02);
   }
   for(const x of [-15.8,-12.5,-9.2]){box('green',x,.7,7,3.1,1.4,1.5);k.bevel('metal',x,1.45,7,3.2,.1,1.6);}
   for(let j=0;j<10;j++){k.cylinder('white',-16+j*.7,1.57,7,.2,.15);}
+  k.box('darkMetal',0,4.1,1.10,5.2,.82,.10);for(const x of [-2,2])k.beam('metal',[x,4.48,1.10],[x,8.3,1.10],.016);
+  k.beam('metal',[15,3.95,30],[15,8.3,30],.018);
   label('CAFETERIA',0,4.1,1,5,.7);label('SHERIFF  →',15,3.7,30,3.1,.4,Math.PI/2);
   // A 30 m rounded wall display, continuously fed by the exterior camera.
   const frame=new THREE.Mesh(makeDisplayGeometry(31.1,7.3),m.darkMetal);frame.position.set(0,.35,39.56);frame.rotation.y=Math.PI;frame.userData.ownedGeometry=true;root.add(frame);

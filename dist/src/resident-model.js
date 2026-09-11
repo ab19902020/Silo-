@@ -344,6 +344,8 @@ export function buildResidentModel(definition,{suit=false}={}){
     torus(0,.953,0,.170*wide,.017,dark,'Hips',Math.PI/2,1,.70);box(0,.953,.126,.050,.042,.018,new THREE.Color(0x9c8a60),'Hips');
     if(a.outfit==='uniform'){ell(.112,1.312,.159,.024,.033,.006,new THREE.Color(0xbca16a),'Chest',10);box(-.17,.92,.044,.065,.12,.075,dark,'Hips');}
     if(a.outfit==='work'){box(-.18,.91,.01,.075,.13,.10,new THREE.Color(0x67513c),'Hips');for(let i=0;i<3;i++)box(-.193+i*.013,.96,.066,.009,.15,.015,dark,'Hips');}
+    if(a.outfit==='work'||a.outfit==='uniform')for(const side of [-1,1]){box(side*.092,1.292,.151,.09,.11,.012,coat.clone().multiplyScalar(.87),'Chest');box(side*.092,1.345,.16,.098,.028,.018,coat,'Chest');}
+    if(a.quilted)for(let i=0;i<7;i++)for(const side of [-1,1])box(side*(.026+i*.018),1.15,.148,.002,.24,.005,coat.clone().multiplyScalar(.77),torso);
     if(a.chain){for(let i=0;i<17;i++){const t=i/16*Math.PI;ell(Math.cos(t)*.098,1.424-Math.sin(t)*.136,.155,.012,.012,.004,new THREE.Color(0xa98c52),'Chest',8);}ell(0,1.267,.16,.025,.035,.006,new THREE.Color(0xb6a167),'Chest');}
     if(a.outfit==='medical'){for(const sign of [-1,1])tube(V(sign*.044,1.46,.10),V(sign*.07,1.22,.152),.006,.006,dark,'Chest',6);ell(.07,1.218,.16,.018,.018,.004,dark,'Chest');}
   }

@@ -1,11 +1,13 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit,addSign,random } from './kit.js';
+import { SILO } from './data.js';
 
 // Set dressing follows the filmed material language: repairable domestic
 // objects, fluted concrete, enamel equipment and exposed building services.
 // Unpublished room plans remain reconstructed, as recorded in WORLD.md.
 export function pendant(k,x,y,z,shade='green',cold=false){
-  k.cylinder('darkMetal',x,y+.43,z,.012,.8);k.cylinder('darkMetal',x,y+.85,z,.11,.035);
+  const top=SILO.roomHeight-.05;
+  k.cylinder('darkMetal',x,(y+.2+top)/2,z,.012,top-y-.2);k.cylinder('darkMetal',x,top,z,.11,.035);
   k.lathe(shade,x,y,z,[[.33,-.045],[.31,0],[.18,.13],[.09,.2],[0,.18]]);k.cylinder('darkMetal',x,y-.05,z,.34,.035);
   k.cylinder(cold?'coldLamp':'lamp',x,y-.075,z,.27,.018);k.sphere('lamp',x,y-.1,z,.075,.035,.075);
 }
@@ -19,9 +21,9 @@ function place(k,source,x,y,z,ry=0){const matrix=new THREE.Matrix4().compose(new
 function bookStack(k,x,y,z,seed=1){const rng=random(seed);for(let j=0;j<4;j++){const w=.26+rng()*.12;k.bevel(j%2?'paper':'fabric',x+(rng()-.5)*.055,y+j*.045,z,w,.04,.23,(rng()-.5)*.15);k.box('paper',x,y+.014+j*.045,z+.122,w-.025,.015,.008);}}
 export function mug(k,x,y,z,color='white'){k.cylinder(color,x,y+.06,z,.067,.12);k.cylinder('black',x,y+.125,z,.052,.006);k.torus(color,x+.071,y+.065,z,.044,.013);}
 export function deskDressing(k,x,z,seed=0){
-  k.bevel('paper',x-.55,.896,z+.03,.36,.012,.27,.08);for(let j=0;j<5;j++)k.box('darkMetal',x-.55,.903,z-.045+j*.035,.24,.001,.003,.08);
-  k.cylinder('green',x+.70,.96,z-.19,.058,.15);for(let j=0;j<4;j++)k.cylinder(j%2?'wood':'brass',x+.67+j*.017,1.09,z-.19,.006,.20);
-  mug(k,x+.65,.887,z+.18);bookStack(k,x-.68,.89,z-.24,seed);
+  k.bevel('paper',x-.55,.886,z+.03,.36,.012,.27,.08);for(let j=0;j<5;j++)k.box('darkMetal',x-.55,.893,z-.045+j*.035,.24,.001,.003,.08);
+  k.cylinder('green',x+.70,.955,z-.19,.058,.15);for(let j=0;j<4;j++)k.cylinder(j%2?'wood':'brass',x+.67+j*.017,1.09,z-.19,.006,.20);
+  mug(k,x+.65,.88,z+.18);bookStack(k,x-.68,.90,z-.24,seed);
 }
 export function homeDetails(k,root,x,base,seed){
   // Raised oval ceramic backsplash, visible in the apartment references.
@@ -49,7 +51,7 @@ export function homeDetails(k,root,x,base,seed){
 export function dressRoom(k,root,type,level,wing){
   const lightPoints=[],warm=level<50?'enamel':level>100?'rust':'green';
   // Kept against the outer walls, above the circulation clearance.
-  for(const side of [-1,1]){
+  for(const side of (type==='vault'?[]:[-1,1])){
     const x=side*9.6;
     for(const z of [2.2,8.5,15,21.8]){
       k.bevel(warm,x,2.14,z,.23,.65,.56);k.box('black',x-side*.13,2.14,z,.01,.42,.35);
@@ -58,6 +60,7 @@ export function dressRoom(k,root,type,level,wing){
     }
     // Cable trays, their brackets, and a narrow continuous pipe identification stripe.
     k.box('darkMetal',side*8.75,5.15,12,.38,.065,23.5);
+    for(const z of [2,7,12,17,22]){k.box('metal',side*9.25,5.10,z,1.3,.065,.10);k.box('metal',side*9.83,4.95,z,.075,.36,.16);}
     for(let z=.8;z<24;z+=.7)k.box('metal',side*8.75,5.24,z,.42,.018,.025);
     for(const dx of [-.1,0,.1])k.cylinder('black',side*8.75+dx,5.22,12,.028,23.5,Math.PI/2);
   }
@@ -78,11 +81,12 @@ export function dressRoom(k,root,type,level,wing){
     // Dark timber slats and curved cast-concrete reveals frame the civic rooms.
     for(const s of [-1,1])for(let z=2;z<24;z+=.23)k.box('wood',s*9.84,1.7,z,.04,3.25,.12);
     for(const s of [-1,1]){k.portal('concrete',s*6.5,0,23.69,4.2,4.65,.28,0,.75,.18);for(let j=0;j<8;j++)k.box('brass',s*6.5-1.65+j*.47,1.1,23.51,.035,1.8,.035);}
-    bookStack(k,.65,.99,18,level);k.box('fabric',-.75,.99,18,1.04,.025,.64);mug(k,1.65,1.0,18.2);
+    const deskZ=level===19?15:18,deskTop=level===19?.83:.97;
+    bookStack(k,.65,deskTop+.02,deskZ,level);k.box('fabric',-.05,deskTop+.0125,deskZ,1.04,.025,.64);mug(k,1.5,deskTop,deskZ+.35);
     wallGauge(k,-7.6,3.5,23.68,.38,Math.PI);
   }
-  if(['it','surveillance','janitorial','vault','sheriff'].includes(type)){
-    const desks=type==='it'?[5,9,13,17]:type==='sheriff'?[6,10]:[];
+  if(['it','surveillance','janitorial','sheriff'].includes(type)){
+    const desks=type==='sheriff'?[6,10]:[];
     for(const z of desks)for(const x of (type==='sheriff'?[-6,-2]:[-5,0,5]))deskDressing(k,x,z,level+z+x);
     // Rack identification, wire conduits and slotted ventilation grilles.
     for(const s of [-1,1])for(const z of [5,11,17,22]){
