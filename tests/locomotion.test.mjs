@@ -48,3 +48,67 @@ test('landing restores terrain foot placement and contact sounds after a fall',a
   for(let i=0;i<210;i++){const airborne=i>=50&&i<85;z+=1.45/60;gltf.scene.position.set(0,airborne?.8:0,z);gltf.scene.updateMatrixWorld(true);motion.update(1/60,{speed:1.45,position:gltf.scene.position,grounded:!airborne,ground:()=>0});}
   assert.ok(motion.air<.001);assert.ok(motion.stepCount>3);assert.ok(motion.footContacts.some(f=>f.planted));assert.ok(motion.legs.every(l=>l.error<.01));
 });
+
+// A swing that arrives with zero speed puts the foot down while it is still
+// travelling forward with the body, so it has to stop dead the instant it
+// lands. Measured in the model's own space, where a planted foot travels
+// backwards at exactly the body's speed, the frame before touchdown used to
+// read +0.25 m/s at a walk — still going forwards — and then jumped 1.58 m/s
+// in a single frame. At a run it jumped 3.87. That is the skate on every
+// step. Giving the swing the same end velocity as the stance it hands over to
+// means the foot is already travelling with the ground when it arrives.
+test('the foot is already travelling with the ground at the moment it lands',async()=>{
+  for(const [id,h] of definitions){
+    for(const [speed,jumpLimit] of [[1.45,1.0],[3.8,1.5]]){
+      const {gltf,motion}=await person(id,h);
+      const dt=1/120,local=new T.Vector3();
+      let z=0,previous=null;const series=[];
+      for(let i=0;i<1200;i++){
+        z+=speed*dt;gltf.scene.position.set(0,0,z);gltf.scene.updateMatrixWorld(true);
+        motion.update(dt,{speed,position:gltf.scene.position,grounded:true,ground:()=>0});
+        motion.bones.FootL.getWorldPosition(local);
+        const forward=local.z-z;
+        series.push({v:previous===null?0:(forward-previous)/dt,
+          planted:!!motion.footContacts.find(f=>f.side==='L')?.planted});
+        previous=forward;
+      }
+      // Only once the damped pace has settled, so that is not what is measured.
+      let landings=0,worstJump=0,worstApproach=-Infinity;
+      for(let i=600;i<series.length-1;i++){
+        if(!series[i].planted||series[i-1].planted)continue;
+        landings++;
+        worstJump=Math.max(worstJump,Math.abs(series[i].v-series[i-1].v));
+        worstApproach=Math.max(worstApproach,series[i-1].v);
+      }
+      assert.ok(landings>3,`${id} at ${speed} m/s: only ${landings} touchdowns to measure`);
+      assert.ok(worstApproach<0,
+        `${id} at ${speed} m/s: the foot is still going forwards at ${worstApproach.toFixed(2)} m/s when it lands`);
+      assert.ok(worstJump<jumpLimit,
+        `${id} at ${speed} m/s: the foot changes speed by ${worstJump.toFixed(2)} m/s in one frame as it lands`);
+    }
+  }
+});
+
+// The body has to put its weight over the foot that is holding it up. Without
+// that the hips travel down a rail and no amount of leg animation reads as
+// weight. Measured human excursion is about 4.5 cm side to side at a walk and
+// roughly half that at a run, where the feet land nearer the midline.
+test('the pelvis carries across onto whichever leg is standing',async()=>{
+  for(const [id,h] of definitions){
+    const range=speed=>{
+      const motion=speed.motion,dt=1/120;let z=0,lo=Infinity,hi=-Infinity;
+      for(let i=0;i<900;i++){
+        z+=speed.v*dt;speed.scene.position.set(0,0,z);speed.scene.updateMatrixWorld(true);
+        motion.update(dt,{speed:speed.v,position:speed.scene.position,grounded:true,ground:()=>0});
+        if(i>450){lo=Math.min(lo,motion.bones.Hips.position.x);hi=Math.max(hi,motion.bones.Hips.position.x);}
+      }
+      return hi-lo;
+    };
+    const walk=await person(id,h),run=await person(id,h);
+    const atWalk=range({v:1.45,motion:walk.motion,scene:walk.gltf.scene});
+    const atRun=range({v:3.8,motion:run.motion,scene:run.gltf.scene});
+    assert.ok(atWalk>.025&&atWalk<.075,`${id}: ${(atWalk*100).toFixed(1)} cm of hip sway at a walk`);
+    assert.ok(atRun<atWalk,`${id}: a run sways as wide as a walk`);
+    assert.ok(atRun>.008,`${id}: the run has no weight shift at all`);
+  }
+});

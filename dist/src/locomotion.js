@@ -28,6 +28,16 @@ export const MOTION_CLIPS=Object.freeze({Idle:3.2,Walk:1.05,Run:.72,StairUp:1.2,
 // of its cycle on the ground, which buys stride length for free.
 const STANCE=run=>lerp(.62,.35,run);
 const REACH=run=>lerp(.49,.62,run);
+// The foot's travel through stance is not centred on the hip. The hip passes
+// over the planted foot at about 40% of stance, not half way, so the foot is
+// planted nearer the body than it is left behind: measured, a 2 m/s walk puts
+// the heel down about 0.40 m ahead and takes the toe off about 0.62 m behind.
+// Placing it symmetrically is what forced the pelvis to sink — reaching the
+// full half-stride ahead with a straight leg costs L - sqrt(L^2 - reach^2),
+// which was 17 cm a step at a brisk walk and made the walk a pogo stick.
+// The total travel is unchanged, so the stride and the phase advance still
+// agree and the foot still does not skate.
+const BIAS=run=>lerp(.22,.08,run);
 // Nobody takes a full stride up a staircase. Shortening it on a slope is both
 // what people do and what keeps the ankle inside the leg's reach on a tread.
 // The pose and the phase advance must apply this identically.
@@ -44,6 +54,9 @@ export class SkeletalMotion{
     // What the gait is actually built on: how far this rig's leg reaches, not
     // how tall it happens to be.
     this.legLength=Math.min(...this.legs.map(l=>l.a+l.b));
+    // Which way the pelvis leans to stand over the first leg. Taken from the
+    // rig rather than assumed, so a mirrored skeleton does not sway backwards.
+    this.stanceSide=Math.sign(this.legs[0].ankle.x)||1;
     this.phase=0;this.time=0;this.weight=0;this.run=0;this.pace=1;this.slope=0;this.air=0;this.unsupported=0;this.lastPosition=null;this.state='Idle';this.lastHeading=0;this.footContacts=[];this.stepCount=0;this.rise=0;this.landing=0;
   }
   reset(){this.lastPosition=null;this.weight=0;this.air=0;this.unsupported=0;this.stepCount=0;this.rise=0;this.landing=0;for(const leg of this.legs){leg.anchor=null;leg.stance=false;}}
@@ -91,6 +104,13 @@ export class SkeletalMotion{
     hips.position.y-=h*.012*air;
     hips.position.y-=L*.30*impact;                                  // knees absorb the landing
     hips.position.x+=Math.sin(this.time*Math.PI*2/3.2)*h*.003*(1-weight);
+    // The pelvis shifts across onto whichever leg is carrying, once per step,
+    // because the body has to put its weight over the foot that is holding it
+    // up. Measured excursion is about 4.5 cm side to side at a walk and half
+    // that at a run, where the feet land nearer the midline. Without it the
+    // hips travel down a rail and no amount of leg animation reads as weight.
+    const carry=Math.cos(2*Math.PI*(phase-stance*.5));
+    hips.position.x+=this.stanceSide*L*lerp(.027,.012,run)*carry*weight;
     // Pelvic rotation about the spine. Kept small deliberately: the foot goals
     // in this rig are placed in model space and do not follow the pelvis, so
     // turning it further pulls the hips off their own feet and the stance leg
@@ -107,7 +127,22 @@ export class SkeletalMotion{
     this.rotate('Neck',.012*weight);
     for(const [i,leg] of this.legs.entries()){
       const t=cycle(phase+i*.5),on=t<stance,u=on?t/stance:(t-stance)/(1-stance);
-      let z=on?reach*(1-2*u):reach*(-1+2*ease(u));
+      // Where the foot is planted and where it leaves, biased backward.
+      const bias=BIAS(run),front=reach*(1-bias),back=-reach*(1+bias);
+      // Through stance the foot tracks the ground exactly. Through swing it
+      // used to be a smoothstep, which arrives with zero speed — so the foot
+      // touched down travelling forward with the body and then stopped dead,
+      // a 1.6 m/s jump at a walk and 4.4 m/s at a run, on every step. A cubic
+      // that leaves and arrives at the ground's own speed removes that, and
+      // the overshoot it produces late in swing is the retraction a real foot
+      // makes just before it lands.
+      // The speed the foot is travelling as stance hands over to swing, and
+      // as swing hands back. Named for the handover and not for `slope`,
+      // which is the ground's and is still needed further down this loop.
+      const handover=-(front-back)*(1-stance)/stance;
+      let z;
+      if(on)z=front+(back-front)*u;
+      else {const u2=u*u,u3=u2*u;z=(2*u3-3*u2+1)*back+(-2*u3+3*u2)*front+(2*u3-3*u2+u)*handover;}
       const lift=on?0:Math.sin(Math.PI*u)**1.5*h*lerp(.044,.10,run)*weight*(1-air);
       // A foot held flat through the whole cycle is what makes a walk read as
       // a shuffle. Heel lands first with the toe up, the sole rolls flat, then
@@ -136,25 +171,50 @@ export class SkeletalMotion{
       if(air){const ascent=ease((rise+.75)/1.5);ankle.y+=h*lerp(.018,.15,ascent)*air;ankle.z+=h*lerp(.040,-.08,ascent)*air+(i===0?1:-1)*h*.018*air*weight;}
       this.model.updateWorldMatrix(true,true);const goal=ankle.applyMatrix4(this.model.matrixWorld);
       const canLock=lock&&weight>.45&&air<.10&&Math.abs(turn)<2.4;
+      let floorUnder=null;
       if(ground&&air<.10){
-        const floor=ground(goal.x,goal.z);if(Number.isFinite(floor))goal.y=floor+leg.ankle.y+lift+toe+slopeLift;
+        const floor=ground(goal.x,goal.z);if(Number.isFinite(floor)){goal.y=floor+leg.ankle.y+lift+toe+slopeLift;floorUnder=floor;}
         if(canLock&&on){
           if(!leg.stance||!leg.anchor||leg.anchor.distanceTo(goal)>.55){leg.anchor=goal.clone();}
           goal.x=leg.anchor.x;goal.z=leg.anchor.z;
-          const anchorFloor=ground(goal.x,goal.z);if(Number.isFinite(anchorFloor))goal.y=anchorFloor+leg.ankle.y+toe;
+          const anchorFloor=ground(goal.x,goal.z);if(Number.isFinite(anchorFloor)){goal.y=anchorFloor+leg.ankle.y+toe;floorUnder=anchorFloor;}
         }else leg.anchor=null;
       }
       leg.justLanded=canLock&&on&&!leg.stance;leg.stance=canLock&&on;
       const q=this.model.getWorldQuaternion(new THREE.Quaternion())
         .multiply(new THREE.Quaternion().setFromAxisAngle(sideways,roll))
         .multiply(this.rest['Foot'+leg.side].worldQ);
-      leg.goal={goal,q,swing:reach>1e-5?z/reach:0,i};
+      leg.goal={goal,q,swing:reach>1e-5?z/reach:0,i,on,u,floorUnder};
     }
     // Lower the pelvis only as much as the measured limbs require. This lets
     // the trailing foot stay on a lower tread instead of stretching the knee
     // or lifting the heel through the air as the capsule climbs a step.
     let drop=0;
-    for(const leg of this.legs){const hip=this.bones['Thigh'+leg.side].getWorldPosition(new THREE.Vector3()),goal=leg.goal.goal,flat=(hip.x-goal.x)**2+(hip.z-goal.z)**2,vertical=Math.sqrt(Math.max(.01,(leg.a+leg.b-.004)**2-flat));drop=Math.max(drop,hip.y-goal.y-vertical);}
+    // Only a foot that is carrying can pull the pelvis down. A foot in the air
+    // does not need to be reached — it can simply swing shorter — and letting
+    // it ask was most of the bounce: the moment the trailing foot left the
+    // ground it was still at its furthest back, so the deepest reach of the
+    // whole cycle was being demanded of a leg with no weight on it. The demand
+    // is held through stance, released over the first quarter of swing and
+    // taken up again over the last, so the pelvis is already low enough when
+    // the foot lands rather than snapping down to meet it.
+    //
+    // The release is off the moment the two feet are on different floors: on a
+    // stair the swinging foot really is reaching for a tread the pelvis has to
+    // come down to, which is what the depth below is for. The treads are
+    // compared directly rather than inferred from the slope, which reads near
+    // zero on a flight of flat ones.
+    for(const [i,leg] of this.legs.entries()){
+      const other=this.legs[1-i].goal;
+      const stepped=leg.goal.floorUnder!=null&&other?.floorUnder!=null
+        &&Math.abs(leg.goal.floorUnder-other.floorUnder)>.06;
+      const {on,u,goal}=leg.goal,hold=on||stepped?1:Math.max(1-u/.25,ease((u-.75)/.25));
+      if(hold<=0)continue;
+      const hip=this.bones['Thigh'+leg.side].getWorldPosition(new THREE.Vector3()),
+        flat=(hip.x-goal.x)**2+(hip.z-goal.z)**2,
+        vertical=Math.sqrt(Math.max(.01,(leg.a+leg.b-.004)**2-flat));
+      drop=Math.max(drop,hold*(hip.y-goal.y-vertical));
+    }
     // On the flat a deep sink is the kneeling walk and is capped hard. Climbing
     // a stair genuinely needs the depth, so the cap opens up with the slope.
     // The cap is a backstop, not the thing that keeps the walk upright — the

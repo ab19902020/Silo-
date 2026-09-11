@@ -66,3 +66,41 @@ test('every supplied skeleton has finite, human-scale climbing poses',async()=>{
     }
   }
 });
+
+// None of the three supplied bodies is watertight. Per scripts/mesh-report.mjs,
+// 52% of Bernard's edges and 47% of Sims' have one triangle on them against 18%
+// of Juliette's, and where the surface is missing on both sides of him the room
+// shows straight through the man. DoubleSide above catches most of it — a
+// missing front face still shows the inside of the back — and the rest is
+// backed by drawing the same skinned geometry again just inside the surface.
+// Rendered at 900px against a flat backdrop, that took Bernard from 0.64% of
+// his torso see-through to 0.05% and Sims from 0.23% to 0.03%.
+test('every supplied body is backed, so a gap in the mesh shows cloth and not the room',async()=>{
+  for(const def of CHARACTERS){
+    const {gltf}=await geometryOnly(def.id),actor=actorFrom(gltf,def);
+    const bodies=actor.meshes.filter(m=>m.isSkinnedMesh),linings=[];
+    actor.root.traverse(o=>{if(o.isSkinnedMesh&&o.name.endsWith('-lining'))linings.push(o);});
+    assert.equal(linings.length,bodies.length,`${def.id}: ${bodies.length} bodies but ${linings.length} linings`);
+    for(const lining of linings){
+      const outer=bodies.find(m=>`${m.name}-lining`===lining.name);
+      assert.ok(outer,`${def.id}: ${lining.name} does not name a body it backs`);
+      // Shared, not copied: a second 90,000-triangle buffer per character is
+      // not worth paying for, and a copy would drift out of step with the skin.
+      assert.equal(lining.geometry,outer.geometry,`${def.id}: the lining copies the geometry`);
+      assert.equal(lining.skeleton,outer.skeleton,`${def.id}: the lining is on its own skeleton`);
+      assert.equal(lining.material.side,THREE.DoubleSide,`${def.id}: the lining is one-sided`);
+      assert.equal(lining.material.transparent,false,`${def.id}: the lining is see-through itself`);
+      assert.equal(lining.castShadow,false,`${def.id}: the lining casts a second shadow`);
+      assert.equal(lining.frustumCulled,false,`${def.id}: the lining culls away from its body`);
+      // The inset has to be applied before the skin deforms the vertex. Offset
+      // after skinning it is rotated twice and the lining walks out of the body.
+      const shader={uniforms:{},vertexShader:'#include <begin_vertex>\n#include <skinning_vertex>'};
+      lining.material.onBeforeCompile(shader);
+      const inset=shader.uniforms.uInset?.value;
+      assert.ok(inset>.002&&inset<.02,`${def.id}: a ${inset} m inset is outside a garment's thickness`);
+      assert.ok(/transformed\s*-=\s*normal\s*\*\s*uInset/.test(shader.vertexShader),`${def.id}: the lining is not inset at all`);
+      assert.ok(shader.vertexShader.indexOf('uInset;')<shader.vertexShader.indexOf('skinning_vertex'),
+        `${def.id}: the lining is inset after the skin, so it will drift as the body moves`);
+    }
+  }
+});

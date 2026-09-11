@@ -14,6 +14,34 @@ See [this release's changes and validation limits](docs/relic-world-polish.md),
 [the mystery route and research](docs/mystery-expansion.md), and
 [agent integration history](docs/AGENT_COORDINATION.md).
 
+## Solid bodies and a better walk
+
+- **Bernard and Sims are solid now.** Both rendered partly see-through, and it
+  was never the materials — all three bodies are one opaque mesh with correct
+  indices and clean skin weights. The meshes are not watertight: 52% of
+  Bernard's edges and 47% of Sims' have only one triangle on them, against 18%
+  of Juliette's, and 7.1% of Bernard's figure was missing its front surface
+  entirely. What you were
+  seeing through those gaps was the inside of his own back, which is why he
+  read as translucent all over rather than as a body with holes in it. The
+  same skinned geometry is now drawn a second time six millimetres inside the
+  surface, reading the body's own texture, so a gap shows cloth instead of the
+  room. Bernard's torso goes from 0.64% see-through to 0.05%, Sims' from 0.23%
+  to 0.03%.
+- **The foot no longer lands while it is still moving forwards.** The swing
+  arrived with zero speed, so the foot touched down travelling forward with
+  the body and had to stop dead — a 1.6 m/s jump at a walk and 3.9 at a run,
+  on every step. It now leaves and arrives at the ground's own speed.
+- **The hips carry across onto the leg that is standing**, about 4.5 cm at a
+  walk and 2 cm at a run, as a person does. There was no lateral movement at
+  all before, and that is most of what made the walk read as mechanical.
+- **Less of the kneeling walk.** The foot is planted nearer the body than it
+  is left behind, and a foot in the air no longer drags the pelvis down to
+  meet it. All of this is in the one procedural gait, so it reaches the player,
+  the named cast and every resident in the silo at once.
+
+See [the body and gait notes](docs/bodies-and-gait.md).
+
 ## Talking to people, and the book in your hand
 
 - **Everyone named has their own questions.** The dialogue was one list of five
