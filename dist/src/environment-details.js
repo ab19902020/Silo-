@@ -171,6 +171,17 @@ export function dressCafeteria(k,root,tables={}){
   root.userData.detailRevision=2;
 }
 
+// The one place on a bazaar counter that is deliberately kept clear.
+//
+// Two passes dress these counters — bazaar.js lays the stall's own goods and
+// this file lays the trays over the top — so a small object put down on one
+// has no chance unless both of them leave it room. George's watch is here, and
+// before it was given the space it hung ten and a half centimetres above the
+// counter between two bolts of cloth, which is why nobody could find it.
+//
+// The surface is .835: table() in kit.js beds its top at .79 with a .09 rise.
+export const REPAIR_COUNTER=Object.freeze({x:6.52,z:6.35,surface:.835,top:.855,clear:.30});
+
 export function dressBazaar(k,root){
   for(const side of [-1,1])for(let row=0;row<3;row++){
     const z=4.5+row*6.55,x=side*6.6,front=side*3.3,ry=side===1?-Math.PI/2:Math.PI/2;
@@ -178,7 +189,15 @@ export function dressBazaar(k,root){
     for(let j=0;j<14;j++){const zz=z-2.56+j*.395;k.bevel(row%2?'rug':'fabric',front-side*.7,3.15,zz,.66,.2,.37);}
     for(const dz of [-1.3,1.3])k.box('darkMetal',front,1.48,z+dz,.075,2.9,.075);
     k.bevel('enamel',side*8.83,1.0,z-1.7,.80,.3,.50);wallGauge(k,side*8.83,1.24,z-1.96,.14,Math.PI);
-    for(let j=0;j<3;j++){const xx=x-1.3+j*1.25;k.bevel('wood',xx,.92,z+1.85,1.07,.19,.76);for(let n=0;n<5;n++)k.box('wood',xx-.42+n*.21,1.01,z+2.22,.06,.2,.035);}
+    for(let j=0;j<3;j++){
+      const xx=x-1.3+j*1.25;
+      // The tray that would stand over the cleared space is left out, or the
+      // watch is under it. A tray is 1.07 by .76, so half of it plus the space
+      // is how close its centre may come.
+      if(Math.abs(xx-REPAIR_COUNTER.x)<.535+REPAIR_COUNTER.clear
+        &&Math.abs(z+1.85-REPAIR_COUNTER.z)<.38+REPAIR_COUNTER.clear)continue;
+      k.bevel('wood',xx,.92,z+1.85,1.07,.19,.76);for(let n=0;n<5;n++)k.box('wood',xx-.42+n*.21,1.01,z+2.22,.06,.2,.035);
+    }
     for(let j=0;j<8;j++){const zz=z-2.0+j*.48;k.cylinder('enamel',side*9.21,1.07,zz,.09,.24);k.cylinder('brass',side*9.21,1.20,zz,.095,.025);}
     addSign(root,row===0?'DAILY ALLOCATION':row===1?'REPAIR & REUSE':'COLLECTIONS',[front-side*.45,1.04,z-2.05],.87,.27,ry,{background:'#c2b994',color:'#363c31',glow:.05});
   }

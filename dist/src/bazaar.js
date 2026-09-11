@@ -1,6 +1,25 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit, addSign, fixture, table, shelf, pipe, random } from './kit.js';
-import { dressBazaar } from './environment-details.js';
+import {dressBazaar, REPAIR_COUNTER} from './environment-details.js';
+
+// Where the trader keeps what has been left with her. The numbers live in
+// environment-details.js, because that file dresses this counter too and both
+// passes have to leave the same space alone.
+function repairDrop(k){
+  const {x,z,surface,top}=REPAIR_COUNTER;
+  // A pale mat, because you do not lay a customer's wristwatch face down on
+  // bare steel — and because a small dark object on a dark counter in a dim
+  // market is exactly the thing nobody can find. The mat is what makes it
+  // read from the doorway.
+  k.bevel('linen',x,(surface+top)/2,z,.52,top-surface,.34);
+  k.box('ochre',x+.185,top+.006,z-.085,.075,.012,.05);              // the repair ticket
+  k.cylinder('brass',x-.205,top+.017,z+.055,.019,.034);             // a loupe, stood on end
+  k.torus('brass',x-.205,top+.035,z+.055,.018,.004,0);
+  for(let i=0;i<4;i++)k.cylinder('darkMetal',x-.115+i*.032,top+.005,z+.105,.005,.01);   // spare pins
+  // A cloth roll pushed to the back of the counter to make the room, so the
+  // mat reads as space somebody cleared rather than dressing nobody finished.
+  k.cylinder('fabric',x+.02,top+.04,z+.30,.038,.34,Math.PI/2);
+}
 
 // Shopfront proportions and dressing follow Sally Crees's Silo set photographs.
 // The street arrangement and level assignment remain a reconstruction.
@@ -54,7 +73,11 @@ export function buildBazaar(m){
       for(let i=0;i<7;i++){const x=cx-1.7+i*.53;k.bevel(i%2?'green':'metal',x,1.01,counterZ,.43,.25,.42);for(let j=0;j<3;j++)k.cylinder('brass',x-.13+j*.13,1.16,counterZ,.022,.07);}
       for(let i=0;i<5;i++)k.torus('rust',cx-1.1+i*.52,1.1,counterZ-.3,.14,.024,Math.PI/2);
     }else if(n===3){
-      for(let i=0;i<7;i++){const x=cx-1.55+i*.49;k.bevel(i%3===0?'blue':i%3===1?'fabric':'linen',x,.96,counterZ,.44,.27,.85);}
+      // The middle bolt is left out. A relic on a counter is only findable if
+      // there is a space around it, which is the same thing the directory book
+      // needed: it is not the object that hides it, it is the dressing.
+      for(let i=0;i<7;i++){if(i===3&&side===1&&row===0)continue;const x=cx-1.55+i*.49;k.bevel(i%3===0?'blue':i%3===1?'fabric':'linen',x,.96,counterZ,.44,.27,.85);}
+      if(side===1&&row===0)repairDrop(k);
       k.beam('metal',[side*8.3,2.45,z-2.3],[side*8.3,2.45,z+1.1],.025);
       for(let i=0;i<7;i++)k.bevel(i%2?'linen':'fabric',side*8.3,1.85,z-2+i*.42,.6,1.1,.11);
     }else{

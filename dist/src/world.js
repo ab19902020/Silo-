@@ -36,6 +36,10 @@ import { addGeorgeDesk, buildPressureGallery } from './mystery-spaces.js';
 import { floorAtmosphere, dressFloor, INTERIOR_LIGHT } from './atmosphere.js';
 import { VOID, voidLedgeGaps, tunnelPoint } from './void-access.js';
 
+// 56 degrees off the middle when it is under half a metre away, closing to 21
+// by five metres.
+const REACH_CONE=distance=>{const t=Math.min(1,Math.max(0,(distance-.45)/4.55));return .55+(.93-.55)*t*t;};
+
 export class SiloWorld {
   constructor(scene) {
     this.scene=scene;this.m=createMaterials();this.assets={};this.loaded=new Map();this.activeLevel=1;this.doors=[];this.interactions=[];this.colliders=new ColliderSet();this.animated=[];this.screens=[];this.special=null;this.quality='balanced';this.story=null;
@@ -320,7 +324,16 @@ export class SiloWorld {
     if(!this.special&&this.activeLevel===1&&this.outside)pool.push(...this.surface.networkInteractions);
     if(!this.story?.story&&!this.special&&this.activeLevel===1)pool.push({position:this.surface.cleaningPoint,label:this.surface.cleaning?'Cleaning lens…':this.surface.cleanliness>.99?'Clean camera lens again':'Clean the outside camera lens',action:'clean-camera'});
     const seen=[];
-    for(const i of pool){if(this.story?.story&&this.story.chapter==='cleaning'&&i.action!=='opening-book')continue;if(this.special==='pipe-gallery'&&i.action?.startsWith('pipe-')){const next=!this.story?.hasFlag('pipe-cover-open')?'cover':['isolate','collar','torque'][this.story?.pipeSteps.length||0];if(i.action!==`pipe-${next}`)continue;}const delta=i.position.clone().sub(position),dist=delta.length();if(dist>5||dist<.05)continue;if(delta.normalize().dot(direction)<.32)continue;seen.push({i,dist});}
+    for(const i of pool){if(this.story?.story&&this.story.chapter==='cleaning'&&i.action!=='opening-book')continue;if(this.special==='pipe-gallery'&&i.action?.startsWith('pipe-')){const next=!this.story?.hasFlag('pipe-cover-open')?'cover':['isolate','collar','torque'][this.story?.pipeSteps.length||0];if(i.action!==`pipe-${next}`)continue;}const delta=i.position.clone().sub(position),dist=delta.length();if(dist>5||dist<.05)continue;
+      // How near the middle of the view a thing has to be before it offers
+      // itself. A fixed cone of 71 degrees meant a corridor of doors and a
+      // gallery of people put a prompt on the screen more or less permanently,
+      // which is what was covering the silo up. The cone now closes with
+      // distance, because that is what a target does: at arm's length you can
+      // reach something well off to the side, and at five metres you have to
+      // be looking at it.
+      if(delta.normalize().dot(direction)<REACH_CONE(dist))continue;
+      seen.push({i,dist});}
     // Range and direction are not enough on their own: the gun room's racks sit
     // less than two metres behind the cafeteria's east wall, so walking up to
     // blank blockwork offered you a rifle through it. Nearest first, and the

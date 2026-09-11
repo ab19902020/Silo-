@@ -14,6 +14,41 @@ See [this release's changes and validation limits](docs/relic-world-polish.md),
 [the mystery route and research](docs/mystery-expansion.md), and
 [agent integration history](docs/AGENT_COORDINATION.md).
 
+## The watch, the prompts and the controller
+
+- **The watch is findable.** It was never a missing model — the game was
+  already offering *Take George Wilkins' wristwatch* at the bazaar counter. It
+  was hanging 10.5 cm above that counter, and the spot it hung over was inside
+  a bolt of cloth with a wooden tray on top, because two separate dressing
+  passes lay goods on those counters and neither knew the relic was there. The
+  counter now keeps a space clear in both passes, with a felt mat, a repair
+  ticket and a loupe in it, and the watch lying on the mat. Relics also carry a
+  trace of their own texture as light now — the "faint glint" the code has
+  promised in a comment for months and never actually built.
+- **Fewer prompts over the view.** Measured first: everything permanently on
+  screen adds up to 0.2% of a desktop display and 0.6% of a phone — the ☰
+  button and nothing else. What covers the silo is the contextual prompt, and
+  it was offered for anything within five metres inside a cone 71° wide. The
+  cone now closes with distance — 56° at arm's length, 21° at five metres — so
+  you have to be looking at a thing before it offers itself. Across 34,176
+  sampled views, a prompt was on screen 3.5% of the time before and 2.1% after.
+- **A proper controller map.** R2 used to be sprint *and* fire, so holding the
+  trigger to run meant you could not stop running to shoot; L1 was sprint and
+  reload; L2 and the D-pad did nothing. It is now the map a console player
+  knows: left stick moves, L3 sprints, ✕ jumps, △ or R1 interacts, □ reloads,
+  ○ backs out, L1 is the torch, L2 aims and R2 fires, Options opens the
+  directory, and the D-pad covers the torch, the satchel, a hint and the cast.
+  The full map is printed in Settings, and a test keeps the panel and the code
+  in step. On a keyboard, aim moved to the right mouse button so Shift is only
+  sprint again.
+- **It vibrates.** A DualSense gets both motors; a phone gets `navigator.vibrate`
+  with the strength converted to length. Ten short effects — picking something
+  up, a door, a shot scaled by the weapon, a landing scaled by the impact, a
+  refusal, the shift bell — rate-limited so nothing buzzes once a frame, with
+  its own switch in Settings.
+
+See [the controls and watch notes](docs/controls-and-the-watch.md).
+
 ## Solid bodies and a better walk
 
 - **Bernard and Sims are solid now.** Both rendered partly see-through, and it

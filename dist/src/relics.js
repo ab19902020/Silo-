@@ -99,6 +99,36 @@ const FIXTURES=[
   }},
 ];
 
+// The concession the comment below has always promised and the file never
+// made good on. A relic is a real object at its real size: a wristwatch is
+// five centimetres of dark metal, and on a market counter in a silo lit by
+// half a dozen fittings it is not so much hidden as simply unlit.
+//
+// So a relic carries a trace of its own texture as light. It is not a marker
+// and not a glow — at arm's length you cannot tell it is there, and it never
+// lifts the object off its own surface. It only stops a small thing sinking
+// entirely into a dark room, which is what was happening.
+const GLINT=.055;
+function catchTheLight(model){
+  model.traverse(o=>{
+    if(!o.isMesh)return;
+    const single=!Array.isArray(o.material);
+    const lit=(single?[o.material]:o.material).map(source=>{
+      const m=source.clone();
+      // Only the materials that have somewhere to put it. A basic material
+      // has no emissive channel and needs none — it is already unlit.
+      if(m.emissive){
+        m.emissive.copy(m.color);
+        if(m.map)m.emissiveMap=m.map;
+        m.emissiveIntensity=GLINT;
+        m.needsUpdate=true;
+      }
+      return m;
+    });
+    o.material=single?lit[0]:lit;
+  });
+}
+
 export class StoryProps{
   constructor(scene,materials){
     this.scene=scene;this.m=materials;this.items=new Map();
@@ -130,6 +160,7 @@ export class StoryProps{
     const results=await Promise.allSettled(['pez','watch','georgia'].map(async id=>{
       const model=await loadRelicModel(id),entry=this.items.get(id);if(!entry||!model)return;
       entry.group.clear();entry.group.add(model);model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+      catchTheLight(model);
     }));return results.filter(r=>r.status==='rejected').length;
   }
   inspectionModel(id){return this.items.get(id)?.group||null;}

@@ -313,3 +313,10 @@ body:has(#chapterHud:not([hidden])) #toast.show ~ #interaction{bottom:calc(24px 
   .book-panel .location-list{flex:none;min-height:0;overflow:visible}
   .book-panel .panel-foot small{display:none}
 }
+
+/* --- the controller map in Settings ------------------------------------ */
+.pad-map{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:0 0 16px;
+  font-size:14px;line-height:1.45}
+.pad-map dt{color:var(--accent);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pad-map dd{margin:0;color:#c6d0bf}
+@media(max-width:650px){.pad-map{gap:5px 10px;font-size:13px}}

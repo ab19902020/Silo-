@@ -23,11 +23,12 @@ import { GEORGE_TERMINAL_POINT } from './mystery-spaces.js';
 import { StoryProps, Drone } from './relics.js';
 import { SiloClock } from './silo-time.js';
 import { shiftBell } from './ambient-events.js';
+import { Haptics } from './haptics.js';
 
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel'),terminalDialog=$('georgeTerminal');
 const dialogs=[welcome,directory,settings,about,characters,relic,conversation,satchel,terminalDialog],coarse=matchMedia('(pointer:coarse)').matches;
 let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
-let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null,talking=null,chapterEnteredAt=0,hintUntil=0;
+let hudOpen=false,touchUntil=0,chapterUntil=0,lastInteractionLabel=null,lastOpeningState=null,talking=null,chapterEnteredAt=0,hintUntil=0;
 let terminal=new GeorgeTerminal(),workAction=null;
 let conversationStorage=null;try{conversationStorage=localStorage;}catch{}
 const conversationMemory=new ConversationMemory(conversationStorage);
@@ -36,7 +37,7 @@ const inspector=new RelicInspector($('relicCanvas'),$('relicControlsHint'));
 const pausingDialogs=dialogs.filter(d=>d!==conversation);
 let story=null,props=null,drone=null,wasOutside=false,lastChapter=null;
 let yaw=Math.PI/2,pitch=0,lookSensitivity=1,running=false,torchOn=false,quality='balanced';
-const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3}),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,2300),audio=new SiloAudio();
+const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3}),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,2300),audio=new SiloAudio(),haptics=new Haptics();
 const firearms=new Firearms(scene,audio);
 const keys=new Set(),stick={x:0,y:0},desired=new THREE.Vector3(),direction=new THREE.Vector3(),clock=new THREE.Clock();
 camera.rotation.order='YXZ';
@@ -153,12 +154,13 @@ function renderTerminal(){
 function syncPause(){document.body.classList.toggle('paused',paused());$('hud').classList.toggle('hidden',welcome.open);keys.clear();stick.x=stick.y=0;$('joystick').firstElementChild.style.transform='';if(paused()&&document.pointerLockElement)document.exitPointerLock();}
 function openDialog(d){if(talking)endConversation();hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');for(const x of dialogs)if(x.open)x.close();d.showModal();syncPause();}
 function closeDialog(d){d.close();if(!started&&d!==welcome)welcome.showModal();syncPause();if(started)canvas.focus();}
-function saveSettings(){try{localStorage.setItem('silo18-settings',JSON.stringify({brightness:$('brightness').value,sensitivity:$('sensitivity').value,quality,timeOfDay:$('timeOfDay').value,sound:$('sound').checked,music:$('music').value,reduceMotion:$('reduceMotion').checked,character:cast?.selected||saved.character||'juliette',thirdPerson:cast?.thirdPerson??saved.thirdPerson??true}));}catch{}}
+function saveSettings(){try{localStorage.setItem('silo18-settings',JSON.stringify({brightness:$('brightness').value,sensitivity:$('sensitivity').value,quality,timeOfDay:$('timeOfDay').value,sound:$('sound').checked,music:$('music').value,reduceMotion:$('reduceMotion').checked,vibration:$('vibration').checked,character:cast?.selected||saved.character||'juliette',thirdPerson:cast?.thirdPerson??saved.thirdPerson??true}));}catch{}}
 function updateSettings(){
   if(renderer)renderer.toneMappingExposure=Number($('brightness').value)/100;
   $('brightnessValue').textContent=`${$('brightness').value}%`;$('sensitivityValue').textContent=`${$('sensitivity').value}%`;lookSensitivity=Number($('sensitivity').value)/100;
   $('musicValue').textContent=`${$('music').value}%`;audio.setEnabled($('sound').checked);audio.setMusicVolume(Number($('music').value)/100);quality=$('quality').value;if(world)world.surface.setTimeOfDay($('timeOfDay').value);
   if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?2:quality==='low'?1:1.5));renderer.setSize(innerWidth,innerHeight,false);renderer.shadowMap.enabled=quality!=='low';if(world){world.quality=quality;world.keyLight.castShadow=quality!=='low';world.underground.waterSurface.setQuality(quality);world.silo17.waterSurface.setQuality(quality);world.surface.setQuality(quality);}if(rendering){rendering.enabled=true;rendering.setQuality(quality);rendering.resize();}}
+  haptics.set($('vibration').checked);
   saveSettings();
 }
 function syncCharacterUI(){
@@ -302,6 +304,7 @@ function renderSatchel(){
 }
 function inspectRelic(id){
   const item=COLLECTABLES.find(i=>i.id===id);if(!item)return;
+  haptics.play('inspect');
   $('relicName').textContent=item.name;$('relicDescription').textContent=item.blurb;$('relicSource').textContent=item.source;
   openDialog(relic);
   const source=id==='harddrive'?cast?.relic:id==='shotgun'?firearms.model:props?.inspectionModel(id);
@@ -310,7 +313,7 @@ function inspectRelic(id){
 function takeRelic(id){
   const item=story.take(id);
   if(!item)return;
-  audio.pickup(item.sound||'relic');saveStory();
+  audio.pickup(item.sound||'relic');haptics.play('pickup');saveStory();
   showObjective(item.name,item.blurb,9000);
   notify(story.story?story.objective:`${item.name} — in your satchel.`);
   if(id==='suit')notify('The suit is on. The airlock will let you through now.');
@@ -423,6 +426,9 @@ function fire(){
   if(paused())return;
   if(!firearms.held)return;
   const before=firearms.ammo?.magazine||0,hit=firearms.fire(performance.now()/1000,camera);
+  // Only when a round actually left the barrel — a dry trigger on an empty
+  // magazine should not kick.
+  if((firearms.ammo?.magazine||0)<before)haptics.play('shot',firearms.held.family==='shotgun'?1:.75);
   if(hit?.target)rangeHits++;
   if(drone?.active&&firearms.held.family==='shotgun'&&(firearms.ammo?.magazine||0)<before){
     const eye=camera.getWorldPosition(new THREE.Vector3());camera.getWorldDirection(direction);
@@ -586,7 +592,7 @@ function use(){
     updateWeaponHud();notify(`${name} racked.`);
     return;
   }
-  if(interaction.sealed){audio.click();notify(interaction.sealed.reason);return;}
+  if(interaction.sealed){audio.click();haptics.play('deny');notify(interaction.sealed.reason);return;}
   if(interaction.action==='clean-camera'){audio.click();world.surface.beginCleaning();notify('Cleaning the camera lens. The cafeteria feed clears as you wipe.');return;}
   if(interaction.action?.startsWith('airlock-')){audio.airlock();world.cycleAirlock(interaction.action.slice(8));return;}
   if(interaction.action==='breach'){
@@ -595,11 +601,11 @@ function use(){
     notify('A broken opening was hidden behind the sign. Walk through it.');
     return;
   }
-  if(interaction.door){interaction.door.open=!interaction.door.open;audio.door(interaction.door.open);}
+  if(interaction.door){interaction.door.open=!interaction.door.open;audio.door(interaction.door.open);haptics.play('use');}
   else if(interaction.destination!==undefined){audio.click();travel(interaction.destination);}
   else{audio.click();notify(interaction.text||inspectionText[interaction.action]||interaction.label);}
 }
-function toggleTorch(){torchOn=!torchOn;audio.torch(torchOn);torch.visible=torchOn;$('torchButton').classList.toggle('active',torchOn);$('torchButton').setAttribute('aria-pressed',String(torchOn));}
+function toggleTorch(){torchOn=!torchOn;audio.torch(torchOn);haptics.play('use',.7);torch.visible=torchOn;$('torchButton').classList.toggle('active',torchOn);$('torchButton').setAttribute('aria-pressed',String(torchOn));}
 
 $('relicReset').addEventListener('click',()=>inspector.reset());
 $('relicFlip').addEventListener('click',()=>inspector.flip());
@@ -655,8 +661,12 @@ for(const event of ['fullscreenchange','webkitfullscreenchange'])addEventListene
   $('fullscreen').textContent=document.fullscreenElement?'Leave fullscreen':'Enter fullscreen';
 });
 $('resetPosition').addEventListener('click',()=>travel(world.special||world.activeLevel));
-for(const id of ['brightness','sensitivity','quality','timeOfDay','sound','music','reduceMotion']){if(saved[id]!==undefined){if(typeof saved[id]==='boolean')$(id).checked=saved[id];else $(id).value=saved[id];}$(id).addEventListener('input',updateSettings);}
+for(const id of ['brightness','sensitivity','quality','timeOfDay','sound','music','reduceMotion','vibration']){if(saved[id]!==undefined){if(typeof saved[id]==='boolean')$(id).checked=saved[id];else $(id).value=saved[id];}$(id).addEventListener('input',updateSettings);}
 if(saved.reduceMotion===undefined)$('reduceMotion').checked=matchMedia('(prefers-reduced-motion:reduce)').matches;
+// Somebody who has asked their system for less motion has not asked for less
+// vibration, so this defaults on and is its own switch.
+if(saved.vibration===undefined)$('vibration').checked=true;
+haptics.set($('vibration').checked);
 for(const source of SOURCES){const a=document.createElement('a');a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=source.title;const small=document.createElement('small');small.textContent=source.note;$('sources').append(a,small);}
 
 addEventListener('keydown',e=>{
@@ -693,7 +703,20 @@ addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',()=>{ke
 document.addEventListener('visibilitychange',()=>{keys.clear();stick.x=stick.y=0;if(document.hidden&&audio.context)audio.context.suspend().catch(()=>{});else if(started&&!paused())audio.start();});
 
 let lookPointer=null,lookStart=null,lookTravel=0,jumpQueued=false;
-canvas.addEventListener('pointerdown',e=>{if(paused())return;if(opening.focus){toggleControls();return;}if(e.pointerType==='touch'&&e.clientX<innerWidth*.32)return;lookPointer=e.pointerId;lookStart={x:e.clientX,y:e.clientY};lookTravel=0;canvas.setPointerCapture(e.pointerId);});
+// Aim is the right mouse button, as it is in every other first-person game,
+// so Shift can go back to being only sprint. Held, not toggled.
+let aimHeld=false;
+const setAim=v=>{aimHeld=v&&!!firearms?.held;};
+canvas.addEventListener('contextmenu',e=>{if(!paused()&&firearms?.held)e.preventDefault();});
+addEventListener('pointerup',e=>{if(e.button===2)setAim(false);});
+addEventListener('blur',()=>setAim(false));
+canvas.addEventListener('pointerdown',e=>{
+  if(paused())return;
+  if(e.button===2){setAim(true);e.preventDefault();return;}
+  if(opening.focus){toggleControls();return;}
+  if(e.pointerType==='touch'&&e.clientX<innerWidth*.32)return;
+  lookPointer=e.pointerId;lookStart={x:e.clientX,y:e.clientY};lookTravel=0;canvas.setPointerCapture(e.pointerId);
+});
 canvas.addEventListener('pointermove',e=>{
   if(paused())return;
   let dx=0,dy=0;
@@ -722,19 +745,44 @@ const releaseStick=e=>{if(e.pointerId!==movePointer)return;movePointer=null;stic
 // --- gamepad ---------------------------------------------------------------
 // Standard mapping, which is what a DualShock 4, a DualSense and an Xbox pad
 // all report over USB and Bluetooth in every current browser.
-const PAD={CROSS:0,CIRCLE:1,SQUARE:2,TRIANGLE:3,L1:4,R1:5,L2:6,R2:7,SHARE:8,OPTIONS:9,L3:10,R3:11};
-const pad={move:{x:0,y:0},look:{x:0,y:0},run:false,connected:false},padHeld=new Set();
+//
+// The map is the one a console player already knows, because every button here
+// used to do something else as well and several did two things at once: R2 was
+// sprint and fire, L1 was sprint and reload, and sprint was also on L3. Holding
+// the trigger to run meant you could not stop running to shoot.
+//
+//   left stick     move — eased, so a gentle push is a walk and full is a jog
+//   L3             sprint, held
+//   right stick    look
+//   R3             first or third person
+//   ✕              jump
+//   ○              close the panel you are in; otherwise pause
+//   □              reload
+//   △              interact: take, open, talk, travel
+//   R1             interact as well, for the thumb that expects it there
+//   L1             torch
+//   L2             aim          R2  fire
+//   Options        the directory book
+//   Create/Share   your satchel
+//   D-pad ↑ torch   ↓ satchel   ← think about it   → choose character
+const PAD={CROSS:0,CIRCLE:1,SQUARE:2,TRIANGLE:3,L1:4,R1:5,L2:6,R2:7,SHARE:8,OPTIONS:9,L3:10,R3:11,
+  UP:12,DOWN:13,LEFT:14,RIGHT:15};
+const pad={move:{x:0,y:0},look:{x:0,y:0},run:false,aim:false,connected:false},padHeld=new Set();
 // Sticks rest slightly off centre and report noise even untouched.
 const deadzone=(v,d=.16)=>{const m=Math.abs(v);return m<d?0:Math.sign(v)*((m-d)/(1-d))**1.6;};
 function readPad(){
   let device=null;
   for(const p of navigator.getGamepads?.()||[])if(p?.connected&&p.axes?.length>=2){device=p;break;}
-  if(!device){pad.connected=false;pad.move.x=pad.move.y=pad.look.x=pad.look.y=0;pad.run=false;padHeld.clear();return null;}
-  if(!pad.connected){pad.connected=true;notify('Controller connected. Left stick moves, right stick looks, ✕ jumps.');}
+  if(!device){pad.connected=false;pad.move.x=pad.move.y=pad.look.x=pad.look.y=0;pad.run=pad.aim=false;padHeld.clear();haptics.attach(null);return null;}
+  haptics.attach(device);
+  if(!pad.connected){pad.connected=true;notify('Controller connected. L3 sprints, ✕ jumps, △ takes and opens. Full map in Settings.');haptics.play('use');}
   pad.move.x=deadzone(device.axes[0]||0);pad.move.y=deadzone(device.axes[1]||0);
   pad.look.x=deadzone(device.axes[2]||0);pad.look.y=deadzone(device.axes[3]||0);
-  const down=i=>!!device.buttons?.[i]?.pressed;
-  pad.run=down(PAD.R2)||down(PAD.L1)||down(PAD.L3);
+  // A trigger is an axis, not a switch, and a DualSense rests a little off
+  // zero. Half pull is the press everywhere else in this file.
+  const down=i=>{const b=device.buttons?.[i];return !!b&&(b.pressed||b.value>.5);};
+  pad.run=down(PAD.L3);
+  pad.aim=down(PAD.L2);
   // Edge detection: every mapped button acts on the press, not while held.
   const tapped=i=>{const held=padHeld.has(i),now=down(i);if(now)padHeld.add(i);else padHeld.delete(i);return now&&!held;};
   return {tapped,down};
@@ -742,22 +790,40 @@ function readPad(){
 function applyPad(dt){
   const device=readPad();if(!device)return;
   const {tapped}=device;
-  if(tapped(PAD.OPTIONS)||tapped(PAD.SHARE)){if(directory.open)closeDialog(directory);else{renderDirectory();openDialog(directory);}return;}
+  if(tapped(PAD.OPTIONS)){if(directory.open)closeDialog(directory);else requestDirectory();return;}
   if(paused()){
     // On the panels the pad still has to be able to get you out again.
     if(tapped(PAD.CIRCLE)){const open=dialogs.find(d=>d.open);if(open)closeDialog(open);}
     if(tapped(PAD.CROSS)&&welcome.open&&ready)begin();
     return;
   }
-  if(tapped(PAD.CROSS))jumpQueued=true;if(tapped(PAD.R2))fire();if(tapped(PAD.L1)&&firearms.held)firearms.reload();
-  if(tapped(PAD.SQUARE)||tapped(PAD.R1))use();
-  if(tapped(PAD.TRIANGLE))toggleTorch();
+  if(talking){
+    // In a conversation the face buttons pick the first two questions and ○
+    // steps away, so a whole exchange can happen without reaching for a key.
+    const box=$('dialogueChoices');
+    if(tapped(PAD.TRIANGLE)||tapped(PAD.R1))askTopic(box.children[0]);
+    if(tapped(PAD.SQUARE))askTopic(box.children[1]);
+    if(tapped(PAD.CIRCLE))endConversation();
+    yaw-=pad.look.x*2.9*dt*lookSensitivity;
+    pitch=THREE.MathUtils.clamp(pitch-pad.look.y*2.2*dt*lookSensitivity,-1.48,1.48);
+    return;
+  }
+  if(tapped(PAD.CROSS))jumpQueued=true;
+  if(tapped(PAD.R2))fire();
+  if(tapped(PAD.SQUARE)&&firearms.held){if(firearms.reload()){haptics.play('reload');updateWeaponHud();}}
+  if(tapped(PAD.TRIANGLE)||tapped(PAD.R1))use();
+  if(tapped(PAD.L1)||tapped(PAD.UP))toggleTorch();
   if(tapped(PAD.R3))toggleView();
+  if(tapped(PAD.DOWN)||tapped(PAD.SHARE)){if(story){renderSatchel();openDialog(satchel);}}
+  if(tapped(PAD.LEFT)&&story?.story)askForHint();
+  if(tapped(PAD.RIGHT)){renderCharacters();openDialog(characters);}
   if(tapped(PAD.CIRCLE))openDialog(welcome);
   // Right stick look. The squared response above the deadzone gives fine aim
-  // near centre and a usable sweep at full deflection.
-  yaw-=pad.look.x*2.9*dt*lookSensitivity;
-  pitch=THREE.MathUtils.clamp(pitch-pad.look.y*2.2*dt*lookSensitivity,-1.48,1.48);
+  // near centre and a usable sweep at full deflection, and aiming slows it so
+  // the sight can be put on something smaller than a doorway.
+  const sweep=pad.aim&&firearms.held?.45:1;
+  yaw-=pad.look.x*2.9*dt*lookSensitivity*sweep;
+  pitch=THREE.MathUtils.clamp(pitch-pad.look.y*2.2*dt*lookSensitivity*sweep,-1.48,1.48);
 }
 
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer?.setSize(innerWidth,innerHeight,false);rendering?.resize();}addEventListener('resize',resize);
@@ -778,16 +844,16 @@ function frame(){
     // The jump impulse belongs to one substep only, or it is applied N times.
     const count=Math.max(1,Math.ceil(dt/(1/120))),wasAirborne=!body.grounded;
     for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders,{jump:jumpQueued&&!opening.focus&&!talking&&!workAction&&i===0});
-    if(jumpQueued&&body.velocity.y>.5)audio.jump();
+    if(jumpQueued&&body.velocity.y>.5){audio.jump();haptics.play('use',.6);}
     jumpQueued=false;
-    if(wasAirborne&&body.grounded&&body.landingImpact>.05)audio.land(body.landingImpact);
+    if(wasAirborne&&body.grounded&&body.landingImpact>.05){audio.land(body.landingImpact);haptics.play('land',Math.min(1.5,.5+body.landingImpact*2));}
     if(body.position.y<2&&!world.special){const p=world.spawn(world.activeLevel);body.teleport(p.x,p.y,p.z);notify('Returned to the nearest safe landing.');}
     const bob=$('reduceMotion').checked?0:Math.sin(body.distanceWalked*8)*.018*Math.min(1,body.horizontalSpeed);
     // The silo's hour, read once and handed to everything that depends on it.
     // It holds still through the cleaning: ninety seconds of Holston crossing
     // the hill should not also be ninety seconds of the sun moving behind him.
     siloClock.running=!opening.watching;
-    for(const bell of siloClock.update(dt)){audio.ambient(shiftBell());notify(`Shift change. ${siloClock.schedule.label}, ${siloClock.schedule.clock}.`);}
+    for(const bell of siloClock.update(dt)){audio.ambient(shiftBell());haptics.play('bell');notify(`Shift change. ${siloClock.schedule.label}, ${siloClock.schedule.clock}.`);}
     const schedule=siloClock.schedule;
     world.schedule=schedule;population.schedule=schedule;
     world.update(dt,body.position);const passage=world.transitionAt(body.position);if(passage)travel(passage);opening.update(dt);population.update(dt,body,opening.watching,cast.selected);population.separatePlayer(body);
@@ -843,7 +909,10 @@ function frame(){
     }
     if(firearms.targets.length)updateRangeTargets(firearms.targets,dt);
     if(firearms.held){
-      firearms.aiming=keys.has('ShiftLeft')||keys.has('ShiftRight');
+      // Aim is its own input. Shift used to do this as well as sprint, so
+      // running and aiming were the same request and you could not stop to
+      // steady a shot.
+      firearms.aiming=aimHeld||pad.aim;
       const kick=firearms.update(dt,time);
       // Recoil is added to the player's own aim rather than replacing it, so it
       // can be pulled back down the way a real one has to be.
@@ -851,8 +920,15 @@ function frame(){
       firearms.place(camera);
       if(hudTick!==Math.floor(time*8)){hudTick=Math.floor(time*8);updateWeaponHud();}
     }
+    const wasOffering=lastInteractionLabel;
     interaction=body.climbing||opening.focus||talking?null:world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;
     if(interaction){$('interactionLabel').textContent=interaction.label;$('interactionHint').textContent=interaction.hint||'';}
+    // One light tick the moment something new comes within reach, so you can
+    // feel that there is a thing here without watching the bottom of the
+    // screen for it. Keyed on the label, or turning on the spot in a corridor
+    // of identical doors would buzz once a frame.
+    lastInteractionLabel=interaction?interaction.label:null;
+    if(lastInteractionLabel&&lastInteractionLabel!==wasOffering)haptics.play('tick');
     $('touchUse').style.opacity=interaction||opening.state==='read-book'?'1':'.4';audio.step(body.distanceWalked,body.horizontalSpeed,cast.active?.motion.stepCount);
     crowdSoundTime-=dt;if(crowdSoundTime<=0){crowdSoundTime=opening.watching?4:1.1+Math.random()*1.5;audio.residents?.(population.count,opening.watching);}
   }else if(!started){

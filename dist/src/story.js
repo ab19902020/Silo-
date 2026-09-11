@@ -6,7 +6,11 @@ export const RELICS=Object.freeze([
   {id:'pez',sound:'plastic',name:'A duck-headed PEZ dispenser',eyebrow:'RELIC · UNAUTHORISED',level:26,wing:0,at:[-4.9,1.45,9.6],float:true,
    blurb:'A yellow duck head on a spring. A repair ticket is folded under the spring: “G. Wilkins — watch left at the market, Level 100. Book with the Medical returns, 62.” On the sleeve, three scratches: 1–4–4.',
    source:'Named in the television series. The scratched level clue is reconstructed for this game.'},
-  {id:'watch',sound:'metal',name:'George Wilkins’ wristwatch',eyebrow:'RELIC · AUTHORISED',level:100,wing:0,at:[6.6,.94,6.35],float:true,
+  // On the felt in the gap the trader keeps clear on her counter, which is
+  // where the ticket in the duck says it was left. It used to hang ten and a
+  // half centimetres above that counter, unlit, between two bolts of cloth.
+  // bazaar.js REPAIR_COUNTER owns these numbers; a test keeps them in step.
+  {id:'watch',sound:'metal',name:'George Wilkins’ wristwatch',eyebrow:'RELIC · AUTHORISED',level:100,wing:0,at:[6.52,.855,6.35],float:true,
    blurb:'Still running. The back is scarred by a crude wave and a downward arrow. It is not decoration: George left a direction: below Mechanical, behind the warning sign in the rear service gallery.',
    source:'George’s authorised watch is established in the television series. The engraved void clue is reconstructed for this game.'},
   {id:'georgia',sound:'book',name:'Amazing Adventures in Georgia',eyebrow:'RELIC · RED',level:62,wing:0,at:[7.4,.72,15],float:true,
