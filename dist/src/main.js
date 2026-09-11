@@ -960,6 +960,12 @@ function frame(){
   torch.position.copy(camera.position);camera.getWorldDirection(direction);torch.target.position.copy(camera.position).addScaledVector(direction,15);torch.visible=torchOn&&started;
   const far=world.special?260:world.outside?1600:2300,near=world.special?.16:.1;if(camera.far!==far||camera.near!==near){camera.far=far;camera.near=near;camera.updateProjectionMatrix();}
   if(opening?.focus)rendering.renderScreen(outsideTarget.texture,camera.aspect);else rendering.render(scene,camera);
+  // Whatever this frame can spare goes into building the level you are walking
+  // towards, a wing at a time. It runs after the picture is drawn, and a frame
+  // that was already late is skipped rather than pushed further over — the
+  // work is not urgent, which is the whole point of moving it off the frame
+  // the floor is crossed in.
+  world.buildAhead(dt<.024?4:0);
 }
 
 async function boot(){

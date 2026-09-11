@@ -38,11 +38,13 @@ import { VOID, voidLedgeGaps, tunnelPoint } from './void-access.js';
 
 // 56 degrees off the middle when it is under half a metre away, closing to 21
 // by five metres.
+const ROOM_CENTRE=new THREE.Vector3();
+const KEY_TARGET_DROP=new THREE.Vector3(0,-3,0);
 const REACH_CONE=distance=>{const t=Math.min(1,Math.max(0,(distance-.45)/4.55));return .55+(.93-.55)*t*t;};
 
 export class SiloWorld {
   constructor(scene) {
-    this.scene=scene;this.m=createMaterials();this.assets={};this.loaded=new Map();this.activeLevel=1;this.doors=[];this.interactions=[];this.colliders=new ColliderSet();this.animated=[];this.screens=[];this.special=null;this.quality='balanced';this.story=null;
+    this.scene=scene;this.m=createMaterials();this.assets={};this.loaded=new Map();this.pending=new Map();this.lastLevel=null;this.activeLevel=1;this.doors=[];this.interactions=[];this.colliders=new ColliderSet();this.animated=[];this.screens=[];this.special=null;this.quality='balanced';this.story=null;
     scene.background=new THREE.Color(0x121c19);scene.fog=new THREE.FogExp2(0x18221e,.0065);
     this.ambient=new THREE.HemisphereLight(0xb5c4c0,0x36332b,.42);scene.add(this.ambient);
     this.sun=new THREE.DirectionalLight(0xd7d9bc,2);this.sun.position.set(15,levelY(1)+20,-8);this.sun.target.position.set(0,levelY(1),0);scene.add(this.sun,this.sun.target);
@@ -156,10 +158,20 @@ export class SiloWorld {
       mesh.count=numbers.length;for(let i=0;i<numbers.length;i++){const matrix=new THREE.Matrix4().makeRotationY(rotate?-landingAngle(numbers[i]):0);matrix.setPosition(0,levelY(numbers[i]),0);mesh.setMatrixAt(i,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();
     }
   }
-  loadLevel(level){
-    if(this.loaded.has(level))return this.loaded.get(level);
+  // Building a level is twenty to thirty milliseconds of geometry — six rooms,
+  // a dozen canvas-drawn signs, a set of doors — and it used to happen inside
+  // the single frame in which you crossed the floor. At sixty frames a second
+  // the whole budget is 16.7 ms, so every flight of stairs cost two or three
+  // dropped frames and the lights appeared to stutter on.
+  //
+  // The work is not the problem; doing all of it at once is. A level is built
+  // as a sequence of steps, one wing at a time, and the frame loop spends a
+  // few milliseconds a frame on whatever is queued. Nothing is added to the
+  // scene until the last step, so a half-built level is never visible.
+  *buildLevel(level){
     const root=new THREE.Group(),y=levelY(level),rooms=[],doors=[],interactions=[];root.position.y=y;
     for(let wing=0;wing<6;wing++){
+      yield;
       const a=wing*TAU/6,ry=Math.PI/2-a,type=roomType(level,wing),room=level===1&&wing===0?buildTopFloor(this.m):type==='bazaar'?buildBazaar(this.m):buildRoom(this.m,type,level,wing,this.assets);
       room.position.set(Math.cos(a)*SILO.deckOuter,0,Math.sin(a)*SILO.deckOuter);room.rotation.y=ry;if(level===68&&wing===0)addGeorgeDesk(room,this.m);root.add(room);rooms.push(room);
       // Both plates are bolted to the gallery wall. Offsetting the level plate
@@ -193,17 +205,58 @@ export class SiloWorld {
       const gk=new Kit(this.m);buildTerminalLanding(gk,level===1?1:-1);
       const landing=gk.group();landing.name='terminal-stair-parapet';landing.rotation.y=-landingAngle(level);root.add(landing);
     }
+    yield;
     dressFloor(root,this.m,level);this.scene.add(root);const entry={level,root,rooms,doors,interactions,passages};this.loaded.set(level,entry);return entry;
   }
-  setLevel(level,special=null){
-    this.activeLevel=level;this.special=special;this.updateStructure(level);
-    for(const n of [level-1,level,level+1])if(n>=1&&n<=144)this.loadLevel(n);
-    for(const [n,e]of this.loaded)if(Math.abs(n-level)>2){disposeGroup(e.root);this.loaded.delete(n);}
+  // The whole level, now, because something is about to stand in it.
+  loadLevel(level){
+    if(this.loaded.has(level))return this.loaded.get(level);
+    const steps=this.pending.get(level)||this.buildLevel(level);
+    this.pending.delete(level);
+    let step=steps.next();
+    while(!step.done)step=steps.next();
+    return step.value;
+  }
+  // The same level, eventually. Queued in the order given, so the level you
+  // are walking towards is finished before the one behind you.
+  queueLevel(level){
+    if(level<1||level>144||this.loaded.has(level)||this.pending.has(level))return;
+    this.pending.set(level,this.buildLevel(level));
+  }
+  // Called once a frame with whatever time the frame can spare. Steps the
+  // queue until the budget runs out; a level that finishes rejoins the world
+  // immediately, because its doors and interactions have to be in the lists
+  // before the player can reach them.
+  buildAhead(budgetMs=4){
+    if(!this.pending.size)return 0;
+    const until=performance.now()+Math.max(0,budgetMs);
+    let finished=0;
+    for(const [level,steps] of this.pending){
+      let step=steps.next();
+      while(!step.done&&performance.now()<until)step=steps.next();
+      if(step.done){this.pending.delete(level);finished++;}
+      if(performance.now()>=until)break;
+    }
+    if(finished){this.refreshLevelLists();this.rebuildCollision();}
+    return finished;
+  }
+  refreshLevelLists(){
     this.doors=[...this.loaded.values()].flatMap(e=>e.doors);this.interactions=[...this.loaded.values()].flatMap(e=>e.interactions);
     this.animated=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>r.userData.animated));this.livestock=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>r.userData.livestock||[]));this.screens=[...this.loaded.values()].flatMap(e=>e.rooms.flatMap(r=>[r.userData.outsideScreen,...(r.userData.extraScreens||[])])).filter(Boolean);
+    if(this.special==='generator')this.animated=this.generator.animated;
+  }
+  setLevel(level,special=null){
+    const descending=level>(this.lastLevel??level);this.lastLevel=level;
+    this.activeLevel=level;this.special=special;this.updateStructure(level);
+    // You are standing in this one, so it is built now. The neighbours are
+    // queued: by the time you reach one it has been finished a frame at a time.
+    this.loadLevel(level);
+    for(const n of descending?[level+1,level-1]:[level-1,level+1])this.queueLevel(n);
+    for(const [n,e]of this.loaded)if(Math.abs(n-level)>2){disposeGroup(e.root);this.loaded.delete(n);}
+    for(const n of [...this.pending.keys()])if(Math.abs(n-level)>2)this.pending.delete(n);
     this.underground.root.visible=['mines','excavator','tunnel'].includes(special);this.silo17.root.visible=special==='silo17';this.pressure.root.visible=special==='pipe-gallery';this.generator.root.visible=special==='generator';this.surface.root.visible=!special;
     for(const child of this.underground.root.children)child.visible=special==='mines'?child===this.underground.mines:child!==this.underground.mines;
-    if(special==='generator')this.animated=this.generator.animated;
+    this.refreshLevelLists();
     this.rebuildCollision();
   }
   specialSpace(){return this.special==='mines'?this.underground.mineSpace:this.special==='generator'?this.generator:this.special==='silo17'?this.silo17:this.special==='pipe-gallery'?this.pressure:this.underground;}
@@ -479,7 +532,7 @@ export class SiloWorld {
     if(this.keyLight.userData.key!==target.key&&this.keyLight.intensity>.02){this.keyLight.intensity=THREE.MathUtils.damp(this.keyLight.intensity,0,16,dt);return;}
     if(this.keyLight.userData.key!==target.key){
       this.keyLight.userData.key=target.key;this.keyLight.position.copy(target.position);
-      this.keyLight.target.position.copy(target.position).add(new THREE.Vector3(0,-3,0));
+      this.keyLight.target.position.copy(target.position).add(KEY_TARGET_DROP);
       this.keyLight.userData.baseColor=target.color;this.keyLight.distance=target.cone;
     }
     this.keyLight.color.setHex(this.keyLight.userData.baseColor??target.color).lerp(NIGHT_FILAMENT,this.lampWarmth*.55);
@@ -512,7 +565,11 @@ export class SiloWorld {
     for(const door of this.doors){door.amount=THREE.MathUtils.damp(door.amount,door.open?1:0,6,dt);for(const leaf of door.leaves)leaf.pivot.rotation.y=-leaf.side*door.amount*Math.PI*.52;if(door.collider)door.collider.enabled=door.amount<.8;}
     for(const a of this.animated){if(a.update)a.update(dt);else a.object.rotation[a.axis]+=dt*a.speed;}
     this.clock=(this.clock||0)+dt;if(this.special==='mines')this.underground.updateMine(dt,this.clock,position,this.quality);if(this.livestock?.length&&!this.special)updateLivestock(this.livestock,dt,this.clock);
-    for(const [level,e]of this.loaded){e.root.visible=!this.special&&Math.abs(level-this.activeLevel)<=1;for(let i=0;i<e.rooms.length;i++){const room=e.rooms[i],center=new THREE.Vector3(0,1.5,10).applyMatrix4(room.matrixWorld);room.visible=level===this.activeLevel||center.distanceTo(position)<38;}}
+    // Eighteen rooms a frame, and this used to make a fresh vector for each of
+    // them. Nothing here is slow, but a few hundred throwaway objects a second
+    // is the kind of litter a browser eventually stops to sweep up, and that
+    // sweep is a dropped frame you cannot see the cause of.
+    for(const [level,e]of this.loaded){e.root.visible=!this.special&&Math.abs(level-this.activeLevel)<=1;for(let i=0;i<e.rooms.length;i++){const room=e.rooms[i];ROOM_CENTRE.set(0,1.5,10).applyMatrix4(room.matrixWorld);room.visible=level===this.activeLevel||ROOM_CENTRE.distanceTo(position)<38;}}
     const y=levelY(this.activeLevel);if(this.special==='pipe-gallery'&&this.story)this.pressure.update(this.story);
     this.lightRig(position,top,dt);
     this.sun.visible=this.outside;this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):0;

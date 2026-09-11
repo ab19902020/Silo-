@@ -14,6 +14,32 @@ See [this release's changes and validation limits](docs/relic-world-polish.md),
 [the mystery route and research](docs/mystery-expansion.md), and
 [agent integration history](docs/AGENT_COORDINATION.md).
 
+## Smooth stairs and a market with people in it
+
+- **Changing floors no longer drops frames.** A level is six rooms, a set of
+  doors and a dozen canvas-drawn signs — 23 ms of work — and it was all being
+  done in the single frame you crossed the floor in, against a 16.7 ms budget.
+  That is why the lights seemed to stutter on. A level is now built a wing at a
+  time from a queue the frame loop feeds with whatever time it can spare, and
+  the floor you are walking towards is finished before the one behind you.
+  Descending ten floors, seven runs of 900 frames each, medians: frames over
+  the 16.7 ms budget **7 → 0**, and the 99th-percentile frame **15.8 ms →
+  6.5 ms**.
+- Everything else on the frame was measured and cleared: the world update costs
+  0.03–0.05 ms, the whole light rig 0.02 ms, and 48 residents about 1 ms. Two
+  small allocation leaks in the per-frame path were tidied up anyway, because
+  the litter they left is the kind a browser stops to sweep at an awkward
+  moment.
+- **The bazaar is a market now.** It had sixteen people arranged in a
+  four-by-four grid with nowhere to go — over two and a half minutes, seventeen
+  of the eighteen people on that level moved zero metres. There are now six
+  traders, one keeping each shop, eight shoppers who each visit three stalls in
+  a different order and stand at the counter to be served, and four people
+  walking through on their way somewhere else. Every position was checked
+  against the level's own colliders, so nobody stands inside a counter.
+
+See [the floor and market notes](docs/floors-and-the-market.md).
+
 ## The watch, the prompts and the controller
 
 - **The watch is findable.** It was never a missing model — the game was

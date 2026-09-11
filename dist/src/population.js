@@ -77,7 +77,10 @@ export function populationRecords(level){
     ]});
   }
   for(let wing=0;wing<6;wing++){
-    if(level===1&&wing===0)continue;const type=roomType(level,wing);
+    // The cafeteria and the bazaar staff themselves, below. The generic pair
+    // would only add two more people standing on one spot in the middle of
+    // rooms that are supposed to be the busiest in the silo.
+    if(wing===0&&(level===1||level===100))continue;const type=roomType(level,wing);
     const works=['workshop','mechanical','farm','medical','it','recycling','water','laundry'].includes(type);
     // One of the two stays at the bench; the other works the room.
     add(roomPoint(level,wing,3.1,5.5),{wing,activity:works?'work':'talk',kind:type});
@@ -98,7 +101,59 @@ export function populationRecords(level){
     for(let i=0;i<8;i++)add(topPoint(...[paths[i][0],0,paths[i][1]]),{kind:'cafeteria',activity:'walk',
       stops:paths.slice(i).concat(paths.slice(0,i)).map(([x,z],j)=>({p:topPoint(x,0,z),pose:j%3===0?'talk':'idle',hold:j%2?3:7}))});
   }
-  if(level===100)for(let i=0;i<16;i++)add(roomPoint(level,0,(i%4-1.5)*3,5+Math.floor(i/4)*4),{kind:'bazaar',activity:i%3?'talk':'work',wing:0});
+  // The bazaar is a street with six shops off it, and what it had was sixteen
+  // people standing in a four-by-four grid, none of them moving. A market is
+  // the one room in the silo whose whole point is that people are going
+  // somewhere: somebody minding each stall, somebody being served at it, and
+  // somebody walking through on their way to a different floor.
+  //
+  // Every position here was checked against the level's own colliders rather
+  // than guessed — the shops open off the street through a portal at x = ±3.3
+  // and the counters stand against the back wall, so a route into a stall has
+  // to go through the doorway and stop in front of the counter.
+  if(level===100){
+    const B=(x,z)=>roomPoint(100,0,x,z);
+    const SHOPS=[[-1,0],[1,0],[-1,1],[1,1],[-1,2],[1,2]]
+      .map(([side,row])=>{const centre=4.5+row*6.55;return {side,row,centre,counter:centre+1.85};});
+    // Whoever is keeping the stall: at the counter, then along it to the
+    // shelves at the end, then back to the front to talk to whoever is there.
+    SHOPS.forEach((shop,i)=>{
+      const x=shop.side*6.4,front=shop.counter-.85;
+      add(B(x,front),{kind:'trader',wing:0,activity:'walk',seed:31000+i*53,
+        heading:Math.PI/2,stops:[
+          {p:B(x,front),pose:'work',hold:13+i},
+          {p:B(shop.side*8.2,front-.6),pose:'work',hold:7},
+          {p:B(shop.side*4.9,front-.3),pose:'talk',hold:9+(i%3)*2},
+        ]});
+    });
+    // Shoppers. Three stalls each, in a different order, so the street is
+    // never a queue of people all heading the same way.
+    const stall=(shop,wait)=>[
+      {p:B(shop.side*2.1,shop.centre),pose:'idle',hold:1},
+      {p:B(shop.side*5.6,shop.counter-1.25),pose:'talk',hold:wait},
+      {p:B(shop.side*2.4,shop.centre-1.3),pose:'idle',hold:2},
+    ];
+    for(let i=0;i<8;i++){
+      const route=[SHOPS[i%6],SHOPS[(i+2)%6],SHOPS[(i+4)%6]];
+      add(B(i%2?1.2:-1.2,2.5+i*2.4),{kind:'shopper',wing:0,activity:'walk',seed:32000+i*71,stops:[
+        {p:B(i%2?1.2:-1.2,2.2),pose:'idle',hold:3+i%3},
+        ...stall(route[0],8+(i%4)*3),
+        {p:B(i%2?-1.1:1.1,route[0].centre+2.8),pose:'idle',hold:2},
+        ...stall(route[1],7+(i%3)*4),
+        {p:B(0,22.2),pose:'talk',hold:5+i%4},
+        ...stall(route[2],9+(i%2)*4),
+        {p:B(i%2?-1.3:1.3,1.8),pose:'idle',hold:4},
+      ]});
+    }
+    // And people simply passing through, because a street is also the way to
+    // somewhere else.
+    for(let i=0;i<4;i++){
+      const lane=i%2?1.5:-1.5,down=i<2;
+      const ends=down?[1.6,8,15,22.4]:[22.4,15,8,1.6];
+      add(B(lane,ends[0]),{kind:'bazaar',wing:0,activity:'walk',seed:33000+i*89,
+        stops:ends.map((z,j)=>({p:B(lane,z),pose:j===0||j===3?'idle':'idle',hold:j===0||j===3?3:1}))});
+    }
+  }
   for(const def of RESIDENT_CAST.filter(d=>!d.story&&(d.level===level||level===1&&d.opening))){
     const position=level===1?(def.top?topPoint(def.top[0],0,def.top[1]):topPoint(-15,0,35)):roomPoint(level,def.wing,def.id==='shirley'?-3.2:2.8,def.id==='cooper'?12:7);
     add(position,{id:def.id,definition:def,kind:'named',activity:def.activity==='read'?'idle':def.activity||'idle',wing:def.wing,heading:level===1?Math.PI/2:Math.PI/2-def.wing*TAU/6});
@@ -123,7 +178,7 @@ export class Population{
   remove(actor){actor.root.removeFromParent();actor.model.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.dispose();});}
   spawn(r){
     const index=r.seed%CROWD_APPEARANCES.length;
-    const definition=r.definition||{id:`crowd-${index}`,name:residentName(r.seed),role:r.kind==='porter'?'Porter':r.kind==='diner'?'Cafeteria resident':`${r.kind[0].toUpperCase()+r.kind.slice(1)} worker`,height:1.63+(index%5)*.045,appearance:CROWD_APPEARANCES[index]};
+    const definition=r.definition||{id:`crowd-${index}`,name:residentName(r.seed),role:r.kind==='porter'?'Porter':r.kind==='diner'?'Cafeteria resident':r.kind==='trader'?'Bazaar trader':r.kind==='shopper'?'At the market':`${r.kind[0].toUpperCase()+r.kind.slice(1)} worker`,height:1.63+(index%5)*.045,appearance:CROWD_APPEARANCES[index]};
     const actor=createResident(definition);actor.record=r;actor.root.position.copy(r.position);actor.root.rotation.y=r.heading??(r.seed%628)/100;actor.heading=actor.root.rotation.y;actor.body=new CharacterBody({radius:.26,standHeight:definition.height,stepHeight:.3});actor.body.teleport(r.position.x,r.position.y,r.position.z);actor.tick=0;this.scene.add(actor.root);this.actors.set(r.id,actor);return actor;
   }
   update(dt,body,watch=false,selected=null){
