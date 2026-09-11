@@ -61,27 +61,54 @@ function updateInterface(time){
   $('controlsButton').hidden=!started||paused();
   document.body.classList.toggle('screen-focused',!!opening?.focus);
 }
+// The question list the panel is currently showing, and what to go back to.
+// A topic with follow-ups swaps the list for them rather than ending the
+// conversation, which is the whole difference between talking to somebody and
+// reading five answers off them.
+let topicLevel={topics:[],back:null};
+function renderChoices(topics,back=null){
+  const box=$('dialogueChoices');box.replaceChildren();
+  topicLevel={topics,back};
+  topics.forEach((topic,i)=>{
+    const b=document.createElement('button');
+    b._topic=topic;b.dataset.reply=topic.reply;b.setAttribute('aria-pressed','false');
+    if(topic.follow?.length)b.classList.add('has-more');
+    const key=document.createElement('kbd');key.textContent=String(i+1);
+    const label=document.createElement('span');label.textContent=topic.label;
+    b.append(key,label);
+    b.addEventListener('click',()=>askTopic(b));
+    box.append(b);
+  });
+  if(back){
+    const b=document.createElement('button');b.className='dialogue-back';b._back=back;
+    const key=document.createElement('kbd');key.textContent='0';
+    const label=document.createElement('span');label.textContent='Ask something else';
+    b.append(key,label);
+    b.addEventListener('click',()=>{audio.click();renderChoices(back.topics,back.back);});
+    box.append(b);
+  }
+  $('dialogueHint').innerHTML=`<kbd>1</kbd>–<kbd>${topics.length}</kbd> ask`
+    +(back?' <span>·</span> <kbd>0</kbd> back':'')+' <span>·</span> <kbd>E</kbd> or <kbd>Esc</kbd> step away';
+}
 function askTopic(button){
   if(!button)return;
+  if(button._back){button.click();return;}
   if(!button._topic&&!button.dataset.reply){button.click();return;}
-  $('dialogueLine').textContent=button._topic?conversationMemory.reply(talking?.id,button._topic):button.dataset.reply;
+  const topic=button._topic;
+  $('dialogueLine').textContent=topic?conversationMemory.reply(talking?.id,topic):button.dataset.reply;
   if(talking?.id==='algorithm')animateAlgorithm();
   for(const other of $('dialogueChoices').children)other.setAttribute('aria-pressed',String(other===button));
+  button.classList.add('asked');
   audio.click();
+  if(topic?.follow?.length)renderChoices(topic.follow,{topics:topicLevel.topics,back:topicLevel.back});
 }
 function startConversation(person,actor=null){
   if(person.id==='billings'&&story?.story){billingsConversation();return;}
   const visits=conversationMemory.visit(person.id);
   const text=person.topics?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name,visits});
   $('algorithmQuery').hidden=person.id!=='algorithm';conversation.classList.toggle('archive-conversation',person.id==='algorithm');
-  $('dialogueHint').innerHTML='<kbd>1</kbd>–<kbd>'+text.topics.length+'</kbd> ask <span>·</span> <kbd>E</kbd> or <kbd>Esc</kbd> step away';
-  $('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;$('dialogueChoices').replaceChildren();
-  text.topics.forEach((topic,i)=>{
-    const b=document.createElement('button');b.dataset.reply=topic.reply;b._topic=topic;b.setAttribute('aria-pressed','false');
-    const key=document.createElement('kbd');key.textContent=String(i+1);
-    b.append(key,document.createTextNode(topic.label));
-    b.addEventListener('click',()=>askTopic(b));$('dialogueChoices').append(b);
-  });
+  $('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;
+  renderChoices(text.topics);
   // The panel is shown, not modalled: the silo keeps running behind it, the
   // person turns to face you and the camera settles on them while you talk.
   hudOpen=false;document.body.classList.remove('hud-open');
@@ -640,7 +667,12 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyC'){if(characters.open)closeDialog(characters);else{renderCharacters();openDialog(characters);}return;}
   if(paused())return;
   if(talking){
-    if(/^Digit[1-9]$/.test(e.code)){askTopic($('dialogueChoices').children[Number(e.code.slice(5))-1]);return;}
+    if(/^Digit[0-9]$/.test(e.code)){
+      const n=Number(e.code.slice(5));
+      const box=$('dialogueChoices');
+      askTopic(n===0?box.querySelector('.dialogue-back'):box.children[n-1]);
+      return;
+    }
     if(e.code==='Escape'||e.code==='KeyE'){endConversation();return;}
   }
   if(e.code==='KeyH'){toggleControls();return;}

@@ -21,10 +21,23 @@ globalThis.document={createElement:()=>({getContext:()=>({fillRect(){},strokeRec
 test('every playable resident and department worker has complete conversations before and after the cleaning',()=>{
   const people=[...PLAYABLE_CHARACTERS,...['porter','diner','cafeteria','bazaar','farm','medical','mechanical','workshop','engineer','miner','it','water','recycling'].map(kind=>({id:'crowd-0',name:'Resident',kind}))];
   for(const person of people)for(const cleaned of [false,true]){
-    const text=conversationFor(person,{cleaned,playerName:'Juliette Nichols'});assert.equal(text.name,person.name);assert.equal(text.topics.length,5);assert.equal(new Set(text.topics.map(t=>t.id)).size,5);
-    for(const line of [text.role,text.greeting,...text.topics.flatMap(t=>[t.label,t.reply])])assert.ok(typeof line==='string'&&line.length>3&&!line.includes('undefined'));
+    const text=conversationFor(person,{cleaned,playerName:'Juliette Nichols'});assert.equal(text.name,person.name);
+    // Topic counts vary by person now — the whole point is that the question
+    // list tells you who you are talking to — so the contract is a sane range
+    // with unique ids, not one fixed number for everybody.
+    assert.ok(text.topics.length>=4&&text.topics.length<=9,`${person.id||person.kind}: ${text.topics.length} topics`);
+    assert.equal(new Set(text.topics.map(t=>t.id)).size,text.topics.length);
+    const lines=[text.role,text.greeting,...text.topics.flatMap(t=>[t.label,t.reply,...(t.follow||[]).flatMap(f=>[f.label,f.reply])])];
+    for(const line of lines)assert.ok(typeof line==='string'&&line.length>3&&!line.includes('undefined'));
+    // Follow-ups are what make it a conversation rather than five answers.
+    assert.ok(text.topics.some(t=>t.follow?.length),`${person.id||person.kind} has no follow-ups`);
   }
   assert.match(conversationFor({name:'Miner',kind:'miner'}).topics[0].reply,/Mining/);
+  // And the named cast are actually different people: no two of them may be
+  // handed the same set of questions, which is the fault this replaced.
+  const named=['juliette','walker','knox','shirley','jahns','marnes','lukas','bernard','pete','gloria','carla','patrick'];
+  const asked=named.map(id=>conversationFor({id,name:id,role:'r'},{}).topics.map(t=>t.label).join('|'));
+  assert.equal(new Set(asked).size,named.length,'two named residents ask the same questions');
 });
 
 test('NPC prompts persist between animation ticks, including unnamed cafeteria residents',()=>{

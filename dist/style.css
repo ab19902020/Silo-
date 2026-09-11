@@ -154,3 +154,77 @@ body:has(#chapterHud:not([hidden])) #toast.show ~ #interaction{bottom:calc(24px 
 @media(max-width:650px){.book-panel .panel-head h2{font-size:25px}.book-panel .panel-foot{padding:10px 16px}.book-panel .location-copy strong{font-size:16px}}
 
 #algorithmQuery{margin:0 20px 16px}#algorithmQuery[hidden]{display:none}#algorithmQuery label{display:block;font-size:12px;letter-spacing:.08em;color:#c0ac7b;margin-bottom:7px}#algorithmQuery>div{display:flex;gap:8px}#archiveQuestion{min-width:0;flex:1;background:#141815;border:1px solid #635d49;color:#eee9dc;padding:12px;font:16px Georgia,serif;border-radius:4px}.archive-conversation{background:#1a1e1b}.archive-conversation #dialogueLine{color:#dfd3b8}.archive-conversation #dialogueChoices button{background:#252923}.conversation-panel{overflow-y:auto;overscroll-behavior:contain}#dialogueChoices button:focus-visible,#archiveQuestion:focus-visible{outline:2px solid #d1bd83;outline-offset:2px}
+
+/* --- the conversation panel -------------------------------------------
+   It was a box of boxes: a flat slab, a flat line of text and four filled
+   rectangles under it, all the same weight. Nothing told you what to read
+   first. This makes it a card that has been typeset — the person's name is
+   the loudest thing on it, what they said gets room and a rule of its own,
+   and the questions are quiet rows rather than four competing buttons. */
+.conversation-panel{
+  inset:auto 0 26px;margin:auto;width:min(566px,calc(100vw - 24px));max-width:none;
+  padding:0;overflow:hidden;border-radius:14px;
+  background:linear-gradient(180deg,#18211ef2,#101816f7);
+  border:1px solid #6d7c6a4d;
+  box-shadow:0 26px 70px #000a,inset 0 1px 0 #ffffff0f;
+  backdrop-filter:blur(14px) saturate(1.04);
+}
+/* A lit filament along the top edge: the one warm thing on the card. */
+.conversation-panel::before{content:'';display:block;height:2px;
+  background:linear-gradient(90deg,transparent,#d5bb8066 16%,#d5bb80 50%,#d5bb8066 84%,transparent)}
+.conversation-panel .panel-head{padding:19px 24px 13px;border-bottom:0;align-items:flex-start}
+.conversation-panel #speakerRole{display:block;font-size:11px;letter-spacing:.23em;text-transform:uppercase}
+.conversation-panel h2{font-size:27px;margin-top:8px;line-height:1.12}
+.conversation-panel .close{width:36px;height:36px;font-size:24px;border-radius:8px;line-height:1}
+.conversation-panel .close:hover{background:#ffffff0f;color:var(--text)}
+/* What they said. Given air, and marked as speech by a rule rather than by
+   being trapped in another rectangle. */
+#dialogueLine{margin:2px 24px 18px;padding:1px 0 1px 17px;border-left:2px solid #d5bb8040;
+  font:19px/1.62 Georgia,serif;color:#efeade;min-height:4.3em}
+/* Questions as rows. Hairlines instead of borders, so five of them read as a
+   list you can scan rather than five things shouting at once. */
+#dialogueChoices{display:flex;flex-direction:column;gap:0;padding:0 12px 4px}
+#dialogueChoices button{display:flex;align-items:center;gap:13px;min-height:46px;
+  text-align:left;background:none;border:0;border-top:1px solid #ffffff0d;border-radius:9px;
+  padding:11px 12px;font-size:15.5px;color:#dfe3d7;transition:background .13s,color .13s}
+#dialogueChoices button:first-child{border-top:0}
+#dialogueChoices button:hover{background:#ffffff0c;color:#fbfaf4}
+#dialogueChoices button kbd{flex:none;width:25px;height:25px;display:grid;place-items:center;margin:0;
+  font:11px/1 Arial,sans-serif;background:#ffffff0d;border:1px solid #ffffff17;border-radius:7px;color:#a9b3a3}
+#dialogueChoices button[aria-pressed=true]{background:#d5bb8016;color:var(--accent)}
+#dialogueChoices button[aria-pressed=true] kbd{border-color:#d5bb8059;color:var(--accent);opacity:1}
+/* Already asked, but not the one showing: dimmed, so you can see your way
+   through a long conversation without losing where you have been. */
+#dialogueChoices button.asked:not([aria-pressed=true]){color:#94a190}
+/* A question with more behind it says so. */
+#dialogueChoices button.has-more span::after{content:'›';margin-left:9px;opacity:.55;font-size:17px;line-height:0}
+#dialogueChoices .dialogue-back{color:#a2b09c;margin-top:2px}
+#dialogueChoices .dialogue-back span{font-style:italic}
+#dialogueChoices .dialogue-back kbd{background:none}
+/* One footer band rather than a hint floating above a slab of a button. */
+.dialogue-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:11px 20px 13px 24px;margin-top:4px;border-top:1px solid #ffffff0f;background:#0b100e5c}
+.dialogue-foot #dialogueHint{padding:0;margin:0;border:0;font-size:11.5px;letter-spacing:.07em;color:#8b968a}
+.dialogue-foot #leaveConversation{flex:none;width:auto;margin:0;padding:9px 15px;font-size:13px;
+  background:none;border:1px solid #ffffff17;border-radius:9px;color:#b7c0b1}
+.dialogue-foot #leaveConversation:hover{background:#ffffff0d;color:var(--text)}
+#dialogueChoices button.has-more span::after{line-height:1;position:relative;top:1px}
+.archive-conversation{background:linear-gradient(180deg,#1c201cf2,#121513f7)}
+.archive-conversation #dialogueLine{color:#e3d7ba;border-left-color:#c0ac7b55;font-family:Georgia,serif}
+.archive-conversation #dialogueChoices button[aria-pressed=true]{background:#c0ac7b16}
+@media(max-width:650px){
+  .conversation-panel{width:calc(100vw - 16px);bottom:12px;border-radius:12px}
+  .conversation-panel .panel-head{padding:15px 18px 10px}
+  .conversation-panel h2{font-size:23px}
+  #dialogueLine{margin:0 18px 14px;font-size:17px;min-height:4em}
+  #dialogueChoices{padding:0 8px 2px}
+  #dialogueChoices button{font-size:15px;min-height:44px;padding:10px}
+  #dialogueHint{padding:9px 18px 0}
+  .dialogue-foot{padding:10px 14px 11px 18px;gap:10px}
+}
+@media(max-height:550px){
+  .conversation-panel{max-height:92dvh}
+  #dialogueLine{min-height:0;margin-bottom:10px;font-size:16px}
+  #dialogueChoices button{min-height:40px;padding:8px 10px}
+  .dialogue-foot{padding:8px 14px 9px 18px}
+}
