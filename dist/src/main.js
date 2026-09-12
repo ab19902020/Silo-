@@ -19,7 +19,6 @@ import { WEAPONS } from './weapons.js';
 import { updateRangeTargets } from './gun-range.js';
 import {RelicInspector} from './relic-inspector.js';
 import { GeorgeTerminal } from './george-terminal.js';
-import { GEORGE_TERMINAL_POINT } from './mystery-spaces.js';
 import { StoryProps, Drone } from './relics.js';
 import { SiloClock } from './silo-time.js';
 import { shiftBell } from './ambient-events.js';
@@ -146,7 +145,10 @@ function renderTerminal(){
   const v=terminal.view;$('terminalStatus').textContent=v.status;$('terminalPath').textContent=`DEVICE 18 : ${v.breadcrumb.join('/').replace(/^\/\//,'/')}`;
   $('terminalInsert').disabled=v.driveInserted;$('terminalBoot').disabled=false;$('terminalEject').disabled=!v.driveInserted;$('terminalBack').disabled=!terminal.mounted||(!terminal.file&&terminal.path==='/');
   $('terminalSearch').hidden=!v.canSearch;const body=$('terminalRows');body.replaceChildren();
-  for(const row of v.rows){const b=document.createElement('button');b.type='button';b.textContent=`${row.kind==='dir'?'DIR':'FILE'}   ${row.name}`;b.onclick=()=>{terminal.open(row.id);if(terminal.view.blueprint)story.terminalDiscovered();renderTerminal();syncStoryHud(true);saveStory();};body.append(b);}
+  for(const row of v.rows){const b=document.createElement('button');b.type='button';b.textContent=`${row.kind==='dir'?'DIR':'FILE'}   ${row.name}`;b.onclick=()=>{terminal.open(row.id);
+    if(terminal.view.blueprint&&story.terminalDiscovered())
+      notify('The line runs below Mechanical, Level 144 — the abandoned pressure gallery. Water Filtration on 055 keeps the capping kit.');
+    renderTerminal();syncStoryHud(true);saveStory();};body.append(b);}
   if(!v.rows.length){const p=document.createElement('p');p.textContent=v.blueprint?'SCHEMATIC RECOVERED':v.body||v.status;body.append(p);}
   const paper=$('terminalBlueprint');paper.hidden=!v.blueprint;
   if(v.blueprint){$('blueprintTitle').textContent=v.blueprint.title;$('blueprintProvenance').textContent=v.blueprint.sourceStatus;$('blueprintRoute').replaceChildren();for(const text of [...v.blueprint.route.map(r=>r.clue),...v.blueprint.tools,...v.blueprint.warnings]){const li=document.createElement('li');li.textContent=text;$('blueprintRoute').append(li);}}
@@ -358,7 +360,10 @@ function renderDirectory(){
     // The level the current chapter is sending you to is marked in the
     // directory itself, because the directory is the thing you travel with.
     const where=story?.destination;
-    const isTarget=!special&&where&&where.level===item.level;
+    // A chapter can point at a special area rather than a numbered floor —
+    // the pressure gallery is below 144, not on it — so mark whichever row is
+    // actually the destination.
+    const isTarget=special?where?.special===item.id:!!where&&!where.special&&where.level===item.level;
     if(isTarget)button.classList.add('objective');
     const copy=document.createElement('span');copy.className='location-copy';const title=document.createElement('strong');title.textContent=item.name;const sub=document.createElement('small');
     const locked=special?story?.travelAllowed(item.id):null;
@@ -505,7 +510,7 @@ function updateWeaponHud(){
 function begin(mode){
   if(!ready)return;
   if(mode){
-    story=new Story(mode);terminal=new GeorgeTerminal();siloClock=new SiloClock({hour:8.4});world.story=story;lastChapter=null;drone?.reset();firearms.holster();workAction=null;wasOutside=false;world.resetStoryWorld();world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;
+    story=new Story(mode);terminal=new GeorgeTerminal();world.driveSeated=false;siloClock=new SiloClock({hour:8.4});world.story=story;lastChapter=null;drone?.reset();firearms.holster();workAction=null;wasOutside=false;world.resetStoryWorld();world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;
     if(mode==='story'&&opening.state!=='find-book')opening.reset();
     if(mode==='explore'){opening.finish();world.openBreach();}
     saveStory();
@@ -541,7 +546,7 @@ function updateHUD(){
   audio.setSurface(wading?'wet':null);
 }
 const inspectionText={
-  'terminal-note':'A note under the unplugged cable: “The directory is not the collection. Ask for the whole library.” Nothing else is written.',
+  'drive-bay':'A cartridge bay wired into the back of the machine, labelled EXTERNAL STORE 18. The slot is empty and the lamp on it is red. A note is folded under it: “The directory is not the collection. Ask for the whole library.” Nothing else is written.',
   'silo17-log':'LAST PUMP SHIFT / The lower galleries are lost. We moved the stores above the high-water band. Three landings still have emergency power. Nobody answered 18.',
   'silo17-crate':'Tools are wrapped in oilcloth above ruined ration packets. Someone kept preparing for a repair crew long after the voices stopped.',
   generator:'Six removable panels protect the turbine. The rear panel is held open for inspection; the rotor, gantry and crane can be seen around the housing.',
@@ -564,6 +569,7 @@ function use(){
   if(!interaction||paused()||body.climbing||workAction)return;
   if(interaction.action==='opening-book'){audio.click();audio.playOpeningTheme();opening.takeBook();return;}
   if(interaction.action==='billings'){billingsConversation();return;}
+  if(interaction.action==='drive-bay'){audio.click();notify(terminal.view.driveInserted?'Hard Drive 18 is seated in the bay and the lamp is green. The note folded under it reads: “The directory is not the collection. Ask for the whole library.”':inspectionText['drive-bay']);return;}
   if(interaction.action==='george-terminal'){story.reachGeorgeHome();renderTerminal();openDialog(terminalDialog);syncStoryHud();return;}
   if(interaction.action==='enter-silo17'){travel('silo17');return;}
   if(interaction.action?.startsWith('pipe-')){const step=interaction.action.slice(5);if(story.story&&(!story.has('crowbar')||!story.has('pipekit'))){notify('Bring the crowbar and Water Filtration’s service kit before opening the line.');return;}workAction={until:performance.now()+2400,step};notify(step==='cover'?'Levering the inspection cover…':step==='isolate'?'Turning the isolation wheel…':step==='collar'?'Seating the split collar…':'Tightening the collar to the witness mark…');return;}
@@ -611,10 +617,10 @@ $('relicReset').addEventListener('click',()=>inspector.reset());
 $('relicFlip').addEventListener('click',()=>inspector.flip());
 relic.addEventListener('close',()=>inspector.hide());
 for(const d of dialogs){d.addEventListener('cancel',e=>{e.preventDefault();if(d===welcome&&ready){if(started){d.close();syncPause();}else begin();}else closeDialog(d);});d.querySelector('[data-close]')?.addEventListener('click',()=>closeDialog(d));}
-$('terminalInsert').addEventListener('click',()=>{if(!terminal.insertDrive(story.has('harddrive')))notify('The cable needs an external drive.');renderTerminal();saveStory();});
+$('terminalInsert').addEventListener('click',()=>{if(!terminal.insertDrive(story.has('harddrive')))notify('The bay is empty and you have nothing to put in it.');else{world.driveSeated=true;notify('Hard Drive 18 slides into the bay. The lamp goes green.');}renderTerminal();saveStory();});
 $('terminalBack').addEventListener('click',()=>{terminal.back();renderTerminal();saveStory();});
 $('terminalBoot').addEventListener('click',()=>{terminal.boot();renderTerminal();saveStory();});
-$('terminalEject').addEventListener('click',()=>{terminal.ejectDrive();renderTerminal();saveStory();});
+$('terminalEject').addEventListener('click',()=>{terminal.ejectDrive();world.driveSeated=false;renderTerminal();saveStory();});
 $('terminalSearch').addEventListener('submit',e=>{e.preventDefault();terminal.search($('terminalQuery').value);renderTerminal();saveStory();});
 $('controlsButton').addEventListener('click',toggleControls);$('leaveConversation').addEventListener('click',()=>closeDialog(conversation));
 conversation.addEventListener('close',()=>{if(talking)endConversation();});
@@ -630,7 +636,12 @@ $('welcomeDirectory').addEventListener('click',()=>{if(!ready)return;requestDire
 $('replayOpening').addEventListener('click',replayOpening);
 $('clearSearch').addEventListener('click',()=>{$('search').value='';renderDirectory();$('search').focus();});
 $('directoryHere').addEventListener('click',()=>{$('search').value=String(world.activeLevel);setDirectoryMode(true);});
-$('directoryLead').addEventListener('click',()=>{const lead=story.destination;if(lead){$('search').value=String(lead.level);setDirectoryMode(true);}});
+$('directoryLead').addEventListener('click',()=>{const lead=story.destination;if(!lead)return;
+  // When the chapter names a special area, go — it is one entry in a list that
+  // also holds the mines, the generator, the excavator and the tunnel, and
+  // "find it yourself" is not what this button is for.
+  if(lead.special&&!story.travelAllowed(lead.special)){travel(lead.special);return;}
+  $('search').value=String(lead.level);setDirectoryMode(true);});
 for(const id of ['allLevelsTab','landmarksTab'])$(id).addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const all=e.key==='Home'?true:e.key==='End'?false:!showAll;setDirectoryMode(all);$(all?'allLevelsTab':'landmarksTab').focus();}});
 $('focusScreenButton').addEventListener('click',()=>{opening.focus=!opening.focus;$('focusScreenButton').textContent=opening.focus?'Back to cafeteria':'Focus on screen';$('focusScreenButton').setAttribute('aria-pressed',String(opening.focus));document.body.classList.toggle('screen-focused',opening.focus);keys.clear();stick.x=stick.y=0;});
 $('skipOpening').addEventListener('click',()=>opening.finish());$('openBookButton').addEventListener('click',requestDirectory);
@@ -977,7 +988,7 @@ async function boot(){
     cast=new CharacterCast(scene,world);await cast.load(progress=>{$('enterButton').textContent=`Preparing characters · ${Math.round(45+progress*55)}%`;});cast.select(saved.character||'juliette');cast.thirdPerson=saved.thirdPerson!==false;body.standHeight=body.height=cast.active.definition.height;cast.active.heading=yaw+Math.PI;renderCharacters();
     world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;world.update(0,body.position);cast.update(0,body,false);
     population=new Population(scene,world);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);
-    story=Story.load(savedStory);terminal=GeorgeTerminal.load(savedStory?.terminal);if(savedStory?.clock)siloClock=SiloClock.load(savedStory.clock);world.story=story;props=new StoryProps(scene,world.m);const relicFailures=await props.loadAssets();if(relicFailures)notify('Some relic models could not load. Refresh to retry.');drone=new Drone(scene,world.m);
+    story=Story.load(savedStory);terminal=GeorgeTerminal.load(savedStory?.terminal);world.driveSeated=terminal.view.driveInserted;if(savedStory?.clock)siloClock=SiloClock.load(savedStory.clock);world.story=story;props=new StoryProps(scene,world.m);const relicFailures=await props.loadAssets();if(relicFailures)notify('Some relic models could not load. Refresh to retry.');drone=new Drone(scene,world.m);
     if(story.story&&story.chapter!=='cleaning'){opening.finish();const cp=savedStory?.checkpoint;if(cp&&Number.isInteger(cp.level)&&cp.level>=1&&cp.level<=144&&Array.isArray(cp.position)&&cp.position.length===3&&cp.position.every(Number.isFinite)&&[null,'generator','mines','excavator','tunnel','pipe-gallery','silo17'].includes(cp.special)){world.setLevel(cp.level,cp.special);const [x,y,z]=cp.position;const floor=world.colliders.floorAt(x,z,.3,y+1);if(Number.isFinite(floor)&&Math.abs(floor-y)<2)body.teleport(x,floor+.05,z);else{const dest=world.destination(cp.special||cp.level);body.teleport(...dest.position.toArray());}yaw=Number.isFinite(cp.yaw)?cp.yaw:0;}if(story.hasFlag('hideout-open'))world.openBreach();if(story.chapter==='drone'){story.killedByDrone();const back=world.destination('airlock');world.setLevel(1);body.teleport(...back.position.toArray());}world.update(0,body.position);}
     openingChanged(opening.state);syncStoryHud(true);
     outsideTarget=world.surface.initFeed(renderer);renderer.compile(scene,camera);setDirectoryMode(true);

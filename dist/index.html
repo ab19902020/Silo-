@@ -74,10 +74,11 @@
   <dialog id="georgeTerminal" class="panel terminal-panel" aria-labelledby="terminalHeading">
     <div class="panel-head"><div><span class="eyebrow">WILKINS / PERSONAL WORKSTATION</span><h2 id="terminalHeading">External storage</h2></div><button class="close" data-close aria-label="Leave computer">×</button></div>
     <div class="terminal-content">
+      <div class="terminal-machine">
       <p id="terminalStatus" role="status"></p><div class="terminal-controls"><button id="terminalInsert">Insert Hard Drive 18</button><button id="terminalBoot">Boot device</button><button id="terminalEject">Eject drive</button><button id="terminalBack">Back</button></div>
       <p id="terminalPath"></p><form id="terminalSearch"><label for="terminalQuery">Search storage</label><div class="terminal-search-row"><input id="terminalQuery" maxlength="80" autocomplete="off" spellcheck="false"><button type="submit">Search</button></div></form>
-      <div id="terminalRows"></div><section id="terminalBlueprint" hidden><h3 id="blueprintTitle"></h3><p id="blueprintProvenance"></p>
-      <svg viewBox="0 0 640 180" role="img" aria-label="Service pipe: supply passes through isolation wheel, split collar and pressure telltale" class="pipe-schematic"><path d="M30 100 H610 M145 100 V60 M495 100 V60"/><circle cx="145" cy="45" r="20"/><path d="M310 75 V125 M334 75 V125 M310 75 H334 M310 125 H334"/><rect x="477" y="24" width="36" height="36"/><path d="M495 50 L505 32"/><text x="28" y="156">SUPPLY</text><text x="100" y="156">ISOLATE</text><text x="288" y="156">COLLAR</text><text x="455" y="156">PRESSURE</text></svg>
+      <div id="terminalRows"></div></div><section id="terminalBlueprint" hidden><h3 id="blueprintTitle"></h3><p id="blueprintProvenance"></p>
+      <svg viewBox="0 0 640 180" role="img" aria-label="Service pipe: supply passes through isolation wheel, split collar and pressure telltale" class="pipe-schematic"><path d="M30 100 H610 M145 100 V60 M495 100 V60"/><circle cx="145" cy="45" r="20"/><path d="M310 75 V125 M334 75 V125 M310 75 H334 M310 125 H334"/><rect x="477" y="24" width="36" height="36"/><path d="M495 50 L505 32"/><text x="30" y="156">SUPPLY</text><text x="145" y="156" text-anchor="middle">ISOLATE</text><text x="322" y="156" text-anchor="middle">COLLAR</text><text x="495" y="156" text-anchor="middle">PRESSURE</text></svg>
       <ol id="blueprintRoute"></ol></section>
     </div>
   </dialog>

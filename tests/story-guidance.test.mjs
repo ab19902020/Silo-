@@ -4,7 +4,7 @@ import * as THREE from '../dist/vendor/three.module.js';
 globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>({fillRect(){},strokeRect(){},fillText(){},measureText:()=>({width:0}),createLinearGradient:()=>({addColorStop(){}})})})};
 const { SiloWorld }=await import('../dist/src/world.js');
 const { Story, CHAPTERS, COLLECTABLES }=await import('../dist/src/story.js');
-const { LEVELS, roomType, TYPE_NAMES }=await import('../dist/src/data.js');
+const { LEVELS, SPECIALS, roomType, TYPE_NAMES }=await import('../dist/src/data.js');
 
 const world=new SiloWorld(new THREE.Scene());
 
@@ -33,9 +33,21 @@ test('every story item rests on something a player can see',()=>{
 test('every chapter tells the player where to go, and the place is real',()=>{
   for(const chapter of CHAPTERS){
     if(!chapter.where)continue;                           // the drone and the ending have no destination
-    const {level,wing,place}=chapter.where;
+    const {level,wing,place,special}=chapter.where;
     assert.ok(LEVELS[level-1],`chapter ${chapter.id} points at level ${level}, which does not exist`);
-    assert.ok(typeof wing==='number'&&wing>=0&&wing<6,`chapter ${chapter.id} has no wing`);
+    // A chapter points either at a wing of a numbered floor or at one of the
+    // special areas the directory lists under BENEATH & BEYOND — the pressure
+    // gallery is below 144, not in a wing of it. Never at neither, and never
+    // at a special the directory does not carry, or "travel there" has
+    // nowhere to send anybody.
+    if(special){
+      const entry=SPECIALS.find(s=>s.id===special);
+      assert.ok(entry,`chapter ${chapter.id} points at a special area "${special}" the directory does not list`);
+      assert.equal(entry.level,level,`chapter ${chapter.id} puts ${special} on level ${level}; the directory says ${entry.level}`);
+      assert.equal(wing,undefined,`chapter ${chapter.id} names both a special area and a wing`);
+    }else{
+      assert.ok(typeof wing==='number'&&wing>=0&&wing<6,`chapter ${chapter.id} has no wing`);
+    }
     // A player travels by level number. An objective that names a department
     // and not a number cannot be acted on in a silo 144 levels deep.
     assert.match(place,/\d{3}|gallery/i,`chapter ${chapter.id} names "${place}" with no level number`);

@@ -14,6 +14,40 @@ See [this release's changes and validation limits](docs/relic-world-polish.md),
 [the mystery route and research](docs/mystery-expansion.md), and
 [agent integration history](docs/AGENT_COORDINATION.md).
 
+## The whole run, walked
+
+- **The playthrough completes.** `tests/playthrough.test.mjs` drives the real
+  story through the real world with a real body: it plans a route over the
+  floor the colliders report, walks it, looks at the thing and requires the
+  game to offer exactly that. Fourteen chapters, eight collectables, four pipe
+  fittings, both airlock doors, the drone. All of it works.
+- **You can see where the hard drive plugs in.** What was there was a black
+  block and a 30 mm tube ending in mid-air, and — measured against the table it
+  stands on — the tower floated 85 mm above the top, the keyboard hung 275 mm
+  off the front edge over the chair, and 70% of the paper was off the left.
+  There is now a cartridge bay with a **148 × 79 mm mouth** behind a brass rim,
+  a placard reading EXTERNAL STORE 18, and a lamp that is red while the slot is
+  empty. Put the drive in and it appears in the slot, the lamp goes green and
+  the screen stops saying MISSING.
+- **You can read the schematic.** The terminal panel is capped at 90dvh and
+  nothing inside it scrolled, so the recovered sheet was laid out past the
+  bottom of the box and lost: 475 px below the panel on a desktop, 691 in
+  portrait, **808 in phone landscape**, where all you could read was the words
+  SCHEMATIC RECOVERED. The head stays put and the content scrolls now, and in
+  landscape it opens into two pages the way the directory book does.
+- **It tells you the floor.** Reading the sheet used to leave you with "follow
+  the red line past the mine drill" — an 82 m walk through a mine network, and
+  no floor number. The chapter now names Level 144 and the pressure gallery,
+  the directory marks that entry, and *Take me there* travels straight to it.
+  A test requires every chapter that sends you somewhere to name the floor in
+  the objective itself.
+- **The gas line reads.** The inspection cover has fasteners, the sheet no
+  longer says the isolation wheel is on your left when it is on your right, and
+  the telltale has a needle that sits in the red while the line is charged and
+  falls to zero as you cap it.
+
+See [the playthrough notes](docs/the-playthrough.md).
+
 ## Smooth stairs and a market with people in it
 
 - **Changing floors no longer drops frames.** A level is six rooms, a set of

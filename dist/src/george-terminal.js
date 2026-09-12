@@ -96,14 +96,14 @@ export const BLUEPRINT=Object.freeze({
   components:Object.freeze([
     {id:'source',label:'SOURCE VESSEL',note:'An unissued supply line enters the mine service gallery.',status:'Reconstructed for this game'},
     {id:'riser',label:'RISER',note:'The red-banded service run continues beyond the deep ore face.',status:'Reconstructed for this game'},
-    {id:'valve',label:'ISOLATION VALVE',note:'Local isolation wheel left of the removable inspection cover.',status:'Reconstructed for this game'},
+    {id:'valve',label:'ISOLATION VALVE',note:'Local isolation wheel to the right of the removable inspection cover, on the pressure telltale side.',status:'Reconstructed for this game'},
     {id:'branch',label:'SEALING COLLAR',note:'Fit the split collar to the exposed coupling after isolation.',status:'Reconstructed for this game'},
     {id:'head',label:'PRESSURE TELLTALE',note:'Torque to the witness mark and confirm the telltale holds at zero.',status:'Reconstructed for this game'},
   ]),
   route:Object.freeze([
     {step:1,clue:'Enter the ore workings through Mechanical. The switch chamber feeds two routes that meet at the rear crosscut.'},
     {step:2,clue:'Follow the red service band beside the deep-face drill. The hatch leads to an unlisted pressure gallery.'},
-    {step:3,clue:'Lever the inspection cover off. The isolation wheel is left of the exposed coupling.'},
+    {step:3,clue:'Lever the inspection cover off. The red isolation wheel is on your right as you face the coupling; the telltale is on your left.'},
     {step:4,clue:'Isolate the line, seat the split collar, then torque to the witness mark. The telltale must hold at zero.'},
   ]),
   tools:Object.freeze([

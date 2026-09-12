@@ -44,7 +44,7 @@ const REACH_CONE=distance=>{const t=Math.min(1,Math.max(0,(distance-.45)/4.55));
 
 export class SiloWorld {
   constructor(scene) {
-    this.scene=scene;this.m=createMaterials();this.assets={};this.loaded=new Map();this.pending=new Map();this.lastLevel=null;this.activeLevel=1;this.doors=[];this.interactions=[];this.colliders=new ColliderSet();this.animated=[];this.screens=[];this.special=null;this.quality='balanced';this.story=null;
+    this.scene=scene;this.m=createMaterials();this.assets={};this.loaded=new Map();this.pending=new Map();this.lastLevel=null;this.activeLevel=1;this.doors=[];this.interactions=[];this.colliders=new ColliderSet();this.animated=[];this.screens=[];this.special=null;this.quality='balanced';this.story=null;this.driveSeated=false;
     scene.background=new THREE.Color(0x121c19);scene.fog=new THREE.FogExp2(0x18221e,.0065);
     this.ambient=new THREE.HemisphereLight(0xb5c4c0,0x36332b,.42);scene.add(this.ambient);
     this.sun=new THREE.DirectionalLight(0xd7d9bc,2);this.sun.position.set(15,levelY(1)+20,-8);this.sun.target.position.set(0,levelY(1),0);scene.add(this.sun,this.sun.target);
@@ -173,7 +173,7 @@ export class SiloWorld {
     for(let wing=0;wing<6;wing++){
       yield;
       const a=wing*TAU/6,ry=Math.PI/2-a,type=roomType(level,wing),room=level===1&&wing===0?buildTopFloor(this.m):type==='bazaar'?buildBazaar(this.m):buildRoom(this.m,type,level,wing,this.assets);
-      room.position.set(Math.cos(a)*SILO.deckOuter,0,Math.sin(a)*SILO.deckOuter);room.rotation.y=ry;if(level===68&&wing===0)addGeorgeDesk(room,this.m);root.add(room);rooms.push(room);
+      room.position.set(Math.cos(a)*SILO.deckOuter,0,Math.sin(a)*SILO.deckOuter);room.rotation.y=ry;if(level===68&&wing===0)addGeorgeDesk(room,this.m).set(this.driveSeated);root.add(room);rooms.push(room);
       // Both plates are bolted to the gallery wall. Offsetting the level plate
       // along the ring keeps it flat on the curve; offsetting it in x and z, as
       // this once did, left it hanging in the walkway well clear of the wall.
@@ -570,7 +570,10 @@ export class SiloWorld {
     // is the kind of litter a browser eventually stops to sweep up, and that
     // sweep is a dropped frame you cannot see the cause of.
     for(const [level,e]of this.loaded){e.root.visible=!this.special&&Math.abs(level-this.activeLevel)<=1;for(let i=0;i<e.rooms.length;i++){const room=e.rooms[i];ROOM_CENTRE.set(0,1.5,10).applyMatrix4(room.matrixWorld);room.visible=level===this.activeLevel||ROOM_CENTRE.distanceTo(position)<38;}}
-    const y=levelY(this.activeLevel);if(this.special==='pipe-gallery'&&this.story)this.pressure.update(this.story);
+    const y=levelY(this.activeLevel);if(this.special==='pipe-gallery'&&this.story)this.pressure.update(this.story,dt);
+    // George's drive bay: the room draws whichever state the host set, and
+    // is rebuilt from it whenever Level 068 streams back in.
+    this.loaded.get(68)?.rooms[0]?.userData.georgeDesk?.set(this.driveSeated);
     this.lightRig(position,top,dt);
     this.sun.visible=this.outside;this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):0;
     // The fill comes off slightly faster than the fixtures, so there is a
