@@ -372,3 +372,26 @@ body:not(.cinema-awake) #cinemaControls{opacity:0;visibility:hidden;pointer-even
   .terminal-panel[open]:has(#terminalBlueprint:not([hidden])) .terminal-controls button{flex:1 1 100%}
   .terminal-panel[open]:has(#terminalBlueprint:not([hidden])) .pipe-schematic{max-height:26dvh}
 }
+
+/* Close examination remains usable in portrait and landscape. Closed dialogs
+   retain the browser's display:none; only the opened panel becomes a grid. */
+.relic-panel[open]{display:grid;grid-template-rows:auto auto minmax(190px,1fr) auto auto;max-height:94dvh;overflow:auto}
+.relic-features{display:flex;flex-wrap:wrap;gap:8px;padding:14px 20px 10px}
+.relic-features:empty{display:none}.relic-features button{min-height:44px;font-size:14px;padding:10px 14px}
+.relic-features button[aria-pressed=true]{background:#d5bb80;color:#162119;border-color:#d5bb80}
+.relic-panel .relic-stage{height:clamp(220px,38dvh,410px);min-height:190px}
+#relicDetail{font-size:16px;line-height:1.65;color:#e7dcc4;border-left:2px solid #b9a573;padding-left:14px}
+.relic-panel #relicSource{font-size:13px;line-height:1.5}.relic-panel .about-content{max-height:25dvh;overflow:auto}
+.relic-panel.record-only .relic-stage,.relic-panel.record-only #relicControlsHint,.relic-panel.record-only #relicFlip,.relic-panel.record-only #relicReset{display:none}
+.relic-panel.record-only[open]{grid-template-rows:auto auto auto}.relic-panel.record-only .about-content{max-height:65dvh}
+.journal-memories{display:grid;gap:8px;margin-top:24px}.journal-memories button{text-align:left;min-height:44px}
+@media(max-height:550px) and (min-width:600px){
+ .relic-panel[open]{width:min(1100px,97vw);grid-template-columns:1.15fr 1fr;grid-template-rows:auto auto 1fr;height:94dvh;overflow:hidden}
+ .relic-panel>.panel-head{grid-column:1 / -1;padding:10px 18px}.relic-panel .panel-head h2{font-size:22px}
+ .relic-panel .relic-stage{grid-column:1;grid-row:2 / 4;height:auto;min-height:0;margin:8px 12px 14px}
+ .relic-panel .relic-features{grid-column:2;grid-row:2;padding:6px 12px;gap:5px}
+ .relic-panel .about-content{grid-column:2;grid-row:3;max-height:none;overflow:auto;padding:0 14px 16px}
+ .relic-panel .relic-controls{grid-column:1;grid-row:3;align-self:end;z-index:1;background:#111819e8;margin:0 13px 14px;padding:5px;gap:5px}
+ .relic-controls p{display:none}.relic-controls button{font-size:12px;padding:8px;min-height:40px}
+ .relic-panel.record-only[open]{display:block;height:auto;max-height:94dvh;overflow:auto}.relic-panel.record-only .relic-controls{margin:0;background:none}
+}

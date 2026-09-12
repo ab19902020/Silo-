@@ -1,4 +1,11 @@
 import * as THREE from '../vendor/three.module.js';
+import {makeEnvironment} from './rendering.js';
+
+// Fit a bounding sphere to the narrower field of view, including portrait.
+export function inspectionDistance(aspect,radius=.72,zoom=1){
+ const halfV=THREE.MathUtils.degToRad(38)/2,halfH=Math.atan(Math.tan(halfV)*Math.max(.05,aspect));
+ return radius/Math.sin(Math.min(halfV,halfH))*1.12*zoom;
+}
 // An isolated, lazily created tabletop viewer. It borrows no world light and
 // never moves the actual relic. All input belongs to the inspection canvas.
 export class RelicInspector{
@@ -14,7 +21,7 @@ export class RelicInspector{
     canvas.addEventListener('pointermove',e=>{
       const before=this.pointers.get(e.pointerId);if(!before)return;
       const dx=e.clientX-before[0],dy=e.clientY-before[1];this.pointers.set(e.pointerId,[e.clientX,e.clientY]);
-      if(this.pointers.size>1){const span=this.span();if(this.lastSpan>0)this.zoom=THREE.MathUtils.clamp(this.zoom*this.lastSpan/span,.55,2.8);this.lastSpan=span;}
+      if(this.pointers.size>1){const span=this.span();if(this.lastSpan>0&&span>1)this.zoom=THREE.MathUtils.clamp(this.zoom*this.lastSpan/span,.55,2.8);this.lastSpan=span;}
       else{this.yaw+=dx*.009;this.pitch+=dy*.009;}
     });
     const release=e=>{this.pointers.delete(e.pointerId);this.lastSpan=this.span();};
@@ -25,13 +32,15 @@ export class RelicInspector{
   span(){const p=[...this.pointers.values()];return p.length>1?Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]):0;}
   reset(){this.yaw=-.35;this.pitch=.65;this.zoom=1;}
   flip(){this.pitch+=Math.PI;}
+  focus(pitch,yaw){this.pitch=pitch;this.yaw=yaw;this.zoom=1;}
   show(source){
-    this.pivot.clear();this.reset();this.pointers.clear();
+    this.hide();this.reset();this.pointers.clear();
     if(!source){this.status.textContent='The model is still loading. Close this view and try again.';this.active=false;return;}
-    if(!this.renderer){this.renderer=new THREE.WebGLRenderer({canvas:this.canvas,antialias:true,alpha:false});this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));}
-    const clone=source.clone(true);clone.position.set(0,0,0);clone.visible=true;clone.updateMatrixWorld(true);
+    if(!this.renderer){this.renderer=new THREE.WebGLRenderer({canvas:this.canvas,antialias:true,alpha:false});this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.setPixelRatio(Math.min(devicePixelRatio,2));this.environment=makeEnvironment(this.renderer,this.scene);this.scene.environmentIntensity=.85;}
+    const clone=source.clone(true);clone.position.set(0,0,0);clone.rotation.y=0;clone.visible=true;clone.updateMatrixWorld(true);
     const bounds=new THREE.Box3().setFromObject(clone),size=bounds.getSize(new THREE.Vector3()),centre=bounds.getCenter(new THREE.Vector3());
     const fit=1/Math.max(size.x,size.y,size.z,.001);clone.position.copy(centre).multiplyScalar(-fit);clone.scale.multiplyScalar(fit);
+    this.radius=size.length()*fit/2;
     clone.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;}});
     this.pivot.add(clone);this.model=clone;this.active=true;this.status.textContent='Drag to turn · pinch or scroll to zoom';this.render();
   }
@@ -40,6 +49,6 @@ export class RelicInspector{
     if(!this.active||!this.renderer)return;
     const box=this.canvas.getBoundingClientRect(),w=Math.max(1,Math.round(box.width)),h=Math.max(1,Math.round(box.height));
     const size=this.renderer.getSize(new THREE.Vector2());if(size.x!==w||size.y!==h){this.renderer.setSize(w,h,false);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();}
-    this.pivot.rotation.set(this.pitch,this.yaw,0);this.camera.position.set(0,.48*this.zoom,2.15*this.zoom);this.camera.lookAt(0,0,0);this.renderer.render(this.scene,this.camera);
+    this.pivot.rotation.set(this.pitch,this.yaw,0);const distance=inspectionDistance(w/h,this.radius,this.zoom);this.camera.position.set(0,0,distance);this.camera.lookAt(0,0,0);this.renderer.render(this.scene,this.camera);
   }
 }

@@ -26,15 +26,29 @@ test('a sign is a mounted plate, not a floating pane of text',()=>{
   assert.ok(face._signMaterial.emissiveMap,'signs stay legible on the dark levels');
 });
 
-test('every wing sign is bolted flat to the gallery wall, none left hanging in the walkway',()=>{
+test('every wing sign clears the curved wall and has brackets reaching it',()=>{
   const onWall=signs.filter(s=>Math.hypot(s.position.x,s.position.z)>20);
   assert.equal(onWall.length,12,`expected a level plate and a department plate per wing, found ${onWall.length}`);
   for(const s of onWall){
     const radius=Math.hypot(s.position.x,s.position.z);
     // The outer wall steps back above the door head: O-.2 below 3.35 m, O-.3 above.
     const wall=s.position.y<3.35?SILO.deckOuter-.2:SILO.deckOuter-.3;
-    const gap=wall-(radius+SIGN_DEPTH/2);
-    assert.ok(Math.abs(gap)<.02,`sign at y=${s.position.y.toFixed(2)} floats ${gap.toFixed(3)} m off the wall`);
+    const plate=s.children.find(c=>c.geometry?.type==='BoxGeometry');
+    const half=plate.geometry.parameters.width/2;
+    assert.ok(Math.hypot(radius+SIGN_DEPTH/2,half)<wall,'the plate corners disappear into the wall');
+    const inward=new THREE.Vector3(0,0,1).applyQuaternion(s.quaternion);
+    assert.ok(inward.dot(s.position.clone().setY(0).normalize())<-.99,'the printed face points into the wall');
+    let supports=0;
+    s.children.at(-1).traverse(mesh=>{
+      if(!mesh.isInstancedMesh)return;
+      for(let i=0;i<mesh.count;i++){
+        const transform=new THREE.Matrix4();mesh.getMatrixAt(i,transform);transform.premultiply(mesh.matrixWorld);
+        let farthest=0;const vertices=mesh.geometry.attributes.position;
+        for(let j=0;j<vertices.count;j++){const p=new THREE.Vector3().fromBufferAttribute(vertices,j).applyMatrix4(transform);farthest=Math.max(farthest,Math.hypot(p.x,p.z));}
+        assert.ok(farthest>=wall-.01,'a mounting bracket stops short of the wall');supports++;
+      }
+    });
+    assert.equal(supports,2,'the plate needs two mounting brackets');
   }
 });
 

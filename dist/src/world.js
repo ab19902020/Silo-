@@ -17,6 +17,8 @@ const PYLON_ANGLES=Array.from({length:24},(_,i)=>(Math.floor(i/4)+(i%4+1)/5)*TAU
 const NIGHT_FILAMENT=new THREE.Color(0xff9a4e);
 const SIGN_WALL=SILO.deckOuter-.2-SIGN_DEPTH/2;
 const SIGN_WALL_HIGH=SILO.deckOuter-.3-SIGN_DEPTH/2;
+import {addMementoFixtures} from './mementos.js';
+import {curvedWallSign} from './sign-mounts.js';
 import { buildRoom } from './rooms.js';
 import { updateLivestock } from './livestock.js';
 
@@ -173,13 +175,14 @@ export class SiloWorld {
     for(let wing=0;wing<6;wing++){
       yield;
       const a=wing*TAU/6,ry=Math.PI/2-a,type=roomType(level,wing),room=level===1&&wing===0?buildTopFloor(this.m):type==='bazaar'?buildBazaar(this.m):buildRoom(this.m,type,level,wing,this.assets);
+      addMementoFixtures(room,this.m,level,wing);
       room.position.set(Math.cos(a)*SILO.deckOuter,0,Math.sin(a)*SILO.deckOuter);room.rotation.y=ry;if(level===68&&wing===0)addGeorgeDesk(room,this.m).set(this.driveSeated);root.add(room);rooms.push(room);
       // Both plates are bolted to the gallery wall. Offsetting the level plate
       // along the ring keeps it flat on the curve; offsetting it in x and z, as
       // this once did, left it hanging in the walkway well clear of the wall.
       const beside=a+3.3/SILO.deckOuter;
-      addSign(root,String(level).padStart(3,'0'),[Math.cos(beside)*SIGN_WALL,2.15,Math.sin(beside)*SIGN_WALL],1.8,1.25,Math.PI/2-beside+Math.PI,{font:'bold 200px Arial',background:'#34453b'});
-      addSign(root,TYPE_NAMES[type],[Math.cos(a)*SIGN_WALL_HIGH,3.72,Math.sin(a)*SIGN_WALL_HIGH],4.6,.55,ry+Math.PI);
+      curvedWallSign(root,this.m,String(level).padStart(3,'0'),beside,2.15,SILO.deckOuter-.2,1.8,1.25,{font:'bold 200px Arial',background:'#34453b'});
+      curvedWallSign(root,this.m,TYPE_NAMES[type],a,3.72,SILO.deckOuter-.3,4.6,.55);
       // A real double leaf door with a switchable oriented collision volume.
       const surround=new Kit(this.m);surround.portal('concrete',0,.01,0,3.9,3.2,.48,0,.34,.18);surround.portal('metal',0,.02,-.27,3.85,3.16,.045,0,.32,.045);const surroundRoot=surround.group();surroundRoot.position.copy(room.position);surroundRoot.rotation.y=ry;root.add(surroundRoot);
       const doorRoot=new THREE.Group();doorRoot.position.copy(room.position);doorRoot.rotation.y=ry;root.add(doorRoot);const leaves=[];
@@ -206,7 +209,7 @@ export class SiloWorld {
       const landing=gk.group();landing.name='terminal-stair-parapet';landing.rotation.y=-landingAngle(level);root.add(landing);
     }
     yield;
-    dressFloor(root,this.m,level);this.scene.add(root);const entry={level,root,rooms,doors,interactions,passages};this.loaded.set(level,entry);return entry;
+    dressFloor(root,this.m,level);const memory=root.userData.memoryInteraction;interactions.push({...memory,position:memory.position.clone().add(new THREE.Vector3(0,y,0))});this.scene.add(root);const entry={level,root,rooms,doors,interactions,passages};this.loaded.set(level,entry);return entry;
   }
   // The whole level, now, because something is about to stand in it.
   loadLevel(level){

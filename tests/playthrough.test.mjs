@@ -242,7 +242,7 @@ test('the whole run walks: every relic collected, every chapter entered, out ont
     assert.equal(story.travelAllowed(id),null,`${id} is still refused after the ending`);
 
   assert.equal(story.relicsHeld,RELICS.length,'the run finished without all four relics');
-  assert.equal(story.held.size,COLLECTABLES.length,'the run finished without every collectable');
+  assert.equal(story.held.size,COLLECTABLES.filter(c=>!c.optional).length,'the run finished without every required collectable');
   assert.equal(story.chapterIndex,CHAPTERS.length-1);
 });
 

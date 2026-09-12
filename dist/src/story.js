@@ -1,5 +1,7 @@
 // Event-driven mystery progression. Objects provide leads; the player must
 // inspect, operate, search and persuade rather than complete a shopping list.
+import {MEMENTOS} from './mementos.js';
+export {MEMENTOS};
 export const MODES=Object.freeze(['story','explore']);
 
 export const RELICS=Object.freeze([
@@ -27,11 +29,11 @@ export const EQUIPMENT=Object.freeze([
   {id:'pipekit',sound:'metal',name:'A pipe-capping kit',eyebrow:'TOOL · WATER FILTRATION',level:55,wing:0,at:[-6.7,0,18.7],needs:'pipe-tools',
    blurb:'A split steel collar, seal compound, torque handle and pressure key. The sizes match the service line drawn in the hidden blueprint.',source:'The kit and its placement are reconstructed for this game; the exact gas-pipe location is not presented as canon.'},
   {id:'suit',sound:'cloth',name:'A sealed outside suit',eyebrow:'SUPPLY · NOT ON THE MANIFEST',level:144,wing:3,at:[5.6,0,18.5],needs:'escape-kit',
-   blurb:'A suit with sound seals and Mechanical heat tape. It was prepared to survive the hill, not to perform a cleaning.',source:'The importance of correctly made heat tape is established in the books and television series; this stored suit is reconstructed.'},
+   blurb:'A suit with sound seals and Mechanical heat tape. It was prepared to survive the hill, not to perform a cleaning.',source:'The importance of correctly made heat tape is established in the television series; this stored suit is reconstructed.'},
   {id:'shotgun',sound:'metal',name:'Billings’ shotgun',eyebrow:'SHERIFF · ISSUED',level:1,wing:0,at:[1.9,.95,11.7],needs:'billings',
    blurb:'Officer Billings has opened the armoury and placed the shotgun in your hands. It is not permission to clean. It is his decision to believe the evidence.',source:'Billings, the Atlanta book and sheriff’s station are established. This handoff is reconstructed for the game’s finale.'},
 ]);
-export const COLLECTABLES=Object.freeze([...RELICS,...EQUIPMENT]);
+export const COLLECTABLES=Object.freeze([...RELICS,...EQUIPMENT,...MEMENTOS]);
 const byId=new Map(COLLECTABLES.map(item=>[item.id,item]));
 
 // Every chapter names a place the player can actually travel to, and carries
@@ -188,6 +190,7 @@ export class Story{
     for(const step of Array.isArray(saved?.pipeSteps)?saved.pipeSteps:[]){if(step!==['isolate','collar','torque'][s.pipeSteps.length])break;s.capPipe(step);}
     if(flags.has('billings-helped'))s.speakToBillings();if(held.has('shotgun'))s.take('shotgun');if(held.has('suit'))s.take('suit');
     if(past>=indexOf('drone')&&s.chapter==='airlock')s.steppedOutside();if(saved?.chapter==='free'&&s.chapter==='drone')s.droneKilled();
+    for(const item of MEMENTOS)if(held.has(item.id))s.take(item.id);
     s.deaths=Math.min(9999,Math.max(0,Number(saved?.deaths)||0));
     // Hints already given stay given: a reload is not a way to be told again,
     // and more to the point it is not a way to lose the help you already had.

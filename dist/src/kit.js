@@ -202,7 +202,7 @@ export function sign(text,w=3,h=.65,{color='#ddd7b5',background='#2d3e35',font='
     material.userData.signRefs=0;material.userData.signCached=true;textCache.set(key,material);
     if(textCache.size>128){const oldest=textCache.keys().next().value,oldMaterial=textCache.get(oldest);textCache.delete(oldest);oldMaterial.userData.signCached=false;if(!oldMaterial.userData.signRefs){oldMaterial.map.dispose();oldMaterial.dispose();}}
   }
-  const group=new THREE.Group();
+  const group=new THREE.Group();group.userData.signText=text;group.userData.signSize=[w,h];
   const plate=new THREE.Mesh(new THREE.BoxGeometry(w+.055,h+.055,SIGN_DEPTH),plateMaterial);
   plate.userData.ownedGeometry=true;plate.castShadow=true;plate.receiveShadow=true;
   const face=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);face.position.z=SIGN_DEPTH/2+.004;

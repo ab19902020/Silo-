@@ -14,6 +14,19 @@ See [this release's changes and validation limits](docs/relic-world-polish.md),
 [the mystery route and research](docs/mystery-expansion.md), and
 [agent integration history](docs/AGENT_COORDINATION.md).
 
+## TV world and relic polish
+
+Every level now has a distinct resident note to discover and keep in the
+satchel. Five optional finds add heat tape, a magnifier, an old video camera,
+a numbered IT key and a retired sheriff’s badge. Close examination has named
+detail views, an open Georgia book and a camera that fits portrait screens.
+Wide signs clear the curved gallery walls; cafeteria and market signs have
+physical supports, with several floating furnishings corrected.
+
+The latest movement and cinema update is included. Pickups keep you in play;
+open the satchel and choose **Inspect in 3D** when you want a closer look.
+See [the changes, TV references and testing limits](docs/tv-world-polish.md).
+
 ## Walking, running and quieter screen controls
 
 The latest repository upgrades are retained, including resident conversations,

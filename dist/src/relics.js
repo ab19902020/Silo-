@@ -2,6 +2,7 @@ import * as THREE from '../vendor/three.module.js';
 import { Kit } from './kit.js';
 import { roomPoint } from './characters.js';
 import { COLLECTABLES } from './story.js';
+import {buildMementoModel} from './mementos.js';
 import {loadRelicModel} from './relic-assets.js';
 
 // The physical relics, and the thing that comes for you when you go outside.
@@ -12,7 +13,7 @@ import {loadRelicModel} from './relic-assets.js';
 const build={
   pez:(k)=>{
     k.box('white',0,0,0,.024,.086,.014);                       // the sleeve
-    for(let i=0;i<4;i++)k.box('red',0,-.03+i*.02,.008,.019,.014,.003);
+    for(let i=0;i<4;i++)k.box('blue',0,-.03+i*.02,.008,.019,.014,.003);
     k.box('yellow',0,.055,.004,.026,.03,.026);                 // the head, tipped back
     k.sphere('yellow',0,.072,.012,.014,.013,.016);
     k.box('ochre',0,.068,.028,.010,.008,.016);                 // bill
@@ -142,9 +143,10 @@ export class StoryProps{
       return {fixture,group};
     });
     for(const item of COLLECTABLES){
-      if(item.prop||item.id==='shotgun'||!build[item.id])continue;                  // the hard drive is a supplied model
-      const k=new Kit(materials);build[item.id](k);
-      const group=new THREE.Group();group.add(k.group());group.name=`relic-${item.id}`;
+      if(item.prop||item.id==='shotgun'||(!build[item.id]&&!item.optional))continue;                  // the hard drive is a supplied model
+      const group=new THREE.Group();
+      if(item.optional)group.add(buildMementoModel(item.id,materials));else{const k=new Kit(materials);build[item.id](k);group.add(k.group());}
+      group.name=`relic-${item.id}`;
       // A relic is a real object at its real size, and a PEZ dispenser on a bar
       // among forty mugs is genuinely hard to see. A faint glint above it is
       // the concession: enough to catch the eye down the room, not enough to

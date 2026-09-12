@@ -13,6 +13,8 @@ import { conversationFor, ALGORITHM, algorithmAnswer } from './conversations.js'
 import { LORE } from './environment-lore.js';
 import { ConversationMemory } from './resident-stories.js';
 import { RESIDENT_CAST } from './resident-data.js';
+import {memoryFor,FLOOR_MEMORIES} from './floor-memories.js';
+import {RELIC_DETAILS,openGeorgiaBook} from './relic-details.js';
 import { Story, COLLECTABLES, RELICS, CHAPTERS } from './story.js';
 import { Firearms } from './firearms.js';
 import { WEAPONS } from './weapons.js';
@@ -306,14 +308,35 @@ function renderSatchel(){
     if(has){const src=document.createElement('p');src.className='src';src.textContent=item.source;copy.append(src);}
     const inspect=document.createElement('button');inspect.className='secondary';inspect.textContent='Inspect in 3D';inspect.onclick=()=>inspectRelic(item.id);copy.append(inspect);row.append(tick,copy);list.append(row);
   }
+  const found=FLOOR_MEMORIES.filter(m=>story.seen.has(`memory:${m.level}`));
+  if(found.length){const section=document.createElement('section');section.className='journal-memories';const title=document.createElement('h3');title.textContent=`Notes from the levels · ${found.length} / 144`;section.append(title);for(const memory of found){const b=document.createElement('button');b.className='secondary';b.textContent=`${String(memory.level).padStart(3,'0')} · ${memory.title}`;b.onclick=()=>inspectFloorMemory(memory.level);section.append(b);}list.append(section);}
+
 }
+let openBookModel=null;
 function inspectRelic(id){
   const item=COLLECTABLES.find(i=>i.id===id);if(!item)return;
+  relic.classList.remove('record-only');
   haptics.play('inspect');
   $('relicName').textContent=item.name;$('relicDescription').textContent=item.blurb;$('relicSource').textContent=item.source;
   openDialog(relic);
   const source=id==='harddrive'?cast?.relic:id==='shotgun'?firearms.model:props?.inspectionModel(id);
-  try{inspector.show(source);}catch(error){$('relicControlsHint').textContent='3D inspection could not start. Close this view and try again.';}
+  const features=$('relicFeatures');features.replaceChildren();$('relicDetail').textContent='';
+  const details=RELIC_DETAILS[id]||[];
+  for(const [name,pitch,yaw,text,variant] of details){
+    const b=document.createElement('button');b.className='secondary';b.textContent=name;b.setAttribute('aria-pressed','false');
+    b.onclick=()=>{try{const model=variant==='open-book'?(openBookModel??=openGeorgiaBook(world.m)):source;inspector.show(model);inspector.focus(pitch,yaw);$('relicDetail').textContent=text;for(const other of features.children)other.setAttribute('aria-pressed',String(other===b));}catch(error){$('relicControlsHint').textContent='3D inspection could not start. Close this view and try again.';}};
+    features.append(b);
+  }
+  try{inspector.show(source);if(details.length){inspector.focus(details[0][1],details[0][2]);$('relicDetail').textContent=details[0][3];features.firstElementChild.setAttribute('aria-pressed','true');}}catch(error){$('relicControlsHint').textContent='3D inspection could not start. Close this view and try again.';}
+
+}
+function inspectFloorMemory(level){
+  const memory=memoryFor(level);if(!memory)return;
+  story.seen.add(`memory:${level}`);saveStory();
+  openDialog(relic);inspector.hide();relic.classList.add('record-only');
+  $('relicName').textContent=memory.title;$('relicDescription').textContent=memory.text;
+  $('relicDetail').textContent=`RESIDENT NOTES · LEVEL ${String(level).padStart(3,'0')}`;
+  $('relicSource').textContent=memory.source;$('relicFeatures').replaceChildren();
 }
 function takeRelic(id){
   const item=story.take(id);
@@ -572,6 +595,7 @@ function use(){
   if(!interaction||paused()||body.climbing||workAction)return;
   if(interaction.action==='opening-book'){audio.click();audio.playOpeningTheme();opening.takeBook();return;}
   if(interaction.action==='billings'){billingsConversation();return;}
+  if(interaction.action?.startsWith('floor-memory:')){inspectFloorMemory(Number(interaction.action.split(':')[1]));return;}
   if(interaction.action==='drive-bay'){audio.click();notify(terminal.view.driveInserted?'Hard Drive 18 is seated in the bay and the lamp is green. The note folded under it reads: “The directory is not the collection. Ask for the whole library.”':inspectionText['drive-bay']);return;}
   if(interaction.action==='george-terminal'){story.reachGeorgeHome();renderTerminal();openDialog(terminalDialog);syncStoryHud();return;}
   if(interaction.action==='enter-silo17'){travel('silo17');return;}
@@ -616,6 +640,7 @@ function use(){
 }
 function toggleTorch(){torchOn=!torchOn;audio.torch(torchOn);haptics.play('use',.7);torch.visible=torchOn;$('torchButton').classList.toggle('active',torchOn);$('torchButton').setAttribute('aria-pressed',String(torchOn));}
 
+$('relicJournal').addEventListener('click',()=>{renderSatchel();openDialog(satchel);});
 $('relicReset').addEventListener('click',()=>inspector.reset());
 $('relicFlip').addEventListener('click',()=>inspector.flip());
 relic.addEventListener('close',()=>inspector.hide());
@@ -847,12 +872,13 @@ function frame(){
   requestAnimationFrame(frame);if(!renderer||!world)return;
   const dt=Math.min(clock.getDelta(),.05),time=performance.now()*.001;
   applyPad(dt);
+  if(relic.open){inspector.render();if(workAction)workAction.until+=dt*1000;audio.setStoryPaused?.(true);updateInterface(time);return;}
   if(!paused()){
     const forward=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-stick.y-pad.move.y;
     const right=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0)+stick.x+pad.move.x;
     const speed=(running||pad.run||keys.has('ShiftLeft')||keys.has('ShiftRight'))?3.8:1.45;
     desired.set(-Math.sin(yaw)*forward+Math.cos(yaw)*right,0,-Math.cos(yaw)*forward-Math.sin(yaw)*right);if(desired.length()>1)desired.normalize();desired.multiplyScalar(opening.focus||workAction||talking?0:speed);
-    if(workAction&&performance.now()>=workAction.until){const step=workAction.step;workAction=null;const result=step==='cover'?{complete:story.openPipeCover()}:story.capPipe(step);audio.door(true);notify(result.message||(step==='cover'?'Cover released. The isolation wheel is to the left.':story.hasFlag('pipe-capped')?'The telltale holds at zero. The service line is sealed.':'The fitting holds. Check the next point on the schematic.'));syncStoryHud(true);saveStory();}
+    if(workAction&&performance.now()>=workAction.until){const step=workAction.step;workAction=null;const result=step==='cover'?{complete:story.openPipeCover()}:story.capPipe(step);audio.door(true);notify(result.message||(step==='cover'?'Cover released. The isolation wheel is on your right as you face the fitting.':story.hasFlag('pipe-capped')?'The telltale holds at zero. The service line is sealed.':'The fitting holds. Check the next point on the schematic.'));syncStoryHud(true);saveStory();}
 
     // Bound movement substeps prevent thin rail/door tunneling after slow frames.
     // The jump impulse belongs to one substep only, or it is applied N times.

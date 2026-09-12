@@ -1,5 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit, addSign, fixture, table, shelf, pipe, random } from './kit.js';
+import {hangingSign,wallSign} from './sign-mounts.js';
 import {dressBazaar, REPAIR_COUNTER} from './environment-details.js';
 
 // Where the trader keeps what has been left with her. The numbers live in
@@ -57,7 +58,7 @@ export function buildBazaar(m){
       k.cylinder('metal',front-side*.4,3.7,z+dz,.045,7.4);
       for(const y of [1.5,3.1,5.2])k.torus('rust',front-side*.4,y,z+dz,.068,.018,Math.PI/2);
     }
-    label(name,front-side*.42,3.12,z,2.3,ry);fixture(k,front-side*.6,3.38,z,1.7,false,true);
+    wallSign(root,m,name,[front-side*.277,3.32,z],2.3,.34,ry,.07);fixture(k,front-side*.6,3.38,z,1.7,false,true);
     lightPoints.push({position:[side*2.2,2.8,z],color:n===0||n===4?0xffab68:0xb7d2c9,intensity:70});
     // Keep the center of each portal open; side counters admit the player.
     const counterZ=z+1.85;
@@ -83,11 +84,12 @@ export function buildBazaar(m){
     }else{
       for(let i=0;i<8;i++){const x=cx-1.65+i*.47;k.cylinder('metal',x,1.08,counterZ,.15,.38);k.torus('metal',x,1.29,counterZ,.17,.025,Math.PI/2);k.beam('brass',[x,1.32,counterZ],[x,1.6,counterZ],.019);}
     }
-    const banner=addSign(root,'FOUNDERS\nDAY',[front-side*.47,5.5,z+2.2],.6,2.2,ry,{color:'#c3ab7c',background:n%2?'#254b4b':'#6b3427',font:'bold 70px Georgia',border:true});
+    const banner=wallSign(root,m,'FOUNDERS\nDAY',[front-side*.277,5.5,z+2.2],.6,2.2,ry,.027,{color:'#c3ab7c',background:n%2?'#254b4b':'#6b3427',font:'bold 70px Georgia',border:true});
     void banner;
   }
   // Crossing lane at the rear and a physically open link to the service ring.
-  label('BAZAAR',0,4.1,.3,4.7,0);label('SERVICE GALLERY  ↔',0,3.2,24,2.85);
+  hangingSign(root,m,'BAZAAR',[0,4.1,.3],4.7,.5,0,8.95);
+  hangingSign(root,m,'SERVICE GALLERY  ↔',[0,3.7,23.88],2.85,.34,Math.PI,4.0);
   for(const z of [3,9.5,16,22]){
     k.beam('darkMetal',[-3,6.7,z],[3,6.7,z+.7],.018);
     for(let j=0;j<9;j++){
