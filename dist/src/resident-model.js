@@ -25,6 +25,7 @@ export function buildResidentModel(definition,{suit=false}={}){
   rig('Hips',null,0,.91,0);rig('Spine','Hips',0,1.08,0);rig('Chest','Spine',0,1.31,0);rig('Neck','Chest',0,1.49,0);rig('Head','Neck',0,1.63,0);
   for(const [s,sign] of [['L',1],['R',-1]]){
     rig('UpperArm'+s,'Chest',sign*.178*wide,1.405,0);rig('Forearm'+s,'UpperArm'+s,sign*.196*wide,1.118,.011);rig('Hand'+s,'Forearm'+s,sign*.208*wide,.868,.017);
+    rig('Fingers'+s,'Hand'+s,sign*.208*wide,.793,.02);rig('FingerTips'+s,'Fingers'+s,sign*.208*wide,.755,.025);
     rig('Thigh'+s,'Hips',sign*.092*wide,.90,0);rig('Shin'+s,'Thigh'+s,sign*.095*wide,.50,.012);rig('Foot'+s,'Shin'+s,sign*.095*wide,.080,.018);rig('Toe'+s,'Foot'+s,sign*.095*wide,.07,.155);rig('Coat'+s,'Hips',sign*.118,.85,-.04);
   }
   const positions=[],normals=[],colors=[],surfaces=[],weights=[],joints=[],indices=[],skin=new THREE.Color(a.skin??0xb79476),coat=new THREE.Color(suit?0xd4d0b6:a.coat??0x66715f),hair=new THREE.Color(a.hair??0x44352b),dark=new THREE.Color(0x242923),shirt=new THREE.Color(a.shirt??0xa29981);let helmetRange=null,visorRange=null;
@@ -75,7 +76,7 @@ export function buildResidentModel(definition,{suit=false}={}){
     {const g=new THREE.SphereGeometry(1,18,14);g.scale(.055*wide,.082,.072);g.translate(upper.x-sign*.004,upper.y-.026,upper.z);add(g,coat,'UpperArm'+s,null,true);}
     if(a.tattoo&&!suit)for(let i=0;i<5;i++)box(hand.x,1.04+i*.025,.066,.035,.004,.003,dark,'Forearm'+s,i%2?.6:-.6);
     const handColor=suit?dark:skin;ell(hand.x,.831,.018,.041,.064,.030,handColor,'Hand'+s);
-    for(let f=0;f<4;f++){const xx=hand.x+(f-1.5)*.018,len=[.067,.076,.07,.055][f];tube(V(xx,.793,.02),V(xx,.793-len,.029),.0085,.0068,handColor,'Hand'+s,7);}
+    for(let f=0;f<4;f++){const xx=hand.x+(f-1.5)*.018,len=[.067,.076,.07,.055][f];tube(V(xx,.793,.02),V(xx,.793-len,.029),.0085,.0068,handColor,y=>binding('Fingers'+s,'FingerTips'+s,clamp((y-.743)/.024,0,1)),7);}
     tube(V(hand.x-sign*.027,.85,.034),V(hand.x-sign*.057,.799,.044),.013,.008,handColor,'Hand'+s,7);
     torus(hand.x,.898,.015,.039,.008,suit?dark:coat.clone().multiplyScalar(.7),'Forearm'+s,Math.PI/2);
     if(!suit){box(sign*.116*wide,1.273,.142,.095,.115,.015,coat.clone().multiplyScalar(.82),'Chest');box(sign*.116*wide,1.326,.154,.099,.012,.013,shirt,'Chest');}
@@ -367,8 +368,10 @@ export function createResident(definition,options={}){
 
 export function poseResident(actor,pose,time,dt=0,speed=0){
   const m=actor.motion;
-  if(pose==='walk'){m.update(dt,{speed,position:actor.root.position,heading:actor.root.rotation.y,grounded:true,active:true,ground:actor.ground||null});return;}
-  m.neutral();m.time=time;m.rotate('Spine',Math.sin(time*1.8)*.006);m.rotate('Head',Math.sin(time*.53+actor.heading)*.026,new THREE.Vector3(0,1,0));
+  // Idle decelerates through the same gait. Activities release old foot
+  // anchors, so resuming a route cannot consume stale movement history.
+  if(pose==='walk'||pose==='idle'){m.update(dt,{speed,position:actor.root.position,heading:actor.root.rotation.y,grounded:true,active:pose==='walk'||speed>.025,ground:actor.ground||null});return;}
+  m.reset();m.neutral();m.time=time;m.rotate('Spine',Math.sin(time*1.8)*.006);m.rotate('Head',Math.sin(time*.53+actor.heading)*.026,new THREE.Vector3(0,1,0));
   for(const s of ['L','R'])m.rotate('Forearm'+s,-.16);
   if(pose==='sit'||pose==='read'){
     // Sit the pelvis on the seat itself, not a fraction of the sitter's height:

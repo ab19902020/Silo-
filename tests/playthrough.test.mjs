@@ -418,10 +418,11 @@ test('picking a relic up says what you picked up, and does not push the next obj
     'taking something still throws up an objective card of its own');
   assert.ok(!/syncStoryHud\(true\)/.test(body),
     'taking something still forces the chapter card up even when the chapter did not change');
-  // It still has to say what you took, and still open the inspector, which is
-  // where the name, the blurb and the provenance belong.
+  // Say what was collected without interrupting play. Inspection is an
+  // explicit satchel action, as requested in the UI cleanup.
   assert.match(body,/notify\(`\$\{item\.name\}/,'taking something says nothing at all now');
-  assert.match(body,/inspectRelic\(id\)/,'the inspector no longer opens');
+  assert.doesNotMatch(body,/inspectRelic\(id\)/,'a pickup still interrupts play with a modal');
+  assert.match(source,/inspect\.onclick=\(\)=>inspectRelic\(item\.id\)/,'the satchel lost its inspection action');
   // And the chapter card still comes up when the chapter genuinely moves on.
   assert.match(body,/syncStoryHud\(\)/,'nothing tells the HUD the story moved');
 });

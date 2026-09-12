@@ -14,6 +14,20 @@ See [this release's changes and validation limits](docs/relic-world-polish.md),
 [the mystery route and research](docs/mystery-expansion.md), and
 [agent integration history](docs/AGENT_COORDINATION.md).
 
+## Walking, running and quieter screen controls
+
+The latest repository upgrades are retained, including resident conversations,
+controller support, floor streaming, the market and the complete mystery route.
+The shared gait now has shorter reaches, smoother weight release, independent
+arm swings and earlier heel recovery while running. Generated residents have
+relaxed walking hands and a loose running grip. Idle, conversation and teleport
+transitions release stale foot anchors and running state.
+
+The cleaning controls fade automatically and can be recalled with **H / ☰**.
+Relic pickups stay in play; choose **Inspect in 3D** from the satchel. Exterior
+rocks no longer have torn triangular seams, and the cleaners settle on the hill.
+See [movement changes and validation limits](docs/movement-polish.md).
+
 ## The whole run, walked
 
 - **The playthrough completes.** `tests/playthrough.test.mjs` drives the real

@@ -314,6 +314,18 @@ body:has(#chapterHud:not([hidden])) #toast.show ~ #interaction{bottom:calc(24px 
   .book-panel .panel-foot small{display:none}
 }
 
+/* Watching is the default; screen controls only appear briefly or on request. */
+.watching-cleaning #cinemaControls,.screen-focused #cinemaControls{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s,visibility .22s;gap:6px;padding:5px 7px;border-color:#7c8a7045;background:#101b18c9;border-radius:5px}
+.cinema-awake #cinemaControls{opacity:1;visibility:visible;pointer-events:auto}
+#cinemaStatus{font-size:12px;padding:0 6px}
+.watching-cleaning #cinemaControls button,.screen-focused #cinemaControls button{font-size:13px;min-height:44px;padding:8px 11px}
+.screen-focused #controlsButton{opacity:.42}
+.screen-focused #controlsButton:hover,.screen-focused #controlsButton:focus-visible{opacity:.9}
+.watching-cleaning #toast,.watching-cleaning #interaction,.watching-cleaning #crosshair{display:none!important}
+@media(max-width:650px){#cinemaStatus{flex-basis:auto;padding:0 5px}.watching-cleaning #cinemaControls{gap:5px}}
+@media(prefers-reduced-motion:reduce){#cinemaControls{transition:none}}
+
+body:not(.cinema-awake) #cinemaControls{opacity:0;visibility:hidden;pointer-events:none}
 /* --- the controller map in Settings ------------------------------------ */
 .pad-map{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:0 0 16px;
   font-size:14px;line-height:1.45}

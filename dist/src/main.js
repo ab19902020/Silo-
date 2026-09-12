@@ -27,6 +27,7 @@ import { Haptics } from './haptics.js';
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel'),terminalDialog=$('georgeTerminal');
 const dialogs=[welcome,directory,settings,about,characters,relic,conversation,satchel,terminalDialog],coarse=matchMedia('(pointer:coarse)').matches;
 let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
+let cinemaUntil=0;
 let hudOpen=false,touchUntil=0,chapterUntil=0,lastInteractionLabel=null,lastOpeningState=null,talking=null,chapterEnteredAt=0,hintUntil=0;
 let terminal=new GeorgeTerminal(),workAction=null;
 let conversationStorage=null;try{conversationStorage=localStorage;}catch{}
@@ -53,8 +54,10 @@ function notify(message){$('toast').textContent=message;$('toast').classList.add
 function revealControls(){touchUntil=performance.now()+3500;}
 function toggleControls(){hudOpen=!hudOpen;document.body.classList.toggle('hud-open',hudOpen);$('controlsButton').setAttribute('aria-expanded',String(hudOpen));revealControls();}
 function updateInterface(time){
-  if(hudOpen&&(body.horizontalSpeed>.12||opening?.focus&&time*1000>touchUntil)){hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');}
+  if(hudOpen&&(body.horizontalSpeed>.12||time*1000>touchUntil)){hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');}
   document.body.classList.toggle('playing',started&&!paused());document.body.classList.toggle('touch-awake',time*1000<touchUntil||body.horizontalSpeed>.12);
+  const cinemaVisible=!!opening?.watching&&!paused()&&(hudOpen||time*1000<cinemaUntil);
+  document.body.classList.toggle('cinema-awake',cinemaVisible);$('cinemaControls').inert=!cinemaVisible;$('cinemaControls').setAttribute('aria-hidden',String(!cinemaVisible));
   const card=$('chapterHud'),wasShown=!card.hidden;
   card.hidden=paused()||opening?.watching||time*1000>chapterUntil;
   if(wasShown&&card.hidden)document.body.style.setProperty('--card-h','0px');
@@ -319,14 +322,15 @@ function takeRelic(id){
   notify(`${item.name} — in your satchel.`);
   if(id==='suit')notify('The suit is on. The airlock will let you through now.');
   if(id==='shotgun'){takeWeapon('armoryShotgun02');notify('Billings’ shotgun is loaded. G or FIRE shoots; R reloads.');}
-  syncStoryHud();if(['pez','watch','georgia','harddrive','crowbar','pipekit'].includes(id))inspectRelic(id);
+  // Pickups stay in play; Inspect remains available in the satchel.
+  syncStoryHud();
 }
 function openingChanged(state){
   syncMusicGate();
   // Picking the book up used to snap the camera into the screen. You are in a
   // room full of people watching a cleaning; you stay in it, free to look
   // around and walk, and Focus on screen is there if you want the whole wall.
-  const watching=state==='watch',reading=state==='read-book';chapterUntil=performance.now()+(state==='find-book'?6500:reading?5000:0);if(watching&&lastOpeningState!=='watch'){hudOpen=false;document.body.classList.remove('hud-open');}lastOpeningState=state;
+  const watching=state==='watch',reading=state==='read-book';chapterUntil=performance.now()+(state==='find-book'?6500:reading?5000:0);if(watching&&lastOpeningState!=='watch'){cinemaUntil=performance.now()+4500;hudOpen=false;document.body.classList.remove('hud-open');}lastOpeningState=state;
   $('chapterHud').hidden=state==='explore';$('chapterTitle').textContent=state==='find-book'?'A book on the table':watching?'Holston’s cleaning':'The room falls quiet';
   $('chapterObjective').textContent=state==='find-book'?'The directory book is on the table in front of you.':watching?'Holston is outside. Watch from the room, or focus on the screen.':'Your directory is ready.';
   $('focusScreenButton').hidden=!watching;$('skipOpening').hidden=!watching;$('openBookButton').hidden=!reading;
@@ -642,7 +646,7 @@ $('directoryLead').addEventListener('click',()=>{const lead=story.destination;if
   if(lead.special&&!story.travelAllowed(lead.special)){travel(lead.special);return;}
   $('search').value=String(lead.level);setDirectoryMode(true);});
 for(const id of ['allLevelsTab','landmarksTab'])$(id).addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const all=e.key==='Home'?true:e.key==='End'?false:!showAll;setDirectoryMode(all);$(all?'allLevelsTab':'landmarksTab').focus();}});
-$('focusScreenButton').addEventListener('click',()=>{opening.focus=!opening.focus;$('focusScreenButton').textContent=opening.focus?'Back to cafeteria':'Focus on screen';$('focusScreenButton').setAttribute('aria-pressed',String(opening.focus));document.body.classList.toggle('screen-focused',opening.focus);keys.clear();stick.x=stick.y=0;});
+$('focusScreenButton').addEventListener('click',()=>{opening.focus=!opening.focus;$('focusScreenButton').textContent=opening.focus?'Back to cafeteria':'Focus on screen';$('focusScreenButton').setAttribute('aria-pressed',String(opening.focus));document.body.classList.toggle('screen-focused',opening.focus);cinemaUntil=0;hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');canvas.focus();keys.clear();stick.x=stick.y=0;});
 $('skipOpening').addEventListener('click',()=>opening.finish());$('openBookButton').addEventListener('click',requestDirectory);
 $('characterButton').addEventListener('click',()=>{renderCharacters();openDialog(characters);});$('viewButton').addEventListener('click',toggleView);
 $('settingsButton').addEventListener('click',()=>openDialog(settings));$('aboutButton').addEventListener('click',()=>openDialog(about));

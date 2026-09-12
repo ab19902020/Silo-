@@ -39,6 +39,17 @@ export const SENSOR=Object.freeze({x:26,z:93,eye:1.85});
 export const TREE=Object.freeze({x:4,z:146});
 export const sensorLocal=()=>new THREE.Vector3(SENSOR.x,groundY(SENSOR.x,SENSOR.z)+SENSOR.eye,SENSOR.z+.95);
 
+// Shared corners receive identical displacement. Randomising each copy of a
+// non-indexed corner tears triangles apart and makes rocks resemble wreckage.
+export function createScreeGeometry(){
+  const g=new THREE.IcosahedronGeometry(1,1),p=g.attributes.position;
+  for(let i=0;i<p.count;i++){
+    const x=p.getX(i),y=p.getY(i),z=p.getZ(i),r=.90+.08*Math.sin(x*9+y*13+z*7)+.035*Math.cos(x*19-z*11);
+    p.setXYZ(i,x*r,y*r,z*r);
+  }
+  g.computeVertexNormals();return g;
+}
+
 export class SurfaceWorld {
   constructor(m){
     this.root=new THREE.Group();this.root.position.set(SILO.deckOuter,levelY(1),0);this.root.rotation.y=Math.PI/2;
@@ -90,8 +101,12 @@ export class SurfaceWorld {
     this.groundMaterial=m.rock.clone();this.groundMaterial.color.setHex(0x747b70);this.groundMaterial.vertexColors=true;this.groundMaterial.normalScale.set(.42,.42);projectMaterial(this.groundMaterial,3.2);
     this.terrainTiles=new Map();this.tileKey='';this.streamTerrain({x:26,z:140});this.ground=this.terrainTiles.get('0,0');
     // Angular scree with uneven silhouette, never a field of smooth spheres.
-    const rockGeo=new THREE.IcosahedronGeometry(1,1),rp=rockGeo.attributes.position;for(let i=0;i<rp.count;i++){const v=new THREE.Vector3().fromBufferAttribute(rp,i).multiplyScalar(.78+rng()*.36);rp.setXYZ(i,v.x,v.y,v.z);}rockGeo.computeVertexNormals();
-    const rocks=new Kit(m);for(let i=0;i<900;i++){const x=26+(rng()-.5)*760,z=140+(rng()-.5)*760;if(Math.abs(x-26)<8&&z<125)continue;const far=Math.hypot(x-26,z-108)/260;const size=(.15+Math.pow(rng(),4)*2.9)*(1+far*2.2);rocks.mesh(rockGeo,'rock',x,groundY(x,z)+size*.17,z,size,size*.4,size*.8,rng(),rng()*6,rng()*.3);}
+    const rockGeo=createScreeGeometry();
+    const rocks=new Kit(m);for(let i=0;i<900;i++){
+      const x=26+(rng()-.5)*760,z=140+(rng()-.5)*760;if(Math.abs(x-26)<8&&z<125)continue;
+      const size=.15+Math.pow(rng(),4)*2.9;
+      rocks.mesh(rockGeo,'rock',x,groundY(x,z)+size*.06,z,size,size*.24,size*.8,rng()*.08,rng()*6,rng()*.04);
+    }
     for(let i=0;i<180;i++){const x=26+(rng()-.5)*112,z=112+rng()*63;if(Math.abs(x-26)<7&&z<125)continue;const size=.12+Math.pow(rng(),2)*.85;rocks.mesh(rockGeo,'rock',x,groundY(x,z)+size*.12,z,size,size*.3,size*.75,rng()*.3,rng()*6,rng()*.2);}
     for(const [x,z,w,d] of [[11,121,3.6,1.5],[36,127,2.9,1.3],[7,137,4.4,1.8],[-1,145,3.3,1.5],[-13,157,4.2,1.8],[-3,165,3.1,1.5],[4,160,2.6,1.4],[40,146,2.8,1.2],[-22,141,3.4,1.7]]){
       rocks.mesh(rockGeo,'rock',x,groundY(x,z)+.15,z,w,.32,d,.07,.4,.04);
@@ -132,7 +147,7 @@ export class SurfaceWorld {
     };
     // A trunk that leans off the slope, with root spurs flaring into the ground.
     const lean=new THREE.Vector3(-.16,1,.10).normalize();
-    grow(new THREE.Vector3(tx,ty-.4,tz),lean,3.1,.34,4);
+    grow(new THREE.Vector3(tx,ty-.4,tz),lean,2.9,.44,4);
     for(let i=0;i<7;i++){const a=i*Math.PI*2/7+trng()*.5,out=new THREE.Vector3(Math.cos(a),-1.5,Math.sin(a)).normalize();
       limb(new THREE.Vector3(tx,ty+.5,tz),new THREE.Vector3(tx,ty+.5,tz).addScaledVector(out,1.15),.30,.10,7);}
     const treeGeo=mergeGeometries(limbs,false);limbs.forEach(g=>g.dispose());
