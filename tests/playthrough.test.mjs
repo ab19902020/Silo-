@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import * as T from '../dist/vendor/three.module.js';
 import {rules,evaluate,resolve as resolveIn,stylesheet} from './helpers/css-cascade.mjs';
 import { Story, COLLECTABLES, RELICS, CHAPTERS } from '../dist/src/story.js';
@@ -400,6 +402,66 @@ test('putting the drive in changes what is on the desk and what the screen says'
   assert.ok(before>after,'Level 068 came back with the bay empty even though the drive is in');
 });
 
+// --- how much you are told when you pick something up --------------------
+// Four things fired at once on every pickup: a card with the relic's whole
+// blurb, a toast pushing the next objective, a second card with the chapter
+// title and that objective again, and the 3D inspector. Finding a thing is
+// not the moment to be told what to do next.
+test('picking a relic up says what you picked up, and does not push the next objective at you',()=>{
+  const source=fs.readFileSync(path.join(import.meta.dirname,'..','dist','src','main.js'),'utf8');
+  const start=source.indexOf('function takeRelic(');
+  assert.ok(start>0,'takeRelic is not where this test thinks it is');
+  const body=source.slice(start,source.indexOf('\nfunction ',start+10));
+  assert.ok(!/notify\([^)]*story\.objective/.test(body),
+    'taking something still puts the next objective on screen');
+  assert.ok(!/showObjective\(/.test(body),
+    'taking something still throws up an objective card of its own');
+  assert.ok(!/syncStoryHud\(true\)/.test(body),
+    'taking something still forces the chapter card up even when the chapter did not change');
+  // It still has to say what you took, and still open the inspector, which is
+  // where the name, the blurb and the provenance belong.
+  assert.match(body,/notify\(`\$\{item\.name\}/,'taking something says nothing at all now');
+  assert.match(body,/inspectRelic\(id\)/,'the inspector no longer opens');
+  // And the chapter card still comes up when the chapter genuinely moves on.
+  assert.match(body,/syncStoryHud\(\)/,'nothing tells the HUD the story moved');
+});
+
+// --- a closed dialog is a closed dialog ----------------------------------
+// This shipped, and it broke the game outright: giving `.terminal-panel` a
+// `display:flex` so its content could scroll also beat the user-agent rule
+// `dialog:not([open]){display:none}`, so George's terminal stood over the
+// cafeteria from the moment the page loaded, for the whole game. The directory
+// book got this right — `.book-panel[open]` — and the terminal did not.
+//
+// Every dialog in the page, not just the one that broke: an author-level
+// `display` on a dialog element must be scoped to [open].
+test('no dialog is painted over the game while it is closed',()=>{
+  const html=fs.readFileSync(path.join(import.meta.dirname,'..','dist','index.html'),'utf8');
+  const ids=[...html.matchAll(/<dialog[^>]*id="([^"]+)"/g)].map(m=>m[1]);
+  const classes=new Set();
+  for(const m of html.matchAll(/<dialog[^>]*class="([^"]+)"/g))for(const c of m[1].split(/\s+/))classes.add(c);
+  assert.ok(ids.length>=8,`only ${ids.length} dialogs found; this test is looking in the wrong place`);
+  assert.ok(classes.has('terminal-panel')&&classes.has('book-panel'));
+
+  const subjectOf=selector=>selector.trim().split(/\s+(?![^(]*\))/).pop();
+  const offenders=[];
+  for(const rule of ALL){
+    const subject=subjectOf(rule.selector);
+    // A pseudo-element cannot paint when its host is display:none.
+    if(/::/.test(subject))continue;
+    const bare=subject.replace(/\[[^\]]*\]|::?[a-z-]+(\([^)]*\))?/g,'');
+    const isDialog=bare==='dialog'||ids.some(id=>bare==='#'+id)||[...classes].some(c=>bare==='.'+c);
+    if(!isDialog)continue;
+    const declaration=[...rule.body.matchAll(/(^|;)\s*display\s*:\s*([^;]+)/g)].pop();
+    if(!declaration)continue;
+    const value=declaration[2].trim();
+    if(value==='none'||/\[open\]/.test(subject))continue;
+    offenders.push(`${rule.selector}${rule.media?` @media ${rule.media}`:''} -> display:${value}`);
+  }
+  assert.deepEqual(offenders,[],
+    'a dialog is given a display that is not scoped to [open]; it will be painted over the game while closed');
+});
+
 // --- the sheet you have to be able to read -------------------------------
 // The terminal panel is capped at 90dvh and nothing inside it scrolled, so the
 // recovered schematic — a drawing and nine numbered steps — was laid out past
@@ -411,9 +473,9 @@ test('putting the drive in changes what is on the desk and what the screen says'
 const CSS=stylesheet();
 const ALL=rules(CSS);
 const resolve=(selectors,property,viewport)=>resolveIn(ALL,selectors,property,viewport);
-const CONTENT=['.terminal-content','.terminal-panel:has(#terminalBlueprint:not([hidden])) .terminal-content'];
-const SHEET=['#terminalBlueprint','.terminal-panel:has(#terminalBlueprint:not([hidden])) #terminalBlueprint'];
-const MACHINE=['.terminal-machine','.terminal-panel:has(#terminalBlueprint:not([hidden])) .terminal-machine'];
+const CONTENT=['.terminal-content','.terminal-panel[open]:has(#terminalBlueprint:not([hidden])) .terminal-content'];
+const SHEET=['#terminalBlueprint','.terminal-panel[open]:has(#terminalBlueprint:not([hidden])) #terminalBlueprint'];
+const MACHINE=['.terminal-machine','.terminal-panel[open]:has(#terminalBlueprint:not([hidden])) .terminal-machine'];
 
 const SIZES=[
   {name:'desktop',width:1280,height:760,short:false},
@@ -459,7 +521,7 @@ test('the recovered schematic can always be scrolled to, at every size a phone r
 });
 
 test('the panel keeps its head still and gives the rest of itself to the content',()=>{
-  assert.match(resolve(['.terminal-panel'],'display',SIZES[0])||'',/flex/,'the panel is not a column, so nothing in it can be made to scroll');
-  assert.equal(resolve(['.terminal-panel .panel-head'],'flex',SIZES[0]),'none','the head is allowed to shrink, which is not what a head does');
+  assert.match(resolve(['.terminal-panel[open]'],'display',SIZES[0])||'',/flex/,'the panel is not a column, so nothing in it can be made to scroll');
+  assert.equal(resolve(['.terminal-panel[open] .panel-head'],'flex',SIZES[0]),'none','the head is allowed to shrink, which is not what a head does');
   assert.match(resolve(CONTENT,'flex',SIZES[0])||'','1 1 auto'.length?/1 1 auto/:/./,'the content does not take the space the head leaves');
 });

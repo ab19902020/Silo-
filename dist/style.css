@@ -332,8 +332,8 @@ body:has(#chapterHud:not([hidden])) #toast.show ~ #interaction{bottom:calc(24px 
 
    The head stays put and the content scrolls, the way Settings and the
    directory list already did. */
-.terminal-panel{display:flex;flex-direction:column}
-.terminal-panel .panel-head{flex:none}
+.terminal-panel[open]{display:flex;flex-direction:column}
+.terminal-panel[open] .panel-head{flex:none}
 .terminal-content{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;
   scrollbar-color:#5f715d transparent}
 .terminal-machine{min-width:0}
@@ -345,18 +345,18 @@ body:has(#chapterHud:not([hidden])) #toast.show ~ #interaction{bottom:calc(24px 
    there is a sheet to show: with the blueprint hidden a second column would
    be an empty half of the panel. */
 @media (max-height:560px) and (min-height:300px) and (min-width:560px){
-  .terminal-panel:has(#terminalBlueprint:not([hidden])){width:min(960px,96vw);height:96dvh;max-height:96dvh}
-  .terminal-panel:has(#terminalBlueprint:not([hidden])) .panel-head{padding:11px 20px 9px}
-  .terminal-panel:has(#terminalBlueprint:not([hidden])) .panel-head h2{font-size:21px}
-  .terminal-panel:has(#terminalBlueprint:not([hidden])) .panel-head .eyebrow{display:none}
-  .terminal-panel:has(#terminalBlueprint:not([hidden])) .terminal-content{
+  .terminal-panel[open]:has(#terminalBlueprint:not([hidden])){width:min(960px,96vw);height:96dvh;max-height:96dvh}
+  .terminal-panel[open]:has(#terminalBlueprint:not([hidden])) .panel-head{padding:11px 20px 9px}
+  .terminal-panel[open]:has(#terminalBlueprint:not([hidden])) .panel-head h2{font-size:21px}
+  .terminal-panel[open]:has(#terminalBlueprint:not([hidden])) .panel-head .eyebrow{display:none}
+  .terminal-panel[open]:has(#terminalBlueprint:not([hidden])) .terminal-content{
     display:grid;grid-template-columns:minmax(190px,32%) minmax(0,1fr);
     gap:0 18px;overflow:hidden;padding:12px 20px 14px}
-  .terminal-panel:has(#terminalBlueprint:not([hidden])) .terminal-machine{
+  .terminal-panel[open]:has(#terminalBlueprint:not([hidden])) .terminal-machine{
     min-height:0;overflow:auto;padding-right:4px}
-  .terminal-panel:has(#terminalBlueprint:not([hidden])) #terminalBlueprint{
+  .terminal-panel[open]:has(#terminalBlueprint:not([hidden])) #terminalBlueprint{
     min-height:0;overflow:auto;border-top:0;border-left:1px solid #47695a;
     padding:0 0 0 18px;margin:0}
-  .terminal-panel:has(#terminalBlueprint:not([hidden])) .terminal-controls button{flex:1 1 100%}
-  .terminal-panel:has(#terminalBlueprint:not([hidden])) .pipe-schematic{max-height:26dvh}
+  .terminal-panel[open]:has(#terminalBlueprint:not([hidden])) .terminal-controls button{flex:1 1 100%}
+  .terminal-panel[open]:has(#terminalBlueprint:not([hidden])) .pipe-schematic{max-height:26dvh}
 }

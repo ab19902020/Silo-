@@ -316,11 +316,10 @@ function takeRelic(id){
   const item=story.take(id);
   if(!item)return;
   audio.pickup(item.sound||'relic');haptics.play('pickup');saveStory();
-  showObjective(item.name,item.blurb,9000);
-  notify(story.story?story.objective:`${item.name} — in your satchel.`);
+  notify(`${item.name} — in your satchel.`);
   if(id==='suit')notify('The suit is on. The airlock will let you through now.');
   if(id==='shotgun'){takeWeapon('armoryShotgun02');notify('Billings’ shotgun is loaded. G or FIRE shoots; R reloads.');}
-  syncStoryHud(true);if(['pez','watch','georgia','harddrive','crowbar','pipekit'].includes(id))inspectRelic(id);
+  syncStoryHud();if(['pez','watch','georgia','harddrive','crowbar','pipekit'].includes(id))inspectRelic(id);
 }
 function openingChanged(state){
   syncMusicGate();
