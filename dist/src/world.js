@@ -55,7 +55,7 @@ export class SiloWorld {
     // means no clock is running and the fixtures stay at working daylight.
     this.schedule=null;this.lampScale=1;this.lampWarmth=0;
     this.buildStructure();this.surface=new SurfaceWorld(this.m);scene.add(this.surface.root);this.generator=buildGeneratorHall(this.m);scene.add(this.generator.root);this.generator.root.visible=false;
-    this.keyLight=new THREE.SpotLight(0xffd6a0,0,48,1.05,.8,1.65);this.keyLight.userData={key:null};this.keyLight.castShadow=true;this.keyLight.shadow.mapSize.set(1024,1024);this.keyLight.shadow.bias=-.00015;this.keyLight.shadow.normalBias=.045;this.keyLight.shadow.camera.near=.4;scene.add(this.keyLight,this.keyLight.target);
+    this.keyLight=new THREE.SpotLight(0xffd6a0,0,48,1.05,.8,1.65);this.keyLight.userData={key:null};this.keyLight.castShadow=true;this.keyLight.shadow.mapSize.set(1024,1024);this.keyLight.shadow.bias=-.00015;this.keyLight.shadow.normalBias=.008;this.keyLight.shadow.radius=2;this.keyLight.shadow.camera.near=.4;scene.add(this.keyLight,this.keyLight.target);
     this.sun.castShadow=false;this.sun.visible=false;this.sun.intensity=0;
     this.silo17=buildSilo17(this.m);scene.add(this.silo17.root);this.silo17.root.visible=false;
     this.pressure=buildPressureGallery(this.m);scene.add(this.pressure.root);this.pressure.root.visible=false;
@@ -577,14 +577,18 @@ export class SiloWorld {
     // George's drive bay: the room draws whichever state the host set, and
     // is rebuilt from it whenever Level 068 streams back in.
     this.loaded.get(68)?.rooms[0]?.userData.georgeDesk?.set(this.driveSeated);
+    // A close interior fixture needs a finer shadow map than the distant sun.
+    // Resize only on a quality change, retaining the mobile light budget.
+    const shadowSize=this.quality==='high'?2048:1024;
+    if(this.keyLight.shadow.mapSize.x!==shadowSize){this.keyLight.shadow.mapSize.set(shadowSize,shadowSize);this.keyLight.shadow.map?.dispose();this.keyLight.shadow.map=null;}
     this.lightRig(position,top,dt);
     this.sun.visible=this.outside;this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):0;
     // The fill comes off slightly faster than the fixtures, so there is a
     // little more shape between the lamps at night than in the middle of the
     // day — but only a little. Enough to feel, not enough to lose the floor.
-    this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):(this.special==='silo17'?.28:.48)*Math.pow(this.lampScale,1.15);this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
-    this.scene.environmentIntensity=this.outside?.9:this.special==='silo17'?.28:.48;
-    const mood=floorAtmosphere(this.activeLevel);this.ambient.color.setHex(this.outside?0xb5c4c0:this.special==="silo17"?0x70948f:mood.light);
+    this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):(this.special==='silo17'?.25:.42)*Math.pow(this.lampScale,1.15);this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.012;
+    this.scene.environmentIntensity=this.outside?.9:this.special==='silo17'?.30:.56;
+    const mood=floorAtmosphere(this.activeLevel);this.ambient.groundColor.setHex(this.outside?0x464c3b:this.special==='silo17'?0x233a35:0x6c6454);this.ambient.color.setHex(this.outside?0xb5c4c0:this.special==="silo17"?0x70948f:mood.light);
     this.scene.fog.density=this.outside?.0012:this.special==='excavator'?.004:this.special==='silo17'?.023:this.special?.009:mood.density;this.scene.fog.color.setHex(this.outside?0x929fa3:this.special==='silo17'?0x132526:mood.fog);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);if(this.outside)this.scene.fog.color.copy(this.surface.sky.fogColor);this.structure.visible=this.landings.visible=this.stairs.visible=this.distant.visible=this.distantLandings.visible=this.distantStairs.visible=this.topCore.visible=!this.special&&!this.outside;
   }
 }

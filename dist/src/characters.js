@@ -5,6 +5,8 @@ import { SILO, levelY } from './data.js';
 import { SkeletalMotion } from './locomotion.js';
 import { RESIDENT_CAST } from './resident-data.js';
 import { createResident } from './resident-model.js';
+import {calibrateAnkles} from './rig-calibration.js';
+import {gaitStyle} from './captured-motion.js';
 
 export const CHARACTERS=Object.freeze([
   {id:'juliette',name:'Juliette Nichols',short:'Juliette',role:'Mechanical · engineer',level:144,wing:1,place:'Walker’s workshop',height:1.73},
@@ -61,6 +63,7 @@ function liningFor(mesh){
 
 export function actorFrom(gltf,definition){
   const root=new THREE.Group();root.name=definition.id;const model=gltf.scene;root.add(model);const meshes=[],bones=[];
+  calibrateAnkles(model,definition.height);model.userData.gaitStyle=gaitStyle(definition.id);
   model.traverse(o=>{if(o.isMesh){
     o.castShadow=o.receiveShadow=true;o.frustumCulled=false;
     // The scanned coat hems are thin shells. Culling their reverse faces

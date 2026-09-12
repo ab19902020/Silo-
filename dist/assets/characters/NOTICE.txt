@@ -1,0 +1,20 @@
+Character performance and resident anatomy
+
+The supplied Juliette, Sims and Bernard assets retain their existing provenance.
+
+Resident anatomy: derived from the MakeHuman base mesh, default rig and weights.
+CC0, Data Collection AB, Joel Palmius and Jonas Hauquier, 2020–2021.
+https://github.com/makehumancommunity/makehuman/tree/master/makehuman/data
+
+resident-faces.jpg: cropped and packed CC0 face textures by Toigo,
+OnlyTheGhosts, Mindfront, Jartur69 and Cutoff3D from MakeHuman's CC0 skin packs.
+https://static.makehumancommunity.org/assets/assetpacks/skins01.html
+https://static.makehumancommunity.org/assets/assetpacks/skins02.html
+
+Runtime gait measurements: CMU Graphics Lab Motion Capture Database,
+funded by NSF EIA-0196217. Recordings 07_01, 07_03, 07_04 and 35_17.
+https://mocap.cs.cmu.edu/
+BVH conversion by Bruce Hahne / cgspeed; no additional use restrictions.
+
+Reproduction instructions, selected sources, modifications and validation:
+docs/character-performance.md in the source repository.
