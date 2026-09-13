@@ -1,3 +1,5 @@
+import './menu-redesign.js';
+
 // Things you can feel.
 //
 // Two very different devices behind one call. A DualSense or DualShock reports
