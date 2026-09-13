@@ -39,7 +39,7 @@ function groundNormal(x,z,e=.6){
 // gives the timings that decision rests on.
 export const ALLISON_REST=Object.freeze([TREE.x+1,TREE.z-1.6]);
 export const REST_HEADING=1.37;
-export const HOLSTON_REST=Object.freeze([ALLISON_REST[0]+Math.cos(REST_HEADING)*.70,ALLISON_REST[1]-Math.sin(REST_HEADING)*.70]);
+export const HOLSTON_REST=Object.freeze([ALLISON_REST[0]+Math.cos(REST_HEADING)*.78,ALLISON_REST[1]-Math.sin(REST_HEADING)*.78]);
 // The scene is cut against assets/audio/silo-18-opening.mp3, which starts on
 // the frame the book is picked up. Measured off that file: spoken word runs to
 // about 0:54, the score is established by 0:57, its loudest bar is 1:19 and a
@@ -75,7 +75,7 @@ export function cleaningSample(time){
   return {phase:'rest',position:beside,heading:lerp(heading,REST_HEADING,ease((t-85)/5)),progress:ease((t-85)/5),speed:0};
 }
 
-function settleOnSlope(actor){
+function settleOnSlope(actor,complete=false){
   // Sample the visible skinned surface, including the backpack. A pelvis
   // height alone left the suit sunk into this uneven hillside.
   actor.root.updateWorldMatrix(true,false);actor.root.updateMatrixWorld(true);const point=new THREE.Vector3();let clearance=Infinity;
@@ -83,7 +83,7 @@ function settleOnSlope(actor){
     if(!mesh.isSkinnedMesh)return;
     const g=mesh.geometry,groups=g.groups.length?g.groups:[{start:0,count:g.index.count,materialIndex:0}];
     for(const group of groups){if(Array.isArray(mesh.material)&&!mesh.material[group.materialIndex].visible)continue;
-      for(let j=group.start;j<group.start+group.count;j+=29){mesh.getVertexPosition(g.index.getX(j),point);mesh.localToWorld(point);const p=topLocal(point);clearance=Math.min(clearance,p.y-groundY(p.x,p.z));}
+      for(let j=group.start;j<group.start+group.count;j+=complete?1:13){mesh.getVertexPosition(g.index.getX(j),point);mesh.localToWorld(point);const p=topLocal(point);clearance=Math.min(clearance,p.y-groundY(p.x,p.z));}
     }
   });
   if(Number.isFinite(clearance))actor.model.position.y+=.015-clearance;
@@ -141,13 +141,14 @@ function posedCleaner(actor,sample,time,dt){
     for(const s of ['L','R']){m.rotate('Thigh'+s,-1.1*(1-u));m.rotate('Shin'+s,1.5*(1-u));}
     m.rotate('UpperArmL',-.10);m.rotate('ForearmL',-.28*u);m.rotate('UpperArmR',-.15);m.rotate('UpperArmR',-.30*u,new THREE.Vector3(0,0,1));m.rotate('ForearmR',-.16*u);m.rotate('ShinR',.13);m.rotate('Head',.07);m.rotate('Head',-.13*u,new THREE.Vector3(0,1,0));
   }
+  if(sample.phase==='rest'&&actor.definition.id==='allison'){const u=sample.progress??1;m.rotate('ThighL',-.12*u);m.rotate('ShinL',.24*u);m.rotate('ForearmL',-.15*u);m.rotate('Head',.17*u,UP);}
   if(actor.blendFrom){actor.blendTime+=dt;const w=ease(actor.blendTime/.6);for(const [n,b] of Object.entries(m.bones)){const from=actor.blendFrom[n];b.quaternion.copy(from.q.clone().slerp(b.quaternion,w));b.position.copy(from.p.clone().lerp(b.position,w));}if(w>=1)actor.blendFrom=null;}
   if(sample.phase==='rest'){
     const u=sample.progress??1,hip=m.bones.Hips.position.clone().applyQuaternion(actor.model.quaternion);
     // Rotate around the pelvis rather than sweeping a rigid body around its
     // feet. Both final bodies use the same heading and settle side by side.
     actor.model.position.set(-hip.x*u,lerp(m.bones.Hips.position.y,.32,u)-hip.y,-hip.z*u);
-    if(u>.82){const before=actor.model.position.y;settleOnSlope(actor);actor.model.position.y=lerp(before,actor.model.position.y,ease((u-.82)/.18));}
+    if(u>.82){const before=actor.model.position.y;settleOnSlope(actor,u>.999);actor.model.position.y=lerp(before,actor.model.position.y,ease((u-.82)/.18));}
   }
   if(sample.phase==='clean'){
     // Solve the wiping hand against the actual sensor, so the cloth makes
@@ -180,6 +181,7 @@ export class CafeteriaOpening{
     this.book=createDirectoryBook(world.m);world.scene.add(this.book);
     this.cleaners=['holston','allison'].map(id=>{
       const def=RESIDENT_CAST.find(d=>d.id===id),actor=createResident(def,{suit:true});
+      actor.ground=(x,z)=>{const p=topLocal(new THREE.Vector3(x,0,z));return topPoint(0,surfaceY(p.x,p.z),0).y;};
       const cloth=new THREE.Mesh(new THREE.BoxGeometry(.28,.40,.014),world.m.linen);cloth.name='cleaning-cloth';cloth.position.set(0,-.06,.10);actor.motion.bones.HandR.add(cloth);actor.cloth=cloth;
       actor.feed=clone(actor.root);actor.feedBones=[];actor.bones=[];actor.root.traverse(o=>{if(o.isBone)actor.bones.push(o);});actor.feed.traverse(o=>{if(o.isBone)actor.feedBones.push(o);});
       this.surface.root.add(actor.root);this.surface.feedRoot.add(actor.feed);return actor;

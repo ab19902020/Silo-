@@ -1,5 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit,addSign,random } from './kit.js';
+import {hangingSign,wallSign} from './sign-mounts.js';
 import { SILO } from './data.js';
 
 // Set dressing follows the filmed material language: repairable domestic
@@ -18,7 +19,7 @@ export function wallGauge(k,x,y,z,r=.16,ry=0){
   place(k,f,x,y,z,ry);
 }
 function place(k,source,x,y,z,ry=0){const matrix=new THREE.Matrix4().compose(new THREE.Vector3(x,y,z),new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),ry),new THREE.Vector3(1,1,1));for(const p of source.parts)k.parts.push({...p,matrix:matrix.clone().multiply(p.matrix)});}
-function bookStack(k,x,y,z,seed=1){const rng=random(seed);for(let j=0;j<4;j++){const w=.26+rng()*.12;k.bevel(j%2?'paper':'fabric',x+(rng()-.5)*.055,y+j*.045,z,w,.04,.23,(rng()-.5)*.15);k.box('paper',x,y+.014+j*.045,z+.122,w-.025,.015,.008);}}
+function bookStack(k,x,y,z,seed=1){const rng=random(seed);for(let j=0;j<4;j++){const w=.26+rng()*.12;k.bevel(j%2?'paper':'fabric',x+(rng()-.5)*.055,y+.020+j*.045,z,w,.04,.23,(rng()-.5)*.15);k.box('paper',x,y+.034+j*.045,z+.122,w-.025,.015,.008);}}
 export function mug(k,x,y,z,color='white'){k.cylinder(color,x,y+.06,z,.067,.12);k.cylinder('black',x,y+.125,z,.052,.006);k.torus(color,x+.071,y+.065,z,.044,.013);}
 export function deskDressing(k,x,z,seed=0){
   k.bevel('paper',x-.55,.886,z+.03,.36,.012,.27,.08);for(let j=0;j<5;j++)k.box('darkMetal',x-.55,.893,z-.045+j*.035,.24,.001,.003,.08);
@@ -165,9 +166,9 @@ export function dressCafeteria(k,root,tables={}){
   for(const dx of [-.18,.18]){k.beam('metal',[-6.1+dx,1.55,7.3],[-6.1+dx,1.55,7.49],.025);k.cylinder('black',-6.1+dx,1.6,7.51,.026,.09);}
   for(const z of rows)for(const x of columns){
     if(clear&&x===clear[0]&&z===clear[1])continue;
-    k.bevel('metal',x,.85,z,.3,.038,.2);for(let j=0;j<6;j++)k.box('paper',x,.92+j*.012,z,.19,.013,.11);mug(k,x+1.15,.837,z-.27);
+    k.bevel('metal',x,.85,z,.3,.038,.2);for(let j=0;j<6;j++)k.box('paper',x,.8755+j*.013,z,.19,.013,.11);mug(k,x+1.15,.837,z-.27);
   }
-  addSign(root,'RETURN TRAYS',[0,2.35,9.83],2.3,.3,0,{glow:.1});
+  hangingSign(root,k.m,'RETURN TRAYS',[0,3.0,9.83],2.3,.3,0,8.3,{glow:.1});
   root.userData.detailRevision=2;
 }
 
@@ -199,7 +200,7 @@ export function dressBazaar(k,root){
       k.bevel('wood',xx,.92,z+1.85,1.07,.19,.76);for(let n=0;n<5;n++)k.box('wood',xx-.42+n*.21,1.01,z+2.22,.06,.2,.035);
     }
     for(let j=0;j<8;j++){const zz=z-2.0+j*.48;k.cylinder('enamel',side*9.21,1.07,zz,.09,.24);k.cylinder('brass',side*9.21,1.20,zz,.095,.025);}
-    addSign(root,row===0?'DAILY ALLOCATION':row===1?'REPAIR & REUSE':'COLLECTIONS',[front-side*.45,1.04,z-2.05],.87,.27,ry,{background:'#c2b994',color:'#363c31',glow:.05});
+    wallSign(root,k.m,row===0?'DAILY ALLOCATION':row===1?'REPAIR & REUSE':'COLLECTIONS',[front-side*.207,1.64,z-2.05],.87,.27,ry,.002,{background:'#c2b994',color:'#363c31',glow:.05});
   }
   // A longitudinal ribbed vault changes the silhouette of the market street.
   for(const z of [1.2,7.8,14.4,21])k.portal('concrete',0,0,z,5.65,7.85,.20,0,1.0,.14);

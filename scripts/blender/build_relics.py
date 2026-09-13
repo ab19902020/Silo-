@@ -127,7 +127,17 @@ def book():
 
 manifest={}
 for name,build in [('pez',pez),('watch',watch),('georgia',book)]:
- reset();build();bpy.ops.object.select_all(action='SELECT')
+ reset();build()
+ # TV palette pass: preserve the authored geometry and use the same colour
+ # correction as polish-relic-palettes.mjs before saving the editable source.
+ palettes={'pez':{'Faded red sleeve':(.026,.16,.22,1)},'georgia':{'Clothbound blue':(.63,.48,.20,1),'Faded cover gold':(.29,.031,.018,1)}}
+ for o in bpy.context.scene.objects:
+  if o.type!='MESH':continue
+  for slot in o.material_slots:
+   if slot.material and slot.material.name in palettes.get(name,{}):
+    col=palettes[name][slot.material.name];slot.material=slot.material.copy()
+    slot.material.diffuse_color=col;node=slot.material.node_tree.nodes.get('Principled BSDF');node.inputs['Base Color'].default_value=col;node.inputs['Roughness'].default_value=.72
+ bpy.ops.object.select_all(action='SELECT')
  # Save the editable Blender document separately from the lean browser asset.
  bpy.context.scene.unit_settings.system='METRIC';bpy.context.scene.unit_settings.scale_length=1
  bpy.context.preferences.filepaths.save_version=0

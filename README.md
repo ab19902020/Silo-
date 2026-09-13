@@ -1,5 +1,13 @@
 # Silo 18
 
+## Steady artificial lighting
+
+Stair and room lights now overlap smoothly across floor boundaries, with working
+stair-spine lamps, consistent fixture colour and less over-lighting in rooms.
+The eight-light budget stays fixed during movement, and fast travel starts with
+the destination already lit. Sunlight remains outside the silo.
+See [lighting changes and validation limits](docs/steady-lighting.md).
+
 ## Play the latest build
 
 [Play Silo 18](https://ab19902020.github.io/Silo-/)
@@ -29,6 +37,57 @@ See [this release's changes and validation limits](docs/relic-world-polish.md),
   again. Measured in a browser over five viewpoints with the lamp material
   painted a litmus colour: **108 pixels of lamp seen through the flight closed,
   none revealed.**
+
+## Optional resident stories
+
+Ask Walker (144 B) about a failed landing light, Carla (126 C) about an unclaimed
+parcel, or Lukas (19 C) about his observations. Each has an optional story with
+physical clues, saved progress and an outcome visible in the silo. Their gallery
+correspondence stands let every playable character participate. Use the journal
+to reread clues and see what you are carrying for residents.
+
+These are original stories inspired by the setting, available in Story and Free
+Roam. See [routes, source notes and validation](docs/side-stories.md).
+
+## Residents at work
+
+Every resident now has an assigned responsibility and a daily routine: work,
+water breaks, meals, personal errands and quiet time. Ask **What are you doing
+today?** to hear their current task and shift. Fifty job specializations include
+lamp maintenance, seed keeping, garment mending, clinic registration and stores
+dispatch; named characters have duties fitted to their existing roles.
+
+Loaded porters use the spiral stairs, collect parcels at relay counters and
+return with signed receipts. Work props and quiet activity sounds follow what
+nearby residents are doing. These additions use the latest character upgrade.
+See [workdays, source references and validation limits](docs/living-workdays.md).
+
+## TV world and relic polish
+
+Every level now has a distinct resident note to discover and keep in the
+satchel. Five optional finds add heat tape, a magnifier, an old video camera,
+a numbered IT key and a retired sheriff’s badge. Close examination has named
+detail views, an open Georgia book and a camera that fits portrait screens.
+Wide signs clear the curved gallery walls; cafeteria and market signs have
+physical supports, with several floating furnishings corrected.
+
+The latest movement and cinema update is included. Pickups keep you in play;
+open the satchel and choose **Inspect in 3D** when you want a closer look.
+See [the changes, TV references and testing limits](docs/tv-world-polish.md).
+
+## Walking, running and quieter screen controls
+
+The latest repository upgrades are retained, including resident conversations,
+controller support, floor streaming, the market and the complete mystery route.
+The shared gait now has shorter reaches, smoother weight release, independent
+arm swings and earlier heel recovery while running. Generated residents have
+relaxed walking hands and a loose running grip. Idle, conversation and teleport
+transitions release stale foot anchors and running state.
+
+The cleaning controls fade automatically and can be recalled with **H / ☰**.
+Relic pickups stay in play; choose **Inspect in 3D** from the satchel. Exterior
+rocks no longer have torn triangular seams, and the cleaners settle on the hill.
+See [movement changes and validation limits](docs/movement-polish.md).
 
 ## The whole run, walked
 

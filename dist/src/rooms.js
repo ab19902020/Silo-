@@ -15,6 +15,7 @@ export function buildRoom(materials,type,level,wing,assets) {
   const rng=random(level*107+wing*7919), H=SILO.roomHeight, W=SILO.roomHalf, D=SILO.roomDepth;
   const box=(mat,x,y,z,w,h,d,solid=true,ry=0)=>{(Math.min(w,h,d)>.22&&Math.max(w,h,d)<6?k.bevel.bind(k):k.box.bind(k))(mat,x,y,z,w,h,d,ry);if(solid)solids.push({x,z,w,d,y0:y-h/2,y1:y+h/2,ry});};
   const label=(text,x,y,z,w=3,h=.5,ry=Math.PI)=>{
+    if(z<1.2&&y>3.4&&ry===Math.PI)ry=0;
     if(z>.8&&z<1.2&&y>3.4){k.box('darkMetal',x,y,z+.06,w+.12,h+.12,.08);for(const dx of [-w*.38,w*.38])k.beam('metal',[x+dx,y+h/2,z+.06],[x+dx,H-.1,z+.06],.012);}
     return addSign(root,text,[x,y,z],w,h,ry);
   };

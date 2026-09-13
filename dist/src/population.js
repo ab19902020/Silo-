@@ -6,6 +6,9 @@ import { CharacterBody } from './physics.js';
 import { RESIDENT_CAST, CROWD_APPEARANCES } from './resident-data.js';
 import { residentName } from './resident-stories.js';
 import { createResident, poseResident } from './resident-model.js';
+import { assignWorkday, workAt, JOBS } from './workday.js';
+import { attachWorkProps, showWorkProps } from './work-props.js';
+import { PorterTraffic } from './porter-traffic.js';
 
 export const CROWD_LIMITS=Object.freeze({low:28,balanced:48,high:72});
 const unit=new THREE.Vector3(),desired=new THREE.Vector3();
@@ -30,7 +33,7 @@ function clearSegment(world,a,b){
 export function populationRecords(level){
   if(['excavator','tunnel','silo17','pipe-gallery'].includes(level))return [];
   const records=[],y=levelY(level);
-  const add=(position,extra={})=>{const i=records.length;records.push({id:`resident-${level}-${i}`,position,seed:level*197+i*37,level,kind:'resident',activity:'idle',...extra});};
+  const add=(position,extra={})=>{const i=records.length;const record={id:`resident-${level}-${i}`,position,seed:level*197+i*37,level,kind:'resident',activity:'idle',...extra};record.workday=assignWorkday(record);records.push(record);};
   if(level==='generator'||level==='mines'){
     const generator=level==='generator';
     const stations=generator?[[-15,52,-17.5],[-10,52,-17.5],[10,52,-17.5],[15,52,-17.5],[-11.7,62.22,2],[11.7,62.22,2]]:[[102.5,48,-8],[111,48,10],[84,48,20],[126,48,28]];
@@ -162,7 +165,7 @@ export function populationRecords(level){
 }
 
 export class Population{
-  constructor(scene,world){this.scene=scene;this.world=world;this.schedule=null;this.records=new Map();this.actors=new Map();this.level=null;this.time=0;this.rebalance=0;this.watch=false;this.count=0;this.talkingTo=null;this.total=[...Array.from({length:144},(_,i)=>i+1),'generator','mines'].reduce((total,level)=>total+populationRecords(level).length,0);}
+  constructor(scene,world){this.scene=scene;this.world=world;this.schedule=null;this.records=new Map();this.actors=new Map();this.level=null;this.time=0;this.rebalance=0;this.watch=false;this.count=0;this.talkingTo=null;this.porters=new PorterTraffic(scene,world);this.events=[];this.total=this.porters.records.length+[...Array.from({length:144},(_,i)=>i+1),'generator','mines'].reduce((total,level)=>total+populationRecords(level).length,0);}
   load(level){
     for(const actor of this.actors.values())this.remove(actor);this.actors.clear();this.level=level;
     if(!this.records.has(level)){
@@ -170,26 +173,43 @@ export class Population{
       for(const r of placed){
         r.home=r.position.clone();r.wait=(r.seed%17)*.31;r.goal=r.seed%7;r.holding='idle';
         if(r.stops){r.stops=r.stops.map(s=>({...s,p:safeResidentSpot(this.world,s.p)})).filter(s=>s.p);if(r.stops.length<2)r.activity='idle';}
+        let routine=r.stops;
+        if(!routine&&!r.seat){routine=[{p:r.home.clone(),pose:'work',hold:12}];for(const offset of [[.8,0],[0,.9],[-.8,0]]){const p=r.home.clone().add(new THREE.Vector3(offset[0],0,offset[1]));if(clearSegment(this.world,r.home,p))routine.push({p,pose:'work',hold:8});}}
+        r.workStops=routine?.map((s,i)=>({...s,p:s.p.clone(),pose:i%3===0?'work':s.pose}))||[];r.baseActivity=r.activity;
       }
       this.records.set(level,placed);
     }
     this.rebalance=0;
   }
-  remove(actor){actor.root.removeFromParent();actor.model.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.dispose();});}
+  remove(actor){actor.root.removeFromParent();actor.model.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.dispose();if(o.isInstancedMesh)o.dispose();});}
   spawn(r){
     const index=r.seed%CROWD_APPEARANCES.length;
-    const definition=r.definition||{id:`crowd-${index}`,name:residentName(r.seed),role:r.kind==='porter'?'Porter':r.kind==='diner'?'Cafeteria resident':r.kind==='trader'?'Bazaar trader':r.kind==='shopper'?'At the market':`${r.kind[0].toUpperCase()+r.kind.slice(1)} worker`,height:1.63+(index%5)*.045,appearance:CROWD_APPEARANCES[index]};
-    const actor=createResident(definition);actor.record=r;actor.root.position.copy(r.position);actor.root.rotation.y=r.heading??(r.seed%628)/100;actor.heading=actor.root.rotation.y;actor.body=new CharacterBody({radius:.26,standHeight:definition.height,stepHeight:.3});actor.body.teleport(r.position.x,r.position.y,r.position.z);actor.tick=0;this.scene.add(actor.root);this.actors.set(r.id,actor);return actor;
+    const definition=r.definition||{id:`crowd-${index}`,name:residentName(r.seed),role:r.workday.title,height:1.63+(index%5)*.045,appearance:CROWD_APPEARANCES[index]};
+    const actor=createResident(definition);actor.record=r;actor.root.position.copy(r.position);actor.root.rotation.y=r.heading??(r.seed%628)/100;actor.heading=actor.root.rotation.y;actor.body=new CharacterBody({radius:.26,standHeight:definition.height,stepHeight:.3});actor.body.teleport(r.position.x,r.position.y,r.position.z);actor.tick=0;attachWorkProps(actor,this.world.m,r.workday);this.scene.add(actor.root);this.actors.set(r.id,actor);return actor;
   }
   update(dt,body,watch=false,selected=null){
-    this.time+=dt;this.watch=watch;this.world.residentInteractions=[];
+    this.time+=dt;this.watch=watch;this.events=[];
+    this.porters.update(dt,body,this.schedule,this.talkingTo,watch);this.events.push(...this.porters.events);this.world.residentInteractions=[...this.porters.interactions];
     if(this.world.outside||['excavator','tunnel','silo17','pipe-gallery'].includes(this.world.special)){for(const a of this.actors.values())a.root.visible=false;this.count=0;return;}
     const level=this.world.special||this.world.activeLevel;if(this.level!==level)this.load(level);
     // How many people are out is the hour's business, not the renderer's. The
     // named residents sort first and survive any limit, so no part of the story
     // can be locked out by the night cycle emptying the galleries.
     const records=this.records.get(this.level),crowd=this.schedule?.crowd;
-    const limit=Math.max(6,Math.round((CROWD_LIMITS[this.world.quality]||48)*(Number.isFinite(crowd)?.25+.75*crowd:1)));
+    const limit=Math.max(6,Math.round((CROWD_LIMITS[this.world.quality]||48)*(Number.isFinite(crowd)?.25+.75*crowd:1)))-this.porters.count;
+    for(const r of records){
+      r.currentWork=workAt(r.workday,this.schedule?.hour??8.4);
+      if(this.schedule&&r.dailyPhase!==r.currentWork.phase){
+        r.dailyPhase=r.currentWork.phase;
+        // Keep story contacts in their departments. Work and rest change their
+        // activity locally rather than moving a required conversation away.
+        if(!r.seat){
+          r.stops=r.currentWork.onDuty?r.workStops:r.workStops.filter((_,i)=>i%2===0).map(s=>({...s,pose:r.dailyPhase==='errand'?'work':r.dailyPhase==='off-duty'?'talk':'idle',hold:12+(r.seed%8)}));
+          if(r.stops.length>1)r.activity='walk';else r.activity=r.currentWork.onDuty?'work':'idle';
+          r.goal=0;r.wait=0;r.holding='idle';
+        }
+      }
+    }
     this.rebalance-=dt;
     if(this.rebalance<=0){
       this.rebalance=.8;
@@ -197,12 +217,12 @@ export class Population{
       for(const [id,a] of this.actors)if(!keep.has(id)){this.remove(a);this.actors.delete(id);}
       for(const r of order.slice(0,limit))if(!this.actors.has(r.id))this.spawn(r);
     }
-    this.count=this.actors.size;
+    this.count=this.actors.size+this.porters.count;
     for(const a of this.actors.values()){
       const r=a.record,dist=a.root.position.distanceTo(body.position);a.root.visible=r.id!==selected;if(!a.root.visible)continue;
       const cafeteria=this.level===1&&r.position.x>SILO.deckOuter&&-r.position.z<18&&r.position.x<SILO.deckOuter+40;
       const watching=watch&&cafeteria;a.tick+=dt;
-      if(dist<5)this.world.residentInteractions.push({position:a.root.position.clone().add(new THREE.Vector3(0,1.25,0)),label:`Talk to ${a.definition.name}`,hint:a.definition.role||'Silo resident',action:`resident-${r.id}`,actor:r.id,resident:{...a.definition,id:r.definition?.id||r.id,level:r.level,kind:r.kind}});
+      if(dist<5)this.world.residentInteractions.push({position:a.root.position.clone().add(new THREE.Vector3(0,1.25,0)),label:`Talk to ${a.definition.name}`,hint:r.currentWork?.task||a.definition.role||'Silo resident',action:`resident-${r.id}`,actor:r.id,resident:{...a.definition,id:r.definition?.id||r.id,level:r.level,kind:r.kind,workday:r.workday,currentWork:r.currentWork}});
       const interval=r.id===this.talkingTo?0:dist<16?0:dist<40?1/30:1/15;if(a.tick<interval)continue;const step=Math.min(a.tick,.15);a.tick=0;
       let pose=r.activity,speed=0;desired.set(0,0,0);
       // Whoever you are talking to stops what they were doing and turns to
@@ -245,11 +265,21 @@ export class Population{
       if(a.pose!==pose){a.poseFrom=Object.fromEntries(Object.entries(a.motion.bones).map(([n,b])=>[n,{q:b.quaternion.clone(),p:b.position.clone()}]));a.pose=pose;a.poseMix=0;}
       a.ground=(x,z)=>this.world.colliders.floorAt(x,z,.08,a.root.position.y+.3);
       poseResident(a,pose,this.time+r.seed*.37,step,speed);
+      const doing=pose==='work'||r.seat&&r.currentWork.onDuty&&!watching&&r.id!==this.talkingTo;showWorkProps(a,r.workday,r.currentWork,doing);a.workEquipment.visible=dist<18;
+      if(!watching&&r.id!==this.talkingTo){
+        if(r.seat&&doing){a.motion.rotate('HandR',Math.sin(this.time*1.7+r.seed)*.045);a.motion.rotate('Head',.025);}
+        else if(!r.seat&&['break','meal'].includes(r.currentWork.phase))a.motion.rotate('ForearmR',-.65);
+        a.model.updateWorldMatrix(true,true);
+      }
+      if(doing&&r.currentWork.onDuty&&!watching){
+        r.workElapsed=(r.workElapsed||0)+step;
+        if(r.workElapsed>9+(r.seed%8)){r.workElapsed=0;r.completedTasks=(r.completedTasks||0)+1;if(dist<18)this.events.push({id:JOBS[r.workday.job].sound,position:a.root.position.clone()});}
+      }
       if(a.poseFrom){a.poseMix=Math.min(1,a.poseMix+step/.28);const t=a.poseMix*a.poseMix*(3-2*a.poseMix);for(const [n,b] of Object.entries(a.motion.bones)){const old=a.poseFrom[n];b.quaternion.copy(old.q.clone().slerp(b.quaternion,t));b.position.copy(old.p.clone().lerp(b.position,t));}if(t>=1)a.poseFrom=null;a.model.updateWorldMatrix(true,true);}
 
     }
   }
-  actorPosition(id){const a=this.actors.get(id);return a?a.root.position.clone():null;}
+  actorPosition(id){const a=this.actors.get(id);return a?a.root.position.clone():this.porters.actorPosition(id);}
   separatePlayer(body){
     if(this.world.outside||['excavator','tunnel','silo17','pipe-gallery'].includes(this.world.special))return;
     for(const a of this.actors.values()){

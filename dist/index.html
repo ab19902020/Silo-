@@ -57,9 +57,10 @@
   </dialog>
   <dialog id="relic" class="panel relic-panel" aria-labelledby="relicName">
     <div class="panel-head"><div><span class="eyebrow accent">FROM YOUR SATCHEL</span><h2 id="relicName">Relic</h2></div><button class="close" data-close aria-label="Close inspection">×</button></div>
+    <div id="relicFeatures" class="relic-features" aria-label="Examine a detail"></div>
     <div class="relic-stage"><canvas id="relicCanvas" tabindex="0" aria-label="Rotatable 3D relic. Use arrow keys to turn, plus and minus to zoom."></canvas></div>
-    <div class="relic-controls"><p id="relicControlsHint" role="status">Drag to turn · pinch or scroll to zoom</p><button id="relicFlip" class="secondary">Other side</button><button id="relicReset" class="secondary">Reset view</button></div>
-    <div class="about-content"><p id="relicDescription"></p><p id="relicSource" class="help"></p></div>
+    <div class="relic-controls"><p id="relicControlsHint" role="status">Drag to turn · pinch or scroll to zoom</p><button id="relicFlip" class="secondary">Other side</button><button id="relicReset" class="secondary">Reset view</button><button id="relicJournal" class="secondary">Back to satchel</button></div>
+    <div class="about-content"><p id="relicDetail" aria-live="polite"></p><p id="relicDescription"></p><p id="relicSource" class="help"></p></div>
   </dialog>
 
   <dialog id="satchel" class="panel compact">

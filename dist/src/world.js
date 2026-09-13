@@ -17,6 +17,8 @@ const PYLON_ANGLES=Array.from({length:24},(_,i)=>(Math.floor(i/4)+(i%4+1)/5)*TAU
 const NIGHT_FILAMENT=new THREE.Color(0xff9a4e);
 const SIGN_WALL=SILO.deckOuter-.2-SIGN_DEPTH/2;
 const SIGN_WALL_HIGH=SILO.deckOuter-.3-SIGN_DEPTH/2;
+import {addMementoFixtures} from './mementos.js';
+import {curvedWallSign} from './sign-mounts.js';
 import { buildRoom } from './rooms.js';
 import { updateLivestock } from './livestock.js';
 
@@ -34,6 +36,7 @@ import { buildStairFlight, hasStairGuard, buildTerminalLanding, terminalStart, b
 import { buildSilo17 } from './silo17.js';
 import { addGeorgeDesk, buildPressureGallery } from './mystery-spaces.js';
 import { floorAtmosphere, dressFloor, INTERIOR_LIGHT } from './atmosphere.js';
+import { InteriorFixtures, placeInteriorLamps } from './interior-lighting.js';
 import { VOID, voidLedgeGaps, tunnelPoint } from './void-access.js';
 
 // 56 degrees off the middle when it is under half a metre away, closing to 21
@@ -48,12 +51,12 @@ export class SiloWorld {
     scene.background=new THREE.Color(0x121c19);scene.fog=new THREE.FogExp2(0x18221e,.0065);
     this.ambient=new THREE.HemisphereLight(0xb5c4c0,0x36332b,.42);scene.add(this.ambient);
     this.sun=new THREE.DirectionalLight(0xd7d9bc,2);this.sun.position.set(15,levelY(1)+20,-8);this.sun.target.position.set(0,levelY(1),0);scene.add(this.sun,this.sun.target);
-    this.localLights=Array.from({length:8},()=>{const l=new THREE.PointLight(0xf3d6a0,0,38,1.7);l.userData={key:null,goal:0,baseColor:0xf3d6a0};scene.add(l);return l;});
+    this.localLights=Array.from({length:8},()=>{const l=new THREE.PointLight(INTERIOR_LIGHT,0,38,1.7);l.userData={key:null,goal:0,baseColor:INTERIOR_LIGHT};scene.add(l);return l;});
     // What hour the silo thinks it is, handed in by the frame loop. Null
     // means no clock is running and the fixtures stay at working daylight.
-    this.schedule=null;this.lampScale=1;this.lampWarmth=0;
+    this.schedule=null;this.lampScale=1;this.lampWarmth=0;this.fixtures=new InteriorFixtures();
     this.buildStructure();this.surface=new SurfaceWorld(this.m);scene.add(this.surface.root);this.generator=buildGeneratorHall(this.m);scene.add(this.generator.root);this.generator.root.visible=false;
-    this.keyLight=new THREE.SpotLight(0xffd6a0,0,48,1.05,.8,1.65);this.keyLight.userData={key:null};this.keyLight.castShadow=true;this.keyLight.shadow.mapSize.set(1024,1024);this.keyLight.shadow.bias=-.00015;this.keyLight.shadow.normalBias=.045;this.keyLight.shadow.camera.near=.4;scene.add(this.keyLight,this.keyLight.target);
+    this.keyLight=new THREE.SpotLight(0xffd6a0,0,48,1.05,.8,1.65);this.keyLight.userData={key:null};this.keyLight.castShadow=true;this.keyLight.shadow.mapSize.set(1024,1024);this.keyLight.shadow.bias=-.00015;this.keyLight.shadow.normalBias=.008;this.keyLight.shadow.radius=2;this.keyLight.shadow.camera.near=.4;scene.add(this.keyLight,this.keyLight.target);
     this.sun.castShadow=false;this.sun.visible=false;this.sun.intensity=0;
     this.silo17=buildSilo17(this.m);scene.add(this.silo17.root);this.silo17.root.visible=false;
     this.pressure=buildPressureGallery(this.m);scene.add(this.pressure.root);this.pressure.root.visible=false;
@@ -173,13 +176,14 @@ export class SiloWorld {
     for(let wing=0;wing<6;wing++){
       yield;
       const a=wing*TAU/6,ry=Math.PI/2-a,type=roomType(level,wing),room=level===1&&wing===0?buildTopFloor(this.m):type==='bazaar'?buildBazaar(this.m):buildRoom(this.m,type,level,wing,this.assets);
+      addMementoFixtures(room,this.m,level,wing);
       room.position.set(Math.cos(a)*SILO.deckOuter,0,Math.sin(a)*SILO.deckOuter);room.rotation.y=ry;if(level===68&&wing===0)addGeorgeDesk(room,this.m).set(this.driveSeated);root.add(room);rooms.push(room);
       // Both plates are bolted to the gallery wall. Offsetting the level plate
       // along the ring keeps it flat on the curve; offsetting it in x and z, as
       // this once did, left it hanging in the walkway well clear of the wall.
       const beside=a+3.3/SILO.deckOuter;
-      addSign(root,String(level).padStart(3,'0'),[Math.cos(beside)*SIGN_WALL,2.15,Math.sin(beside)*SIGN_WALL],1.8,1.25,Math.PI/2-beside+Math.PI,{font:'bold 200px Arial',background:'#34453b'});
-      addSign(root,TYPE_NAMES[type],[Math.cos(a)*SIGN_WALL_HIGH,3.72,Math.sin(a)*SIGN_WALL_HIGH],4.6,.55,ry+Math.PI);
+      curvedWallSign(root,this.m,String(level).padStart(3,'0'),beside,2.15,SILO.deckOuter-.2,1.8,1.25,{font:'bold 200px Arial',background:'#34453b'});
+      curvedWallSign(root,this.m,TYPE_NAMES[type],a,3.72,SILO.deckOuter-.3,4.6,.55);
       // A real double leaf door with a switchable oriented collision volume.
       const surround=new Kit(this.m);surround.portal('concrete',0,.01,0,3.9,3.2,.48,0,.34,.18);surround.portal('metal',0,.02,-.27,3.85,3.16,.045,0,.32,.045);const surroundRoot=surround.group();surroundRoot.position.copy(room.position);surroundRoot.rotation.y=ry;root.add(surroundRoot);
       const doorRoot=new THREE.Group();doorRoot.position.copy(room.position);doorRoot.rotation.y=ry;root.add(doorRoot);const leaves=[];
@@ -206,7 +210,7 @@ export class SiloWorld {
       const landing=gk.group();landing.name='terminal-stair-parapet';landing.rotation.y=-landingAngle(level);root.add(landing);
     }
     yield;
-    dressFloor(root,this.m,level);this.scene.add(root);const entry={level,root,rooms,doors,interactions,passages};this.loaded.set(level,entry);return entry;
+    dressFloor(root,this.m,level);const memory=root.userData.memoryInteraction;interactions.push({...memory,position:memory.position.clone().add(new THREE.Vector3(0,y,0))});this.scene.add(root);const entry={level,root,rooms,doors,interactions,passages};this.loaded.set(level,entry);return entry;
   }
   // The whole level, now, because something is about to stand in it.
   loadLevel(level){
@@ -246,6 +250,12 @@ export class SiloWorld {
     if(this.special==='generator')this.animated=this.generator.animated;
   }
   setLevel(level,special=null){
+    // Directory travel is an instant location change. Start with the new
+    // destination's fixtures, instead of fading lights on a distant floor.
+    if(Math.abs(level-this.activeLevel)>1||special!==this.special){
+      for(const l of this.localLights){l.intensity=0;Object.assign(l.userData,{key:null,goal:0,fade:0,output:0});}
+      this.keyLight.intensity=0;this.keyLight.userData.key=null;
+    }
     const descending=level>(this.lastLevel??level);this.lastLevel=level;
     this.activeLevel=level;this.special=special;this.updateStructure(level);
     // You are standing in this one, so it is built now. The neighbours are
@@ -304,6 +314,7 @@ export class SiloWorld {
         }
       }
       const e=this.loaded.get(level);if(!e)continue;
+      for(const station of [...(e.dispatchSolids||[]),...(e.missionSolids||[])])c.addOrientedBox(station);
       if(e.passages){
         const {inner,outer,height}=PASSAGE;
         c.addRing({innerRadius:inner,outerRadius:outer,minY:y-.3,maxY:y,climbable:true});
@@ -373,6 +384,7 @@ export class SiloWorld {
                  :{position:d.position,label:`${d.open?'Close':'Open'} ${TYPE_NAMES[d.type].toLowerCase()} door`,door:d};}),...this.interactions];
     if(this.actorInteractions)pool.push(...this.actorInteractions);
     if(this.residentInteractions)pool.push(...this.residentInteractions);
+    if(this.sideMissionInteractions)pool.push(...this.sideMissionInteractions);
     if(this.storyInteractions)pool.push(...this.storyInteractions);
     if(!this.special&&this.activeLevel===1&&this.outside)pool.push(...this.surface.networkInteractions);
     if(!this.story?.story&&!this.special&&this.activeLevel===1)pool.push({position:this.surface.cleaningPoint,label:this.surface.cleaning?'Cleaning lens…':this.surface.cleanliness>.99?'Clean camera lens again':'Clean the outside camera lens',action:'clean-camera'});
@@ -434,97 +446,28 @@ export class SiloWorld {
     const a=SPUR.angle,r=position.x*Math.cos(a)+position.z*Math.sin(a),t=position.x*Math.sin(a)-position.z*Math.cos(a);
     return r>SPUR.outer+.65&&Math.abs(t)<SPUR.openingHalf&&Math.abs(position.y-levelY(144))<.4?'excavator':null;
   }
-  // --- lighting -----------------------------------------------------------
-  // Nothing in a silo moves. There is no sun down here and no lamp on a track:
-  // every light is bolted to a wall or a ceiling and stays where it was bolted.
-  // The first pass did the opposite — a directional "sun" and a shadow-casting
-  // spotlight both nailed to the player, two of the eight pooled lights orbiting
-  // the silo on the player's own bearing, and the room's fixtures re-sorted and
-  // re-assigned to the pool on every single frame. Walking therefore swung every
-  // shadow in the room, slid light along the gallery walls, and popped lamps from
-  // one fitting to another. All three are the same bug: the lights were following
-  // the camera instead of belonging to the building.
-  //
-  // Every fixture the level has, with a stable key so a light can be recognised
-  // as already being on it. Positions are fixed; only which ones are close
-  // enough to be worth spending a light on changes as you walk.
+  // Fixtures belong to the building, including the floors above and below.
   lampCandidates(position,top){
-    const out=[],level=this.activeLevel,y=levelY(level);
-    if(this.special)return out;
-    if(level===1){
-      // The cafeteria, the station and the rooms behind it. The last six are the
-      // range: without them the lanes were lit by whatever spilled through the
-      // doorway, which on a twenty-two metre room is nothing.
-      const fittings=[[-10,6.7,17],[10,6.7,17],[-10,6.7,31],[10,6.7,31],[26,3.7,29],[26,3.7,40],[26,3.7,50],[26,3.7,59],
-                      [21,4.4,8.5],[31,4.4,8.5],[21,4.4,15],[31,4.4,15],[21,4.4,21],[31,4.4,21]];
-      for(let i=0;i<fittings.length;i++)out.push({key:`top:${i}`,position:topPoint(...fittings[i]),color:INTERIOR_LIGHT,intensity:i<4?145:i<8?75:95,distance:i<8?28:24,cone:i<8?32:38});
-      return out;
-    }
-    for(let i=0;i<6;i++){const a=i*TAU/6;out.push({key:`g${level}:${i}`,position:new THREE.Vector3(Math.cos(a)*21,y+4.8,Math.sin(a)*21),color:INTERIOR_LIGHT,intensity:105,distance:38,cone:48});}
-    for(let w=0;w<6;w++){const a=w*TAU/6,color=INTERIOR_LIGHT;
-      for(const r of [33,44])out.push({key:`c${level}:${w}:${r}`,position:new THREE.Vector3(Math.cos(a)*r,y+4.7,Math.sin(a)*r),color,intensity:150,distance:38,cone:48});}
-    // Fixed service-gallery fittings share the room lamps’ warm neutral tone.
-    for(let j=0;j<48;j+=2){const a=(j+.5)*TAU/48,r=53.6;out.push({key:`rear${level}:${j}`,position:new THREE.Vector3(Math.cos(a)*r,y+3.4,Math.sin(a)*r),color:INTERIOR_LIGHT,intensity:55,distance:10,cone:12,room:true,keyIntensity:70});}
-    if(level===144)for(let r=57.4;r<64.4;r+=3.6)out.push({key:`spur:${r}`,position:new THREE.Vector3(Math.cos(Math.PI/6)*r,y+2.92,Math.sin(Math.PI/6)*r),color:INTERIOR_LIGHT,intensity:45,distance:10,cone:12,room:true,keyIntensity:65});
-    // The wing you are in and its two neighbours; the rest are behind walls.
-    const here=(Math.round(Math.atan2(position.z,position.x)/TAU*6)+6)%6;
-    for(const w of [here,(here+1)%6,(here+5)%6]){
-      const room=this.loaded.get(level)?.rooms[w];
-      if(!room?.userData.lightPoints?.length)continue;
-      room.updateWorldMatrix(true,false);
-      const residential=room.userData.type==='residential';
-      room.userData.lightPoints.forEach((p,j)=>out.push({key:`r${level}:${w}:${j}`,position:new THREE.Vector3(...p.position).applyMatrix4(room.matrixWorld),
-        color:INTERIOR_LIGHT,intensity:p.intensity,distance:11,cone:14,room:true,keyIntensity:residential?95:150}));
-    }
-    return out;
+    return this.special?[]:this.fixtures.candidates(this,position);
   }
-  // Hand the pool out to fixtures. A light already on a wanted fixture is left
-  // strictly alone; one that has to move fades out first, relocates dark, and
-  // comes back up. Fixtures a light is already holding are ranked as if they
-  // were nearer than they are, so the pair either side of the cut-off cannot
-  // trade places every few steps and blink at each other.
   placeLamps(candidates,position,dt){
-    const lamps=this.localLights;
-    if(!candidates.length){for(const l of lamps){l.intensity=0;l.visible=false;l.userData.key=null;l.userData.goal=0;}return;}
-    const held=new Set();
-    for(const l of lamps)if(l.userData.key&&l.intensity>.5)held.add(l.userData.key);
-    const wanted=new Map(candidates
-      .map(c=>[c,c.position.distanceToSquared(position)*(held.has(c.key)?.45:1)])
-      .sort((a,b)=>a[1]-b[1]).slice(0,lamps.length).map(([c])=>[c.key,c]));
-    const free=[];
-    for(const l of lamps){
-      const c=l.userData.key?wanted.get(l.userData.key):null;
-      if(c){l.userData.goal=c.intensity*this.lampScale;wanted.delete(c.key);}else free.push(l);
-    }
-    const spare=[...wanted.values()];
-    for(const l of free){
-      // A light may only be moved once it is dark. Half a second off while it
-      // relocates is invisible; a lit one changing position is not.
-      if(!spare.length||l.intensity>.02){l.userData.goal=0;continue;}
-      const c=spare.shift();
-      l.userData.key=c.key;l.position.copy(c.position);l.userData.baseColor=c.color;l.distance=c.distance;l.userData.goal=c.intensity*this.lampScale;
-    }
-    // The tint is re-applied every frame rather than on relocation: a lamp
-    // that was placed at noon and is still burning at midnight has to go amber
-    // where it stands, not wait to be moved before it notices the hour.
-    for(const l of lamps){
-      l.intensity=THREE.MathUtils.damp(l.intensity,l.userData.goal,l.userData.goal?6:16,dt);l.visible=l.intensity>.4;
-      l.color.setHex(l.userData.baseColor).lerp(NIGHT_FILAMENT,this.lampWarmth*.55);
-    }
+    placeInteriorLamps(this.localLights,candidates,position,dt,this.lampScale,this.lampWarmth,NIGHT_FILAMENT);
   }
   lightRig(position,top,dt){
     const candidates=this.lampCandidates(position,top);
-    if(this.special||this.outside||!candidates.length){
-      for(const l of this.localLights){l.intensity=0;l.visible=false;l.userData.key=null;l.userData.goal=0;}
-      this.keyLight.visible=false;this.keyLight.userData.key=null;return;
+    if(this.special||this.outside){
+      for(const l of this.localLights){l.intensity=0;l.visible=false;l.userData.key=null;l.userData.goal=0;l.userData.fade=0;l.userData.output=0;}
+      this.keyLight.visible=false;this.keyLight.intensity=0;this.keyLight.userData.key=null;return;
     }
     this.placeLamps(candidates,position,dt);
+    this.keyLight.visible=true;
+    if(!candidates.length){this.keyLight.intensity=THREE.MathUtils.damp(this.keyLight.intensity,0,8,dt);return;}
     // The shadow caster is a fixture too, and it keeps the fixture it is on
     // until a different one is clearly nearer — otherwise every shadow in the
     // room swings as you cross it. Room fittings win over the gallery ring:
     // they are the ones actually lighting what you are standing in.
     const overhead=candidates.filter(c=>c.position.y>position.y+.5),pool=overhead.length?overhead:candidates;
-    const score=c=>c.position.distanceToSquared(position)*(c.room?.55:1);
+    const score=c=>c.distanceSq/(c.gain*Math.sqrt(c.intensity))*(c.room?.8:1);
     const held=this.keyLight.userData.key&&pool.find(c=>c.key===this.keyLight.userData.key);
     const best=pool.reduce((a,b)=>score(b)<score(a)?b:a);
     const target=held&&score(held)<score(best)*2.6?held:best;
@@ -536,7 +479,7 @@ export class SiloWorld {
       this.keyLight.userData.baseColor=target.color;this.keyLight.distance=target.cone;
     }
     this.keyLight.color.setHex(this.keyLight.userData.baseColor??target.color).lerp(NIGHT_FILAMENT,this.lampWarmth*.55);
-    this.keyLight.intensity=THREE.MathUtils.damp(this.keyLight.intensity,(target.keyIntensity??Math.min(190,target.intensity*1.35))*this.lampScale,7,dt);
+    this.keyLight.intensity=THREE.MathUtils.damp(this.keyLight.intensity,Math.min(55,target.intensity*.35)*target.gain*this.lampScale,7,dt);
   }
 
   update(dt,position){
@@ -554,8 +497,8 @@ export class SiloWorld {
     // a cold working white right down to amber — and the level barely moves,
     // which is how a real building on a night setting behaves. You have to be
     // able to see where you are going on a landing at three in the morning.
-    this.lampScale=hourly?.83+.17*hourly.lamp:1;
-    this.lampWarmth=hourly?hourly.warmth:0;
+    this.lampScale=hourly?THREE.MathUtils.damp(this.lampScale,.83+.17*hourly.lamp,3,dt):1;
+    this.lampWarmth=hourly?THREE.MathUtils.damp(this.lampWarmth,hourly.warmth,3,dt):0;
     if(hourly)this.surface.sky.scheduledDay=hourly.daylight;
     this.surface.update(dt);const top=topLocal(position);this.outside=!this.special&&this.activeLevel===1&&(inRampCutout(top.x,top.z)?top.z>99&&top.y>10:top.y>=groundY(top.x,top.z)-.5);if(this.outside){this.surface.streamTerrain(top);this.surface.sky.mesh.position.set(top.x,top.y+1.7,top.z);}this.surface.sky.mesh.visible=this.outside;
     const airlocks=this.loaded.get(1)?.rooms[0].userData.doors||[];
@@ -574,14 +517,22 @@ export class SiloWorld {
     // George's drive bay: the room draws whichever state the host set, and
     // is rebuilt from it whenever Level 068 streams back in.
     this.loaded.get(68)?.rooms[0]?.userData.georgeDesk?.set(this.driveSeated);
+    // A close interior fixture needs a finer shadow map than the distant sun.
+    // Resize only on a quality change, retaining the mobile light budget.
+    const shadowSize=this.quality==='high'?2048:1024;
+    if(this.keyLight.shadow.mapSize.x!==shadowSize){this.keyLight.shadow.mapSize.set(shadowSize,shadowSize);this.keyLight.shadow.map?.dispose();this.keyLight.shadow.map=null;}
     this.lightRig(position,top,dt);
     this.sun.visible=this.outside;this.sun.position.set(position.x+14,position.y+24,position.z-9);this.sun.target.position.copy(position);this.sun.intensity=this.outside?THREE.MathUtils.lerp(.12,2.4,this.surface.sky.daylight):0;
     // The fill comes off slightly faster than the fixtures, so there is a
     // little more shape between the lamps at night than in the middle of the
     // day — but only a little. Enough to feel, not enough to lose the floor.
-    this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):(this.special==='silo17'?.28:.48)*Math.pow(this.lampScale,1.15);this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.06;
-    this.scene.environmentIntensity=this.outside?.9:this.special==='silo17'?.28:.48;
-    const mood=floorAtmosphere(this.activeLevel);this.ambient.color.setHex(this.outside?0xb5c4c0:this.special==="silo17"?0x70948f:mood.light);
-    this.scene.fog.density=this.outside?.0012:this.special==='excavator'?.004:this.special==='silo17'?.023:this.special?.009:mood.density;this.scene.fog.color.setHex(this.outside?0x929fa3:this.special==='silo17'?0x132526:mood.fog);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);if(this.outside)this.scene.fog.color.copy(this.surface.sky.fogColor);this.structure.visible=this.landings.visible=this.stairs.visible=this.distant.visible=this.distantLandings.visible=this.distantStairs.visible=this.topCore.visible=!this.special&&!this.outside;
+    this.ambient.intensity=this.outside?THREE.MathUtils.lerp(.16,1.65,this.surface.sky.daylight):(this.special==='silo17'?.25:.42)*Math.pow(this.lampScale,1.15);this.sun.castShadow=this.outside&&this.quality==='high';this.sun.shadow.camera.left=-45;this.sun.shadow.camera.right=45;this.sun.shadow.camera.top=45;this.sun.shadow.camera.bottom=-45;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=130;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.bias=-.00015;this.sun.shadow.normalBias=.012;
+    this.scene.environmentIntensity=this.outside?.9:this.special==='silo17'?.30:.56;
+    const mood=floorAtmosphere(this.activeLevel);this.ambient.groundColor.setHex(this.outside?0x464c3b:this.special==='silo17'?0x233a35:0x6c6454);this.ambient.color.setHex(this.outside?0xb5c4c0:this.special==="silo17"?0x70948f:mood.light);
+    // Department haze blends over several flights, independent of the rounded
+    // floor number. Walking through 050 or 101 must not re-grade the picture.
+    const depth=(levelY(1)-position.y)/SILO.levelHeight+1;
+    const interiorFog=.0072+.0008*THREE.MathUtils.smoothstep(depth,47,52)+.001*THREE.MathUtils.smoothstep(depth,98,103);
+    this.scene.fog.density=this.outside?.0012:this.special==='excavator'?.004:this.special==='silo17'?.023:this.special?.009:interiorFog;this.scene.fog.color.setHex(this.outside?0x929fa3:this.special==='silo17'?0x132526:mood.fog);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);if(this.outside)this.scene.fog.color.copy(this.surface.sky.fogColor);this.structure.visible=this.landings.visible=this.stairs.visible=this.distant.visible=this.distantLandings.visible=this.distantStairs.visible=this.topCore.visible=!this.special&&!this.outside;
   }
 }
