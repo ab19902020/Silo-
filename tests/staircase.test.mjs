@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
 import { Kit,createMaterials } from '../dist/src/kit.js';
-import { buildStairFlight, landingPath, helixPath, parapetGeometry,
+import { buildStairFlight, landingPath, helixPath, parapetGeometry, treadDepth,
   stairOpening, railRadius, guardZ, PARAPET, PARAPET_TOP } from '../dist/src/staircase.js';
-import { SILO, TAU, STAIR_SWEEP, landingAngle } from '../dist/src/data.js';
+import { SILO, TAU, STAIR_SWEEP, landingAngle, stairStepY } from '../dist/src/data.js';
 globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>({fillRect(){},strokeRect(){},fillText(){}})})};
 
 // The flight's guard no longer stops short of the landing: it sweeps round the
@@ -88,5 +88,51 @@ test('actual bridge and landing wall faces have no overlapping run to flicker',a
       const hits=new T.Raycaster(origin,direction,0,2.4).intersectObjects(targets,true);
       assert.equal(hits.length,1,`level ${level}, side ${side}, x ${x}: ${hits.length} overlapping/missing wall faces`);
     }
+  }
+});
+
+// Light was showing through the stairs, and it was not a lighting bug.
+//
+// A tread was a flat 180 mm slab and the rise is 200 mm, so between the top of
+// one step and the underside of the next there was a 20 mm slot running the
+// full depth of the tread — from the column at r 3.1 out to the well at 7.3 —
+// on every climbing step of every flight in the silo. Standing on the stairs
+// you were looking through those slits at the far side of the shaft, and what
+// reads through a 20 mm gap at that range is whatever is brightest: the strip
+// lights over the wing doors. Measured in a browser over five viewpoints with
+// the lamp material painted a litmus colour, closing the slot removed 108
+// pixels of lamp seen through the flight and revealed none.
+test('the flight is solid: every tread reaches past the top of the one below it',()=>{
+  for(const steps of [SILO.stairSteps,36]){
+    const depth=treadDepth(steps);
+    // The rise this flight actually climbs with: the landing steps at each end
+    // are level, so only the middle ones gain height.
+    const climbing=steps*(SILO.stairSteps-2*SILO.stairLandingSteps)/SILO.stairSteps;
+    const rise=SILO.levelHeight/climbing;
+    assert.ok(depth>rise,
+      `at ${steps} steps the rise is ${(rise*1000)|0} mm and the tread only ${(depth*1000)|0} mm: a ${((rise-depth)*1000)|0} mm slot on every step`);
+    assert.ok(depth-rise>=.015&&depth-rise<=.06,
+      `the overlap is ${((depth-rise)*1000)|0} mm; under 15 leaves the faces close enough to fight, over 60 is a lump on the soffit`);
+  }
+});
+
+// And the same thing measured off the geometry rather than off the arithmetic:
+// walk the treads a flight actually lays down and check no horizontal band of
+// height between the bottom and the top of the flight is left uncovered.
+test('no gap is left between consecutive treads anywhere up a flight',()=>{
+  for(const steps of [SILO.stairSteps,36]){
+    const depth=treadDepth(steps),spans=[];
+    for(let j=0;j<steps;j++){
+      const y=stairStepY((j+1)*SILO.stairSteps/steps-1);
+      spans.push([y-depth,y]);
+    }
+    spans.sort((a,b)=>a[0]-b[0]);
+    let reach=spans[0][1];
+    for(const [bottom,top] of spans.slice(1)){
+      assert.ok(bottom<=reach+1e-9,
+        `${steps} steps: nothing covers ${reach.toFixed(3)} to ${bottom.toFixed(3)} — a ${((bottom-reach)*1000).toFixed(0)} mm slot straight through the flight`);
+      reach=Math.max(reach,top);
+    }
+    assert.ok(Math.abs(reach-SILO.levelHeight)<1e-9,`${steps} steps: the flight stops at ${reach}, not at the level above`);
   }
 });

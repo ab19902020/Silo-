@@ -14,6 +14,22 @@ See [this release's changes and validation limits](docs/relic-world-polish.md),
 [the mystery route and research](docs/mystery-expansion.md), and
 [agent integration history](docs/AGENT_COORDINATION.md).
 
+## Light through the stairs
+
+- **The staircase had a 20 mm slot in every step.** Not a lighting bug: a tread
+  slab was a flat 180 mm and the rise is 200 mm, so between the top of one step
+  and the underside of the next there was a gap running the full depth of the
+  tread, from the column at r 3.1 out to the well at 7.3 — fifty of them per
+  flight, a hundred and forty-three flights. Standing on the stairs you were
+  looking through those slits at the far side of the shaft, and what reads
+  through a 20 mm gap at that range is whatever is brightest: the strip lights
+  over the wing doors. The far flights draw with half the steps, so their rise
+  is 400 mm and the same slab left a **220 mm** gap. The slab depth is derived
+  from the rise now, with 20 mm of overlap, so the two cannot drift apart
+  again. Measured in a browser over five viewpoints with the lamp material
+  painted a litmus colour: **108 pixels of lamp seen through the flight closed,
+  none revealed.**
+
 ## The whole run, walked
 
 - **The playthrough completes.** `tests/playthrough.test.mjs` drives the real

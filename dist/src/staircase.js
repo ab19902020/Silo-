@@ -96,11 +96,31 @@ export function landingPath(side,lift,segments=14){
   return path;
 }
 
+// How deep a tread slab has to be.
+//
+// A tread has to reach down past the top of the one below it, or the flight
+// has a slot in it. The slab was a flat 180 mm against a 200 mm rise, so every
+// step in the silo carried a 20 mm gap running the full depth of the tread,
+// from the column out to the well — fifty of them per flight, a hundred and
+// forty-three flights. Standing on the stairs you were looking through those
+// slots at the gallery on the far side of the shaft, and what shows through a
+// 20 mm slit at that range is whatever is brightest: the strip lights over the
+// wing doors. That is the light that appeared to be coming through the stairs.
+//
+// The far flights draw with half the steps, so their rise is 400 mm and the
+// same 180 mm slab left a 220 mm gap. The depth is derived from the rise of
+// whatever flight is being built rather than written down, so the two cannot
+// drift apart again.
+export function treadDepth(steps=SILO.stairSteps){
+  const climbing=steps*(SILO.stairSteps-2*SILO.stairLandingSteps)/SILO.stairSteps;
+  return SILO.levelHeight/climbing+.02;   // 20 mm of overlap: no slot, no coplanar faces
+}
+
 // Bare concrete treads: the reference has no nosing strip, and the wedges read
 // on their own shadow the way they do in the shaft.
 // Clip level treads against the bridge footprint. Two coplanar slabs at a
 // landing shimmer even with perfect lighting; there must be only one top face.
-function flatTread(k,start,span,y){
+function flatTread(k,start,span,y,depth=treadDepth()){
   const end=y===SILO.levelHeight,rotation=end?STAIR_SWEEP:0,side=end?-1:1,edge=SILO.landingHalf+.16;
   let polygon=[];for(const [r,reverse] of [[SILO.stairRadius,false],[SILO.stairColumn,true]])for(let i=0;i<=2;i++){
     const a=start+span*(reverse?1-i/2:i/2)-rotation;polygon.push([Math.cos(a)*r,Math.sin(a)*r]);
@@ -111,14 +131,14 @@ function flatTread(k,start,span,y){
     if(da>=0)clipped.push(a);if((da>=0)!==(db>=0)){const t=da/(da-db);clipped.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);}
   }
   if(clipped.length<3)return;const shape=new THREE.Shape();shape.moveTo(...clipped[0]);for(const p of clipped.slice(1))shape.lineTo(...p);shape.closePath();
-  const geometry=new THREE.ExtrudeGeometry(shape,{depth:.18,bevelEnabled:false,steps:1});geometry.rotateX(Math.PI/2);geometry.rotateY(-rotation);k.mesh(geometry,'concrete',0,y,0);
+  const geometry=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,steps:1});geometry.rotateX(Math.PI/2);geometry.rotateY(-rotation);k.mesh(geometry,'concrete',0,y,0);
 }
 export function buildStairFlight(k,{steps=SILO.stairSteps,quality=7,density=44}={}){
-  const C=SILO.stairColumn,S=SILO.stairRadius,stepAngle=STAIR_SWEEP/steps;
+  const C=SILO.stairColumn,S=SILO.stairRadius,stepAngle=STAIR_SWEEP/steps,depth=treadDepth(steps);
   for(let j=0;j<steps;j++){
     const y=stairStepY((j+1)*SILO.stairSteps/steps-1);
-    if(y===0||y===SILO.levelHeight)flatTread(k,j*stepAngle,stepAngle,y);
-    else k.arc('concrete',C,S,.18,y-.18,j*stepAngle,stepAngle,2);
+    if(y===0||y===SILO.levelHeight)flatTread(k,j*stepAngle,stepAngle,y,depth);
+    else k.arc('concrete',C,S,depth,y-depth,j*stepAngle,stepAngle,2);
   }
   sweepParapet(k,helixPath(stairOpening,STAIR_SWEEP-stairOpening,railRadius,0,density),quality);
   sweepParapet(k,landingPath(1,0),quality);
