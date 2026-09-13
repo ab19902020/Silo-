@@ -7,6 +7,8 @@ import { RESIDENT_CAST } from './resident-data.js';
 import { createResident } from './resident-model.js';
 import {calibrateAnkles} from './rig-calibration.js';
 import {gaitStyle} from './captured-motion.js';
+import { assignWorkday, workAt } from './workday.js';
+import { attachWorkProps, showWorkProps } from './work-props.js';
 
 export const CHARACTERS=Object.freeze([
   {id:'juliette',name:'Juliette Nichols',short:'Juliette',role:'Mechanical · engineer',level:144,wing:1,place:'Walker’s workshop',height:1.73},
@@ -97,6 +99,7 @@ export class CharacterCast{
       const selected=a.definition.id===this.selected,near=!this.world.special&&this.world.activeLevel===a.definition.level;
       if(a.definition.generated&&!selected){a.root.visible=a.feed.visible=false;continue;}
       if(selected){
+        if(a.workEquipment)a.workEquipment.visible=false;
         if(a.visualY===null||a.root.position.distanceTo(body.position)>2.5){a.visualY=body.position.y;a.motion.reset();}
         a.visualY=THREE.MathUtils.damp(a.visualY,body.position.y,22,dt);a.root.position.copy(body.position);a.root.position.y=a.visualY;
         if(body.climbing)a.heading=body.climbing.heading;
@@ -108,7 +111,15 @@ export class CharacterCast{
         a.root.visible=started&&this.thirdPerson;
       }else{
         a.root.position.copy(a.post);a.root.rotation.y=-a.definition.wing*Math.PI/3-Math.PI/2;a.root.updateMatrixWorld(true);if(near)a.motion.update(dt,{position:a.post,active:false});a.state='Idle';a.root.visible=near;
-        if(near){const p=a.root.position.clone();p.y+=1.3;this.world.actorInteractions.push({position:p,label:`Talk to ${a.definition.name}`,action:`person-${a.definition.id}`,resident:a.definition});}
+        if(near){
+          a.workday??=assignWorkday(a.definition);a.currentWork=workAt(a.workday,this.world.schedule?.hour??8.4);
+          if(!a.workTools)attachWorkProps(a,this.world.m,a.workday);
+          a.workEquipment.visible=true;showWorkProps(a,a.workday,a.currentWork,a.currentWork.onDuty);
+          if(a.currentWork.onDuty){a.motion.rotate('UpperArmR',-.25);a.motion.rotate('ForearmR',-.65+Math.sin(a.motion.time*1.5)*.09);a.motion.rotate('Head',.055);}
+          else if(['break','meal'].includes(a.currentWork.phase))a.motion.rotate('ForearmR',-.8);
+          a.model.updateWorldMatrix(true,true);
+        }
+        if(near){const p=a.root.position.clone();p.y+=1.3;this.world.actorInteractions.push({position:p,label:`Talk to ${a.definition.name}`,action:`person-${a.definition.id}`,resident:{...a.definition,workday:a.workday,currentWork:a.currentWork}});}
       }
       a.root.updateMatrixWorld(true);a.feed.visible=selected&&this.world.outside&&started;
       if(a.feed.visible){a.feed.position.copy(a.root.position);a.feed.quaternion.copy(a.root.quaternion);for(let i=0;i<a.bones.length;i++){const b=a.bones[i],f=a.feedBones[i];f.position.copy(b.position);f.quaternion.copy(b.quaternion);f.scale.copy(b.scale);}a.feed.updateMatrixWorld(true);}

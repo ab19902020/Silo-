@@ -307,6 +307,7 @@ export class SiloWorld {
         }
       }
       const e=this.loaded.get(level);if(!e)continue;
+      for(const station of e.dispatchSolids||[])c.addOrientedBox(station);
       if(e.passages){
         const {inner,outer,height}=PASSAGE;
         c.addRing({innerRadius:inner,outerRadius:outer,minY:y-.3,maxY:y,climbable:true});

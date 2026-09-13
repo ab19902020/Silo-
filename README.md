@@ -14,6 +14,19 @@ See [this release's changes and validation limits](docs/relic-world-polish.md),
 [the mystery route and research](docs/mystery-expansion.md), and
 [agent integration history](docs/AGENT_COORDINATION.md).
 
+## Residents at work
+
+Every resident now has an assigned responsibility and a daily routine: work,
+water breaks, meals, personal errands and quiet time. Ask **What are you doing
+today?** to hear their current task and shift. Fifty job specializations include
+lamp maintenance, seed keeping, garment mending, clinic registration and stores
+dispatch; named characters have duties fitted to their existing roles.
+
+Loaded porters use the spiral stairs, collect parcels at relay counters and
+return with signed receipts. Work props and quiet activity sounds follow what
+nearby residents are doing. These additions use the latest character upgrade.
+See [workdays, source references and validation limits](docs/living-workdays.md).
+
 ## TV world and relic polish
 
 Every level now has a distinct resident note to discover and keep in the

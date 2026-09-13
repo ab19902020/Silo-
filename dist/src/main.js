@@ -897,6 +897,12 @@ function frame(){
     const schedule=siloClock.schedule;
     world.schedule=schedule;population.schedule=schedule;
     world.update(dt,body.position);const passage=world.transitionAt(body.position);if(passage)travel(passage);opening.update(dt);population.update(dt,body,opening.watching,cast.selected);population.separatePlayer(body);
+    if(!opening.watching&&!talking)for(const event of population.events.slice(0,3)){
+      const delta=event.position.clone().sub(body.position),distance=delta.length();
+      if(distance<24)audio.ambient({...event,position:undefined,steps:event.steps||1,
+        gain:.028/(1+distance*.16),pan:THREE.MathUtils.clamp((delta.x*Math.cos(yaw)-delta.z*Math.sin(yaw))/Math.max(2,distance),-1,1),
+        muffle:Math.abs(delta.y)>2?1000:2400,send:1.1,rate:1});
+    }
     // What the silo sounds like around you: where you are, whether the shaft
     // can carry it to you, and how much of the place is awake to make it.
     {

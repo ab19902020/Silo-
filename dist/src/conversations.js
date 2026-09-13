@@ -1,4 +1,5 @@
 import { personalHistory } from './resident-stories.js';
+import { workConversation } from './workday.js';
 
 // Original game dialogue, not transcribed television lines. Answers stay within
 // each resident's knowledge and the opening-era setting.
@@ -399,6 +400,7 @@ export function conversationFor(resident,{cleaned=false,playerName='',visits=0}=
   const kind=({engineer:'mechanical',workshop:'mechanical',miner:'mines',cafeteria:'diner'}[raw]||raw);
   const written=CAST[id];
   const topics=written?written.topics.map(topic=>({...topic})):residentTopics(resident,kind,cleaned);
+  if(resident.workday&&resident.currentWork)topics.push(workConversation(resident.workday,resident.currentWork));
   // Who else they have an opinion about. One extra question, and it is only
   // there for the people who would actually have something to say.
   const opinions=OPINIONS[id];
