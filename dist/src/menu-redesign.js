@@ -90,5 +90,13 @@ if (typeof document !== 'undefined') {
     document.getElementById('menuSettings')?.addEventListener('click', () => {
       document.getElementById('settingsButton')?.click();
     });
+    const newGame = document.getElementById('enterButton');
+    const syncNewGameLabel = () => {
+      if (newGame && !newGame.disabled && /story\s*·?\s*new game/i.test(newGame.textContent || '')) newGame.textContent = 'New Game';
+    };
+    if (newGame && typeof MutationObserver !== 'undefined') {
+      new MutationObserver(syncNewGameLabel).observe(newGame,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled']});
+    }
+    queueMicrotask(syncNewGameLabel);
   }
 }
