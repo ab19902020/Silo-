@@ -1,5 +1,13 @@
 # Silo 18
 
+## Steady artificial lighting
+
+Stair and room lights now overlap smoothly across floor boundaries, with working
+stair-spine lamps, consistent fixture colour and less over-lighting in rooms.
+The eight-light budget stays fixed during movement, and fast travel starts with
+the destination already lit. Sunlight remains outside the silo.
+See [lighting changes and validation limits](docs/steady-lighting.md).
+
 ## Play the latest build
 
 [Play Silo 18](https://ab19902020.github.io/Silo-/)

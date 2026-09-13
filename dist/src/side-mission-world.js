@@ -38,7 +38,9 @@ function buildStand(m,spec){
     const kit=new Kit(m);kit.box('metal',0,1.23,0,.55,.30,.14);kit.box('black',-.15,1.24,.081,.07,.17,.02);kit.box('yellow',-.15,1.28,.098,.025,.07,.018);
     root.add(kit.group([new THREE.Matrix4()],true));addSign(root,'24 V  /  RELAY A',[.09,1.22,.09],.29,.11,0,{glow:.05});
     const bulb=new THREE.Mesh(new THREE.SphereGeometry(.038,10,8),new THREE.MeshBasicMaterial({color:0x724632}));bulb.position.set(.28,1.40,.03);bulb.userData.ownedGeometry=bulb.userData.ownedMaterial=true;root.add(bulb);root.userData.indicator=bulb;
-    const light=new THREE.PointLight(0xffdba1,0,7,2);light.position.set(0,1.70,.20);root.add(light);root.userData.light=light;
+    // The interior pool renders this source; keep the repair state on the
+    // fixture without adding a shader light when this floor streams in.
+    const light=new THREE.PointLight(0xffdba1,0,7,2);light.position.set(0,1.70,.20);light.visible=false;root.add(light);root.userData.light=light;
     const housing=new Kit(m);housing.box('darkMetal',0,1.78,0,.46,.075,.30);root.add(housing.group([new THREE.Matrix4()],true));
   }else if(spec.kind==='chart'||spec.owner==='lukas'){
     const chart=new Kit(m);chart.box('paper',0,1.21,-.032,.65,.39,.009);
