@@ -307,7 +307,7 @@ export class SiloWorld {
         }
       }
       const e=this.loaded.get(level);if(!e)continue;
-      for(const station of e.dispatchSolids||[])c.addOrientedBox(station);
+      for(const station of [...(e.dispatchSolids||[]),...(e.missionSolids||[])])c.addOrientedBox(station);
       if(e.passages){
         const {inner,outer,height}=PASSAGE;
         c.addRing({innerRadius:inner,outerRadius:outer,minY:y-.3,maxY:y,climbable:true});
@@ -377,6 +377,7 @@ export class SiloWorld {
                  :{position:d.position,label:`${d.open?'Close':'Open'} ${TYPE_NAMES[d.type].toLowerCase()} door`,door:d};}),...this.interactions];
     if(this.actorInteractions)pool.push(...this.actorInteractions);
     if(this.residentInteractions)pool.push(...this.residentInteractions);
+    if(this.sideMissionInteractions)pool.push(...this.sideMissionInteractions);
     if(this.storyInteractions)pool.push(...this.storyInteractions);
     if(!this.special&&this.activeLevel===1&&this.outside)pool.push(...this.surface.networkInteractions);
     if(!this.story?.story&&!this.special&&this.activeLevel===1)pool.push({position:this.surface.cleaningPoint,label:this.surface.cleaning?'Cleaning lens…':this.surface.cleanliness>.99?'Clean camera lens again':'Clean the outside camera lens',action:'clean-camera'});

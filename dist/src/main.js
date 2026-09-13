@@ -25,6 +25,9 @@ import { StoryProps, Drone } from './relics.js';
 import { SiloClock } from './silo-time.js';
 import { shiftBell } from './ambient-events.js';
 import { Haptics } from './haptics.js';
+import { SideMissions, SIDE_MISSIONS } from './side-missions.js';
+import { SideMissionWorld, workDuration } from './side-mission-world.js';
+import { renderSideJournal } from './side-mission-journal.js';
 
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel'),terminalDialog=$('georgeTerminal');
 const dialogs=[welcome,directory,settings,about,characters,relic,conversation,satchel,terminalDialog],coarse=matchMedia('(pointer:coarse)').matches;
@@ -32,6 +35,8 @@ let ready=false,started=false,renderer,world,outsideTarget,interaction=null,trav
 let cinemaUntil=0;
 let hudOpen=false,touchUntil=0,chapterUntil=0,lastInteractionLabel=null,lastOpeningState=null,talking=null,chapterEnteredAt=0,hintUntil=0;
 let terminal=new GeorgeTerminal(),workAction=null;
+let sideMissions=new SideMissions();const sideWorld=new SideMissionWorld();
+function loadExploreMissions(){try{return SideMissions.load(JSON.parse(localStorage.getItem('silo18-side-explore')||'null'));}catch{return new SideMissions();}}
 let conversationStorage=null;try{conversationStorage=localStorage;}catch{}
 const conversationMemory=new ConversationMemory(conversationStorage);
 function animateAlgorithm(){for(const a of world.animated)if(a.object.name==='algorithm-interface')a.object.userData.respond?.();}
@@ -50,7 +55,7 @@ const savedStory=(()=>{try{return JSON.parse(localStorage.getItem('silo18-story'
 // The silo's own clock. It starts mid-morning — the lamps at full, the place
 // awake, and enough light outside for the cleaning — and runs from there.
 let siloClock=new SiloClock({hour:8.4});
-function saveStory(){if(!story?.story)return;try{localStorage.setItem('silo18-story',JSON.stringify({...story.save(),terminal:terminal.save(),clock:siloClock.save(),checkpoint:{level:world.activeLevel,special:world.special,position:body.position.toArray(),yaw}}));}catch{}}
+function saveStory(){if(!story)return;if(!story.story){try{localStorage.setItem('silo18-side-explore',JSON.stringify(sideMissions.save()));}catch{}return;}try{localStorage.setItem('silo18-story',JSON.stringify({...story.save(),sideMissions:sideMissions.save(),terminal:terminal.save(),clock:siloClock.save(),checkpoint:{level:world.activeLevel,special:world.special,position:body.position.toArray(),yaw}}));}catch{}}
 const paused=()=>pausingDialogs.some(d=>d.open)||(conversation.open&&!talking)||!started||traveling;
 function notify(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4600);}
 function revealControls(){touchUntil=performance.now()+3500;}
@@ -100,6 +105,11 @@ function askTopic(button){
   if(button._back){button.click();return;}
   if(!button._topic&&!button.dataset.reply){button.click();return;}
   const topic=button._topic;
+  if(topic?.sideAction){
+    const result=sideMissions.perform(topic.sideAction);$('dialogueLine').textContent=result.message;
+    renderChoices(sideMissions.topics(talking?.sideOwner||talking?.id),{topics:talking?.baseTopics||[],back:null});
+    saveStory();sideWorld.update(world,sideMissions,body);audio.click();return;
+  }
   $('dialogueLine').textContent=topic?conversationMemory.reply(talking?.id,topic):button.dataset.reply;
   if(talking?.id==='algorithm')animateAlgorithm();
   for(const other of $('dialogueChoices').children)other.setAttribute('aria-pressed',String(other===button));
@@ -113,12 +123,13 @@ function startConversation(person,actor=null){
   const text=person.topics?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name,visits});
   $('algorithmQuery').hidden=person.id!=='algorithm';conversation.classList.toggle('archive-conversation',person.id==='algorithm');
   $('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;
-  renderChoices(text.topics);
+  const sideOwner=person.sideOwner||person.id,baseTopics=[...text.topics];
+  renderChoices([...baseTopics,...sideMissions.topics(sideOwner)]);
   // The panel is shown, not modalled: the silo keeps running behind it, the
   // person turns to face you and the camera settles on them while you talk.
   hudOpen=false;document.body.classList.remove('hud-open');
   for(const d of pausingDialogs)if(d.open)d.close();
-  talking={actor,name:text.name,id:person.id};population.talkingTo=actor;
+  talking={actor,name:text.name,id:person.id,sideOwner,baseTopics};population.talkingTo=actor;
   if(!conversation.open)conversation.show();
   document.body.classList.add('talking');audio.click();syncPause();
 }
@@ -245,7 +256,7 @@ function nudge(now){
 }
 function syncStoryHud(force=false){
   if(!story)return;
-  $('satchelButton').hidden=!story.story;
+  $('satchelButton').hidden=false;
   document.body.classList.toggle('armed',!!firearms.held);
   $('fireButton').hidden=!(firearms.held&&coarse);
   $('crosshair').hidden=!firearms.held;
@@ -298,6 +309,7 @@ function renderSatchel(){
     row.append(mark,copy);progress.append(row);
   }
   if(story.story)list.append(progress);
+  renderSideJournal(list,sideMissions);
   for(const item of held){
     const has=story.has(item.id),row=document.createElement('div');row.className='satchel-item';
     const tick=document.createElement('span');tick.className='tick';tick.textContent=has?'✓':'·';
@@ -536,7 +548,7 @@ function updateWeaponHud(){
 function begin(mode){
   if(!ready)return;
   if(mode){
-    story=new Story(mode);terminal=new GeorgeTerminal();world.driveSeated=false;siloClock=new SiloClock({hour:8.4});world.story=story;lastChapter=null;drone?.reset();firearms.holster();workAction=null;wasOutside=false;world.resetStoryWorld();world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;
+    story=new Story(mode);sideMissions=mode==='story'?new SideMissions():loadExploreMissions();terminal=new GeorgeTerminal();world.driveSeated=false;siloClock=new SiloClock({hour:8.4});world.story=story;lastChapter=null;drone?.reset();firearms.holster();workAction=null;wasOutside=false;world.resetStoryWorld();world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;
     if(mode==='story'&&opening.state!=='find-book')opening.reset();
     if(mode==='explore'){opening.finish();world.openBreach();}
     saveStory();
@@ -589,10 +601,26 @@ const inspectionText={
   camp:'George and Juliette’s secluded hideout beside the excavation: a bed, a table and salvaged relics. The ladder outside the open side descends to the water. The room’s exact dimensions and position remain reconstructed from the available references.',
   relics:'Tins, bottles, books and wound cable carried down from the levels above and kept where a sweep would not find them. Possession of relics from before is an offence under the Pact.',
 };
+function finishSideAction(action){
+  const result=sideMissions.perform(action);notify(result.message);audio.click();
+  if(result.changed){saveStory();sideWorld.update(world,sideMissions,body);haptics.play('use');}
+}
 function use(){
   if(talking){endConversation();return;}
   if(opening?.state==='read-book'&&!interaction&&!paused()){requestDirectory();return;}
   if(!interaction||paused()||body.climbing||workAction)return;
+  if(interaction.action?.startsWith('side-board:')){
+    const owner=interaction.action.slice(11);startConversation({id:'orders-'+owner,sideOwner:owner,name:interaction.spec.name,role:`CORRESPONDENCE · LEVEL ${interaction.spec.level}`,greeting:'Work orders, messages and signed returns. Read a request or leave a reply.',topics:[]});return;
+  }
+  if(interaction.action?.startsWith('side-task:')){
+    const action=interaction.action.slice(10),duration=workDuration(action);
+    if(duration){workAction={until:performance.now()+duration,sideAction:action,position:interaction.position.clone(),level:world.activeLevel};notify(interaction.label+'…');}
+    else finishSideAction(action);return;
+  }
+  if(interaction.action?.startsWith('side-read:')){
+    const id=interaction.action.slice(10),mission=id==='lamp-panel'?'lamp':id==='parcel-stand'?'parcel':'sky';
+    notify(SIDE_MISSIONS[mission].objectives[sideMissions.stages[mission]]);return;
+  }
   if(interaction.action==='opening-book'){audio.click();audio.playOpeningTheme();opening.takeBook();return;}
   if(interaction.action==='billings'){billingsConversation();return;}
   if(interaction.action?.startsWith('floor-memory:')){inspectFloorMemory(Number(interaction.action.split(':')[1]));return;}
@@ -878,7 +906,11 @@ function frame(){
     const right=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0)+stick.x+pad.move.x;
     const speed=(running||pad.run||keys.has('ShiftLeft')||keys.has('ShiftRight'))?3.8:1.45;
     desired.set(-Math.sin(yaw)*forward+Math.cos(yaw)*right,0,-Math.cos(yaw)*forward-Math.sin(yaw)*right);if(desired.length()>1)desired.normalize();desired.multiplyScalar(opening.focus||workAction||talking?0:speed);
-    if(workAction&&performance.now()>=workAction.until){const step=workAction.step;workAction=null;const result=step==='cover'?{complete:story.openPipeCover()}:story.capPipe(step);audio.door(true);notify(result.message||(step==='cover'?'Cover released. The isolation wheel is on your right as you face the fitting.':story.hasFlag('pipe-capped')?'The telltale holds at zero. The service line is sealed.':'The fitting holds. Check the next point on the schematic.'));syncStoryHud(true);saveStory();}
+    if(workAction&&performance.now()>=workAction.until){
+      const work=workAction;workAction=null;
+      if(work.sideAction){if(world.activeLevel===work.level&&!world.special&&body.position.distanceTo(work.position)<5)finishSideAction(work.sideAction);}
+      else {const step=work.step,result=step==='cover'?{complete:story.openPipeCover()}:story.capPipe(step);audio.door(true);notify(result.message||(step==='cover'?'Cover released. The isolation wheel is on your right as you face the fitting.':story.hasFlag('pipe-capped')?'The telltale holds at zero. The service line is sealed.':'The fitting holds. Check the next point on the schematic.'));syncStoryHud(true);saveStory();}
+    }
 
     // Bound movement substeps prevent thin rail/door tunneling after slow frames.
     // The jump impulse belongs to one substep only, or it is applied N times.
@@ -896,7 +928,7 @@ function frame(){
     for(const bell of siloClock.update(dt)){audio.ambient(shiftBell());haptics.play('bell');notify(`Shift change. ${siloClock.schedule.label}, ${siloClock.schedule.clock}.`);}
     const schedule=siloClock.schedule;
     world.schedule=schedule;population.schedule=schedule;
-    world.update(dt,body.position);const passage=world.transitionAt(body.position);if(passage)travel(passage);opening.update(dt);population.update(dt,body,opening.watching,cast.selected);population.separatePlayer(body);
+    world.update(dt,body.position);const passage=world.transitionAt(body.position);if(passage)travel(passage);opening.update(dt);population.update(dt,body,opening.watching,cast.selected);population.separatePlayer(body);sideWorld.update(world,sideMissions,body);
     if(!opening.watching&&!talking)for(const event of population.events.slice(0,3)){
       const delta=event.position.clone().sub(body.position),distance=delta.length();
       if(distance<24)audio.ambient({...event,position:undefined,steps:event.steps||1,
@@ -1023,7 +1055,7 @@ async function boot(){
     cast=new CharacterCast(scene,world);await cast.load(progress=>{$('enterButton').textContent=`Preparing characters · ${Math.round(45+progress*55)}%`;});cast.select(saved.character||'juliette');cast.thirdPerson=saved.thirdPerson!==false;body.standHeight=body.height=cast.active.definition.height;cast.active.heading=yaw+Math.PI;renderCharacters();
     world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;world.update(0,body.position);cast.update(0,body,false);
     population=new Population(scene,world);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);
-    story=Story.load(savedStory);terminal=GeorgeTerminal.load(savedStory?.terminal);world.driveSeated=terminal.view.driveInserted;if(savedStory?.clock)siloClock=SiloClock.load(savedStory.clock);world.story=story;props=new StoryProps(scene,world.m);const relicFailures=await props.loadAssets();if(relicFailures)notify('Some relic models could not load. Refresh to retry.');drone=new Drone(scene,world.m);
+    story=Story.load(savedStory);sideMissions=story.story?SideMissions.load(savedStory?.sideMissions):loadExploreMissions();terminal=GeorgeTerminal.load(savedStory?.terminal);world.driveSeated=terminal.view.driveInserted;if(savedStory?.clock)siloClock=SiloClock.load(savedStory.clock);world.story=story;props=new StoryProps(scene,world.m);const relicFailures=await props.loadAssets();if(relicFailures)notify('Some relic models could not load. Refresh to retry.');drone=new Drone(scene,world.m);
     if(story.story&&story.chapter!=='cleaning'){opening.finish();const cp=savedStory?.checkpoint;if(cp&&Number.isInteger(cp.level)&&cp.level>=1&&cp.level<=144&&Array.isArray(cp.position)&&cp.position.length===3&&cp.position.every(Number.isFinite)&&[null,'generator','mines','excavator','tunnel','pipe-gallery','silo17'].includes(cp.special)){world.setLevel(cp.level,cp.special);const [x,y,z]=cp.position;const floor=world.colliders.floorAt(x,z,.3,y+1);if(Number.isFinite(floor)&&Math.abs(floor-y)<2)body.teleport(x,floor+.05,z);else{const dest=world.destination(cp.special||cp.level);body.teleport(...dest.position.toArray());}yaw=Number.isFinite(cp.yaw)?cp.yaw:0;}if(story.hasFlag('hideout-open'))world.openBreach();if(story.chapter==='drone'){story.killedByDrone();const back=world.destination('airlock');world.setLevel(1);body.teleport(...back.position.toArray());}world.update(0,body.position);}
     openingChanged(opening.state);syncStoryHud(true);
     outsideTarget=world.surface.initFeed(renderer);renderer.compile(scene,camera);setDirectoryMode(true);

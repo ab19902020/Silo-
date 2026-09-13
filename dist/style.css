@@ -395,3 +395,13 @@ body:not(.cinema-awake) #cinemaControls{opacity:0;visibility:hidden;pointer-even
  .relic-controls p{display:none}.relic-controls button{font-size:12px;padding:8px;min-height:40px}
  .relic-panel.record-only[open]{display:block;height:auto;max-height:94dvh;overflow:auto}.relic-panel.record-only .relic-controls{margin:0;background:none}
 }
+
+/* Optional stories stay inside the journal, with comfortable touch targets. */
+.side-stories .journal-chapter>div{min-width:0;flex:1}
+.side-stories .journal-chapter.done{opacity:.86}
+.side-stories summary{display:flex;align-items:center;gap:.6rem;min-height:44px;padding:4px 0;cursor:pointer;font-size:14px;color:#b9c9b6;list-style:none}
+.side-stories summary::-webkit-details-marker{display:none}
+.side-stories summary::before{content:'+';font-size:19px;flex:0 0 14px}
+.side-stories details[open]>summary::before{content:'−'}
+.side-stories summary:focus-visible{outline:2px solid #d5ba79;outline-offset:3px;border-radius:3px}
+.side-stories details p{font-size:14px;line-height:1.55;margin:.65rem 0;overflow-wrap:anywhere}

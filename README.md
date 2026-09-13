@@ -14,6 +14,17 @@ See [this release's changes and validation limits](docs/relic-world-polish.md),
 [the mystery route and research](docs/mystery-expansion.md), and
 [agent integration history](docs/AGENT_COORDINATION.md).
 
+## Optional resident stories
+
+Ask Walker (144 B) about a failed landing light, Carla (126 C) about an unclaimed
+parcel, or Lukas (19 C) about his observations. Each has an optional story with
+physical clues, saved progress and an outcome visible in the silo. Their gallery
+correspondence stands let every playable character participate. Use the journal
+to reread clues and see what you are carrying for residents.
+
+These are original stories inspired by the setting, available in Story and Free
+Roam. See [routes, source notes and validation](docs/side-stories.md).
+
 ## Residents at work
 
 Every resident now has an assigned responsibility and a daily routine: work,
