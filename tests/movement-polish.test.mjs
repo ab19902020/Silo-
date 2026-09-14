@@ -5,7 +5,7 @@ import {readGLB,geometryGLTF} from '../scripts/glb.mjs';
 import {SkeletalMotion} from '../dist/src/locomotion.js';
 import {createResident,poseResident} from '../dist/src/resident-model.js';
 import {RESIDENT_CAST} from '../dist/src/resident-data.js';
-async function supplied(id,h){const {json,bin}=await readGLB(new URL(`../dist/assets/characters/${id}.glb`,import.meta.url));const {scene}=await geometryGLTF(json,bin);return {root:scene,motion:new SkeletalMotion(scene,h)};}
+async function supplied(id,h){const {json,bin}=await readGLB(new URL(`./fixtures/imported-characters/${id}.glb`,import.meta.url));const {scene}=await geometryGLTF(json,bin);return {root:scene,motion:new SkeletalMotion(scene,h)};}
 
 test('walks stay upright without the old bounce across supplied and resident bodies',async()=>{
   const actors=[await supplied('juliette',1.73),await supplied('sims',1.83),await supplied('bernard',1.87),...['knox','walker','shirley'].map(id=>createResident(RESIDENT_CAST.find(d=>d.id===id)))];

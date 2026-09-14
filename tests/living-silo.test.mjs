@@ -23,7 +23,7 @@ test('the basin and tunnel mouth have one water sheet with no duplicate transpar
 });
 
 test('every numbered level has residents and historical cleaners are not duplicated among the living',()=>{
-  assert.equal(RESIDENT_CAST.length,20);assert.equal(PLAYABLE_CHARACTERS.length,20);
+  assert.ok(RESIDENT_CAST.length>=23);assert.ok(RESIDENT_CAST.every(d=>PLAYABLE_CHARACTERS.some(p=>p.id===d.id)));
   const ids=new Set();for(let n=1;n<=144;n++){const records=populationRecords(n);assert.ok(records.length>=24);assert.ok(records.some(r=>r.kind==='porter'));for(const r of records){assert.ok(!ids.has(`${n}:${r.id}`));ids.add(`${n}:${r.id}`);assert.ok(!['holston','allison','george'].includes(r.id));}}
 });
 

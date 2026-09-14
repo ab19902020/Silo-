@@ -48,7 +48,8 @@ export function workAt(roster,hour){
   return {phase,task:labels[phase],taskIndex,job:roster.job,title:roster.title,onDuty:phase==='work',shift:`${formatClock(roster.start)}–${formatClock(roster.end)}`};
 }
 export function workConversation(roster,current){
-  return {id:'daily-work',label:'What are you doing today?',reply:`${current.task}. I’m responsible for ${roster.specialty.toLowerCase()} work at ${roster.station}. My shift is ${current.shift}.`,follow:[
+  const now=current.phase==='rest'?'I have finished for now. I am keeping things quiet.':`I’m ${current.task[0].toLowerCase()+current.task.slice(1)}.`;
+  return {id:'daily-work',label:'What are you doing today?',reply:`${now} My assignment is ${roster.specialty.toLowerCase()}, at ${roster.station}. I’m on the ${current.shift} shift.`,follow:[
     {id:'shift-roster',label:'What does your day look like?',reply:`Work starts at ${formatClock(roster.start)}. A short break at ${formatClock(roster.start+2.25)}, food at ${formatClock(roster.start+4.3)}, then I hand over at ${formatClock(roster.end)}. Afterwards: ${roster.personal[0].toLowerCase()}.`},
     {id:'current-task',label:'What is next?',reply:current.onDuty?roster.tasks[(current.taskIndex+1)%roster.tasks.length]+'. That is the next thing on my round.':'My next shift starts at '+formatClock(roster.start)+'. Until then, I’m '+roster.personal[1].toLowerCase()+'.'},
   ]};

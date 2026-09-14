@@ -99,3 +99,31 @@ resident bodies and walking sequences. They approximate material lighting and
 are not screenshots of the game. The available managed browser cannot create a
 WebGL context, so a complete in-game visual walkthrough and mobile frame-rate
 assessment remain unverified here.
+
+## Clothing and arm follow-up
+
+The follow-up keeps the resident face mesh, atlas and face styling unchanged.
+Garment panels now project onto the actual body triangles and inherit their
+blended skin weights. Collars, pocket flaps, seams, waistbands, badges and chains
+sit close to the surface through motion. Coats follow the actual hip profile,
+have more vertical rings and blend into the legs below their sewn waist; long
+robe hems also follow the knees. Rounded leather pouches replace
+protruding hip boxes; tattoos are painted into the forearm skin. The underlying
+cloth envelope is smoothed at shoulder and waist transitions.
+
+The lead arm rigs now have corrected elbow proportions and wrist pivots fitted
+to each supplied hand. Retargeting removes persistent offsets from individual
+recordings, limits the elbow to a natural hinge and keeps the wrists aligned
+with the forearms. The two long coats have a wider hand path for clearance.
+Runtime finger bones add a relaxed curl instead of leaving the hands flat and
+spread. These changes preserve the neutral supplied surfaces and their textures;
+the feet, terrain contact and existing lower-body gait continue unchanged.
+
+Additional regressions cover neutral geometry preservation through arm rebinding,
+elbow proportions, wrist alignment during turns, continuous arm travel and the
+distance between a fitted pocket and its supporting skin while the torso bends.
+Waist fittings reject nearby arm surfaces, preventing belts from stretching
+toward the wrists when a resident runs or sits.
+Front and side walking sequences, standing, running and seated garments were
+reviewed in offscreen renders. Full browser WebGL visual testing remains subject
+to the limitation above.

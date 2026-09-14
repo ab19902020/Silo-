@@ -1,7 +1,9 @@
+import {LEAD_CAST} from './tv-cast.js';
 // The Silo 18 ensemble for the opening-era exploration. Locations without a
 // published floor number are game placements, not claims about the set plan.
 const person=(id,name,role,level,wing,appearance,extra={})=>({id,name,role,level,wing,height:1.75,appearance,...extra});
 export const RESIDENT_CAST=Object.freeze([
+  ...LEAD_CAST,
   person('holston','Holston Becker','Sheriff',1,0,{skin:0x76503c,hair:0x211d19,outfit:'uniform',coat:0x655442,beard:.55},{height:1.78,story:'cleaner'}),
   person('allison','Allison Becker','IT systems',6,0,{skin:0xb88b70,hair:0x302921,outfit:'knit',coat:0xb1a58e,hairStyle:'fringe',female:true},{height:1.64,story:'outside'}),
   person('walker','Martha Walker','Electronics workshop',144,1,{skin:0xc39f87,hair:0x73776f,outfit:'cardigan',coat:0x4c5865,hairStyle:'braids',female:true,age:.9},{height:1.65,activity:'work'}),

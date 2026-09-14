@@ -240,7 +240,7 @@ export class Population{
         let target,facing=null;
         const here=r.stops?.[r.goal%r.stops.length];
         if(here){
-          if(r.wait>0){r.wait=Math.max(0,r.wait-step);pose=r.holding;facing=r.facing;}
+          if(r.wait>0){pose=r.holding;facing=r.facing;}
           else if(here.p.distanceTo(r.position)<.5){r.wait=here.hold??5;r.holding=here.pose||'idle';r.facing=here.face||null;r.goal++;pose=r.holding;facing=r.facing;}
           else target=here.p;
         }

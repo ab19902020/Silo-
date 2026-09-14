@@ -1,6 +1,8 @@
 Character performance and resident anatomy
 
-The supplied Juliette, Sims and Bernard assets retain their existing provenance.
+Juliette, Sims and Bernard now use the same resident anatomy as the ensemble.
+The former imported avatars are excluded from the deployed game; historical
+regression fixtures retain their original provenance in the source repository.
 
 Resident anatomy: derived from the MakeHuman base mesh, default rig and weights.
 CC0, Data Collection AB, Joel Palmius and Jonas Hauquier, 2020–2021.

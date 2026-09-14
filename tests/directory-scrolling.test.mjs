@@ -113,6 +113,7 @@ test('rebuilding the list takes you back to the top of it',()=>{
   assert.match(body.slice(0,end),/scrollTop\s*=\s*0/,'renderDirectory leaves the list wherever the last one was scrolled to');
   // One owner, like the story interactions. Hand-rolled resets at the call
   // sites are how half the callers end up without one.
-  const resets=source.match(/scrollTop\s*=\s*0/g)||[];
+  // Other panels, including conversations, own their own scroll position.
+  const resets=source.match(/(?:target|directory)\.scrollTop\s*=\s*0/g)||[];
   assert.equal(resets.length,1,`${resets.length} places reset the directory's scroll; it should be the render`);
 });

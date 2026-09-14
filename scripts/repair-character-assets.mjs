@@ -7,7 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { readGLB,encodeGLB,geometryGLTF,accessor } from './glb.mjs';
 import { SkeletalMotion,MOTION_CLIPS } from '../dist/src/locomotion.js';
 
-const dir=path.resolve(fileURLToPath(new URL('../dist/assets/characters',import.meta.url)));
+const dir=path.resolve(fileURLToPath(new URL('../tests/fixtures/imported-characters',import.meta.url)));
 const manifest=JSON.parse(await fs.readFile(path.join(dir,'manifest.json'),'utf8'));
 for(const def of manifest.filter(d=>d.heightMetres)){
   const file=path.join(dir,def.file),revision=process.argv[2],source=revision?execFileSync('git',['show',`${revision}:dist/assets/characters/${def.file}`],{maxBuffer:32*1024*1024}):file,{json,bin}=await readGLB(source);let repaired=0;

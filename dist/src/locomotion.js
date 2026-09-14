@@ -1,5 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import {capturedPose} from './captured-motion.js';
+import {leadArmPose} from './arm-motion.js';
 
 const up=new THREE.Vector3(0,1,0),forward=new THREE.Vector3(0,0,1),sideways=new THREE.Vector3(1,0,0);
 const clamp=THREE.MathUtils.clamp,lerp=THREE.MathUtils.lerp;
@@ -50,6 +51,19 @@ export class SkeletalMotion{
     const b=this.bones[name],r=this.rest[name];if(!b)return;
     const local=r.worldQ.clone().invert().multiply(new THREE.Quaternion().setFromAxisAngle(axis,angle)).multiply(r.worldQ);b.quaternion.multiply(local);
   }
+  relaxHand(side,phase=0,amount=1,run=0){
+    const frame=this.model.userData.handFrames?.[side];if(!frame)return;
+    const hand=this.bones['Hand'+side],elbow=this.bones['Forearm'+side],mq=this.model.getWorldQuaternion(new THREE.Quaternion());
+    const along=hand.getWorldPosition(new THREE.Vector3()).sub(elbow.getWorldPosition(new THREE.Vector3())).normalize();
+    along.applyAxisAngle(sideways.clone().applyQuaternion(mq),Math.sin(phase)*.025);
+    const normal=new THREE.Vector3(side==='L'?1:-1,0,0).applyQuaternion(mq);normal.addScaledVector(along,-normal.dot(along)).normalize();
+    const across=along.clone().cross(normal).normalize();normal.crossVectors(across,along).normalize();
+    const target=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(across,along,normal))
+      .multiply(new THREE.Quaternion().fromArray(frame.quaternion).invert()).multiply(this.rest['Hand'+side].worldQ);
+    this.setWorldQuaternion(hand,hand.getWorldQuaternion(new THREE.Quaternion()).slerp(target,amount));
+    const curlAxis=new THREE.Vector3(1,0,0).applyQuaternion(new THREE.Quaternion().fromArray(frame.quaternion));
+    this.rotate('Fingers'+side,-(.22+.24*run)*amount,curlAxis);this.rotate('FingerTips'+side,-(.30+.25*run)*amount,curlAxis);
+  }
   setWorldQuaternion(b,q){b.quaternion.copy(b.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(q));b.updateWorldMatrix(false,true);}
   aim(b,child,target){
     const p=b.getWorldPosition(new THREE.Vector3()),a=child.getWorldPosition(new THREE.Vector3()).sub(p).normalize(),to=target.clone().sub(p).normalize();
@@ -67,6 +81,7 @@ export class SkeletalMotion{
   pose({phase=this.phase,weight=this.weight,run=this.run,slope=this.slope,pace=this.pace,turn=0,air=0,impact=0,rise=0,ground=null,dt=0,lock=false}={}){
     this.neutral();const h=this.height,L=this.legLength,p=phase*Math.PI*2,stance=STANCE(run),reach=REACH(run)*SHORTEN(slope)*L*weight*pace*(1-air);
     const performance=capturedPose(this.model.userData.gaitStyle,phase,run);
+    const arms=this.model.userData.armRetargeted?leadArmPose(this.model.userData.gaitStyle,phase,run):performance.joints;
     // Residual knee flex at mid-stance. This is not cosmetic: a walker whose
     // stance leg is straight has to drop the pelvis the full geometric depth
     // at double support, which is a 10 cm bounce a step. A real mid-stance
@@ -226,11 +241,12 @@ export class SkeletalMotion{
         for(const [prefix,boneName,childName] of [['upper','UpperArm','Forearm'],['fore','Forearm','Hand']]){
           const bone=this.bones[boneName+leg.side],child=this.bones[childName+leg.side];
           const origin=bone.getWorldPosition(new THREE.Vector3()),restDirection=child.getWorldPosition(new THREE.Vector3()).sub(origin).normalize();
-          const direction=new THREE.Vector3(...performance.joints[prefix+leg.side]).normalize().applyQuaternion(worldQ);
+          const direction=new THREE.Vector3(...arms[prefix+leg.side]).normalize().applyQuaternion(worldQ);
           restDirection.lerp(direction,weight).normalize();this.aim(bone,child,origin.add(restDirection));
         }
-        this.rotate('Hand'+leg.side,Math.sign(leg.hip.x)*.10,forward);
-        if(this.bones['Fingers'+leg.side]){this.rotate('Hand'+leg.side,-Math.sign(leg.hip.x)*.12,up);this.rotate('Fingers'+leg.side,-.22-.65*run);this.rotate('FingerTips'+leg.side,-.28-.72*run);}
+        if(this.model.userData.armRetargeted)this.relaxHand(leg.side,p+i*Math.PI,1,run);
+        else this.rotate('Hand'+leg.side,Math.sign(leg.hip.x)*.10,forward);
+        if(this.bones['Fingers'+leg.side]&&!this.model.userData.armRetargeted){this.rotate('Hand'+leg.side,-Math.sign(leg.hip.x)*.12,up);this.rotate('Fingers'+leg.side,-.22-.65*run);this.rotate('FingerTips'+leg.side,-.28-.72*run);}
         this.rotate('Coat'+leg.side,clamp(-swing*.075*weight-.025*run,-.12,.12));
         continue;
       }
@@ -248,7 +264,8 @@ export class SkeletalMotion{
       // at a run it never straightens.
       this.rotate('Forearm'+leg.side,-.18-.95*run*weight-(.12+.18*run)*Math.max(0,-arm)*weight-.30*air-.45*impact);
       this.rotate('Hand'+leg.side,.035*weight*arm);
-      if(this.bones['Fingers'+leg.side]){
+      if(this.model.userData.armRetargeted)this.relaxHand(leg.side,p+i*Math.PI,1-air,run);
+      if(this.bones['Fingers'+leg.side]&&!this.model.userData.armRetargeted){
         // Generated hands have two finger segments; relax them when walking
         // and curl them into a loose fist at a run, palms facing the ribs.
         this.rotate('Hand'+leg.side,-Math.sign(leg.hip.x)*.12,up);

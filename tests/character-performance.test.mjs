@@ -1,14 +1,15 @@
+import {actorFrom} from './fixtures/imported-actor.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
 import {readGLB,geometryGLTF} from '../scripts/glb.mjs';
-import {actorFrom,CHARACTERS} from '../dist/src/characters.js';
+import {CHARACTERS} from '../dist/src/characters.js';
 import {calibrateAnkles} from '../dist/src/rig-calibration.js';
 import {createResident} from '../dist/src/resident-model.js';
 import {RESIDENT_CAST,CROWD_APPEARANCES} from '../dist/src/resident-data.js';
 import {capturedPose} from '../dist/src/captured-motion.js';
 
-async function asset(def){const {json,bin}=await readGLB(new URL(`../dist/assets/characters/${def.id}.glb`,import.meta.url));return geometryGLTF(json,bin);}
+async function asset(def){const {json,bin}=await readGLB(new URL(`./fixtures/imported-characters/${def.id}.glb`,import.meta.url));return geometryGLTF(json,bin);}
 
 test('ankle rebinding preserves the supplied neutral surface and is idempotent',async()=>{
  for(const def of CHARACTERS){

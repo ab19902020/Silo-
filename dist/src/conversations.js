@@ -400,7 +400,7 @@ export function conversationFor(resident,{cleaned=false,playerName='',visits=0}=
   const kind=({engineer:'mechanical',workshop:'mechanical',miner:'mines',cafeteria:'diner'}[raw]||raw);
   const written=CAST[id];
   const topics=written?written.topics.map(topic=>({...topic})):residentTopics(resident,kind,cleaned);
-  if(resident.workday&&resident.currentWork)topics.push(workConversation(resident.workday,resident.currentWork));
+  if(resident.workday&&resident.currentWork)topics.unshift(workConversation(resident.workday,resident.currentWork));
   // Who else they have an opinion about. One extra question, and it is only
   // there for the people who would actually have something to say.
   const opinions=OPINIONS[id];
@@ -413,7 +413,13 @@ export function conversationFor(resident,{cleaned=false,playerName='',visits=0}=
   if(id==='walker'&&playerName.includes('Juliette'))greeting='Jules. Come here. What have you broken this time?';
   else if(id==='shirley'&&playerName.includes('Juliette'))greeting='There you are. I was wondering where you had got to.';
   else if(!written&&cleaned)greeting='You saw the cleaning too?';
-  if(visits>0)greeting=[`Back again. What did you find?`,`We have a little time before the next shift. What is on your mind?`,`I remember you. Still exploring?`][(visits-1)%3];
+  if(visits>0){
+    const returns={marnes:'Back again. Have you found something I should know about?',sims:'You again. Is there something else?',bernard:'Yes? I hope this is a short question.',walker:playerName.includes('Juliette')?'Still here, Jules? Pull up a chair.':'Come in. Mind what is on the bench.',shirley:'There you are. How did you get on?',knox:'Back from your round? What do you need?',jahns:'Good to see you again. Tell me what you found.',pete:'You are back. Everything all right?',lukas:'Hello again. I kept your question in mind.'};
+    greeting=returns[id]||(written?`You are back. ${written.greeting}`:['Hello again. What is on your mind?','Good to see a familiar face. How are you getting on?','We spoke earlier. Did you find your way?'][(visits-1)%3]);
+  }else if(!written&&resident.currentWork){
+    const phase=resident.currentWork.phase;
+    greeting=phase==='work'?'Give me a moment to put this down. What can I do for you?':phase==='rest'?'Keep your voice down a little. Everything all right?':phase==='meal'||phase==='break'?'Taking a few minutes off my feet. You are welcome to join me.':greeting;
+  }
   return {id,name:resident.name,
     role:resident.role||({diner:'Cafeteria resident',porter:'Porter',bazaar:'Bazaar trader'}[kind]||'Silo resident'),
     greeting,topics};

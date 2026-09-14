@@ -15,8 +15,9 @@ export function addResidentHead({a,skin,hair,dark,add,binding,ell,box,tube}){
   // distorting the eye openings or stretching texture features.
   const y=p.getY(i),x=p.getX(i),z=p.getZ(i);
   if(y<1.59&&y>1.53)p.setX(i,x*(female?.94:1.025));
-  const u=data.uv[i*2],v=data.uv[i*2+1],valid=u>=u0&&v>=v0&&v<=v1;
-  uv.push(((tile%4)+clamp((u-u0)/(u1-u0),.001,.999))/4,(Math.floor(tile/4)+clamp((v1-v)/(v1-v0),.001,.999))/2,valid?1:0);
+  const u=data.uv[i*2],v=data.uv[i*2+1],scalpLine=1.665+.026*clamp((z+.04)/.13,0,1),valid=u>=u0&&v>=v0&&v<=v1;
+  const mask=valid?(a.bald?1-T.MathUtils.smoothstep(y,scalpLine-.022,scalpLine+.007):1):0;
+  uv.push(((tile%4)+clamp((u-u0)/(u1-u0),.001,.999))/4,(Math.floor(tile/4)+clamp((v1-v)/(v1-v0),.001,.999))/2,mask);
  }
  geometry.computeVertexNormals();geometry.setAttribute('skinUV',new T.Float32BufferAttribute(uv,3));
  // Preserve the skin palette (also used by hands and neck) while retaining
@@ -25,7 +26,7 @@ export function addResidentHead({a,skin,hair,dark,add,binding,ell,box,tube}){
  const headBind=y=>y>1.565?binding('Head'):binding('Neck','Chest',clamp((y-1.45)/.085,0,1));
  const scalp=geometry.clone();
  add(geometry,tint,headBind,null,false,(x,y,z,i)=>{
-  const mapped=uv[i*3+2]>.5,c=(mapped?tint:skin).clone();
+  const mask=uv[i*3+2],mapped=mask>.5,c=mask===1?tint.clone():new T.Color().setRGB(skin.r/(1-mask+mean[0]*mask),skin.g/(1-mask+mean[1]*mask),skin.b/(1-mask+mean[2]*mask));
   if(mapped&&z>.050&&(a.beard||a.moustache)){
    const edge=T.MathUtils.smoothstep(1.591-y,0,.035),mouth=1-Math.exp(-((x/.023)**2+((y-1.559)/.011)**2));
    const jaw=edge*mouth*T.MathUtils.smoothstep(y,1.491,1.516);
@@ -67,4 +68,12 @@ export function addResidentHead({a,skin,hair,dark,add,binding,ell,box,tube}){
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setIndex(indices);g.computeVertexNormals();add(g,hair,y=>binding('Head','Chest',clamp((y-1.42)/.12,0,1)));
  }
  if(a.hairStyle==='bun')ell(0,1.68,-.091,.037,.034,.028,hair,'Head',20);
+ if(a.hairStyle==='ponytail'){
+  // A continuous tapered tail with a restrained neck blend, not stacked balls.
+  const path=new T.CatmullRomCurve3([new T.Vector3(0,1.684,-.083),new T.Vector3(0,1.664,-.120),new T.Vector3(.010,1.555,-.132),new T.Vector3(.016,1.455,-.114)]);
+  const g=new T.TubeGeometry(path,22,.018,12,false),p=g.attributes.position;
+  for(let i=0;i<p.count;i++){const t=Math.floor(i/13)/22,c=path.getPointAt(t),v=new T.Vector3().fromBufferAttribute(p,i).sub(c).multiplyScalar(1-.67*t).add(c);p.setXYZ(i,v.x,v.y,v.z);}
+  g.computeVertexNormals();add(g,hair,y=>binding('Head','Chest',clamp((y-1.44)/.16,0,1)));
+  const tie=new T.TorusGeometry(.019,.002,6,20);tie.rotateX(Math.PI/2);tie.translate(0,1.665,-.119);add(tie,dark,'Head');
+ }
 }

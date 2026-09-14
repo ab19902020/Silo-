@@ -1,15 +1,16 @@
+import {actorFrom} from './fixtures/imported-actor.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import * as THREE from '../dist/vendor/three.module.js';
 import { GLTFLoader } from '../dist/vendor/GLTFLoader.js';
-import { CHARACTERS, CharacterCast, actorFrom, roomPoint, forwardYaw } from '../dist/src/characters.js';
+import { CHARACTERS, CharacterCast, roomPoint, forwardYaw } from '../dist/src/characters.js';
 import { SiloWorld } from '../dist/src/world.js';
 import { CharacterBody } from '../dist/src/physics.js';
 import { levelY } from '../dist/src/data.js';
 globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>({fillRect(){},strokeRect(){},fillText(){}})})};
 async function geometryOnly(id){
-  const raw=await fs.readFile(new URL(`../dist/assets/characters/${id}.glb`,import.meta.url));assert.equal(raw.readUInt32LE(8),raw.length,'Complete GLB');const n=raw.readUInt32LE(12),json=JSON.parse(raw.subarray(20,20+n));
+  const raw=await fs.readFile(new URL(id==='hard-drive-relic'?'../dist/assets/characters/hard-drive-relic.glb':`./fixtures/imported-characters/${id}.glb`,import.meta.url));assert.equal(raw.readUInt32LE(8),raw.length,'Complete GLB');const n=raw.readUInt32LE(12),json=JSON.parse(raw.subarray(20,20+n));
   for(const im of json.images||[]){const v=json.bufferViews[im.bufferView];assert.ok(v.byteLength>10000,'Embedded texture is present');}
   const source=structuredClone(json);delete json.images;delete json.textures;delete json.materials;for(const mesh of json.meshes)for(const p of mesh.primitives)delete p.material;
   let text=JSON.stringify(json);text+=' '.repeat((4-text.length%4)%4);const bin=raw.subarray(20+n),head=Buffer.alloc(20);head.writeUInt32LE(0x46546c67);head.writeUInt32LE(2,4);head.writeUInt32LE(20+text.length+bin.length,8);head.writeUInt32LE(text.length,12);head.writeUInt32LE(0x4e4f534a,16);const buf=Buffer.concat([head,Buffer.from(text),bin]);return {gltf:await new GLTFLoader().parseAsync(buf.buffer.slice(buf.byteOffset,buf.byteOffset+buf.byteLength),''),source};

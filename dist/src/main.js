@@ -6,6 +6,8 @@ import { SiloAudio } from './audio.js';
 import { Rendering, makeEnvironment } from './rendering.js';
 import { topLocal, topPoint, groundY } from './surface.js';
 import { CharacterCast, PLAYABLE_CHARACTERS } from './characters.js';
+import {CharacterStudio} from './character-studio.js';
+import {loadProfile,definitionFromProfile} from './character-profile.js';
 import { LadderClimb } from './climbing.js';
 import { Population } from './population.js';
 import { CafeteriaOpening, CAFETERIA_START, OPENING_DURATION } from './opening.js';
@@ -25,12 +27,14 @@ import { StoryProps, Drone } from './relics.js';
 import { SiloClock } from './silo-time.js';
 import { shiftBell } from './ambient-events.js';
 import { Haptics } from './haptics.js';
+import { installInterface,buttonLabel,paintInteraction,paintCinema,paintNotice } from './interface.js';
 import { SideMissions, SIDE_MISSIONS } from './side-missions.js';
 import { SideMissionWorld, workDuration } from './side-mission-world.js';
 import { renderSideJournal } from './side-mission-journal.js';
 
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel'),terminalDialog=$('georgeTerminal');
 const dialogs=[welcome,directory,settings,about,characters,relic,conversation,satchel,terminalDialog],coarse=matchMedia('(pointer:coarse)').matches;
+installInterface();
 let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
 let cinemaUntil=0;
 let hudOpen=false,touchUntil=0,chapterUntil=0,lastInteractionLabel=null,lastOpeningState=null,talking=null,chapterEnteredAt=0,hintUntil=0;
@@ -50,6 +54,7 @@ const keys=new Set(),stick={x:0,y:0},desired=new THREE.Vector3(),direction=new T
 camera.rotation.order='YXZ';
 const torch=new THREE.SpotLight(0xffe7b4,65,40,.5,.7,1.6);torch.visible=false;scene.add(torch,torch.target);
 const saved=(()=>{try{return JSON.parse(localStorage.getItem('silo18-settings')||'{}');}catch{return {};}})();
+const characterStudio=new CharacterStudio(characters,{storage:conversationStorage,onChoose:chooseCharacter,onCustom:definition=>cast?.register(definition),onClose:notify});
 const openingComplete=(()=>{try{return localStorage.getItem('silo18-opening-complete')==='1';}catch{return false;}})();
 const savedStory=(()=>{try{return JSON.parse(localStorage.getItem('silo18-story')||'null');}catch{return null;}})();
 // The silo's own clock. It starts mid-morning — the lamps at full, the place
@@ -57,7 +62,7 @@ const savedStory=(()=>{try{return JSON.parse(localStorage.getItem('silo18-story'
 let siloClock=new SiloClock({hour:8.4});
 function saveStory(){if(!story)return;if(!story.story){try{localStorage.setItem('silo18-side-explore',JSON.stringify(sideMissions.save()));}catch{}return;}try{localStorage.setItem('silo18-story',JSON.stringify({...story.save(),sideMissions:sideMissions.save(),terminal:terminal.save(),clock:siloClock.save(),checkpoint:{level:world.activeLevel,special:world.special,position:body.position.toArray(),yaw}}));}catch{}}
 const paused=()=>pausingDialogs.some(d=>d.open)||(conversation.open&&!talking)||!started||traveling;
-function notify(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4600);}
+function notify(message,kind='UPDATE'){paintNotice(document,message,kind);$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4600);}
 function revealControls(){touchUntil=performance.now()+3500;}
 function toggleControls(){hudOpen=!hudOpen;document.body.classList.toggle('hud-open',hudOpen);$('controlsButton').setAttribute('aria-expanded',String(hudOpen));revealControls();}
 function updateInterface(time){
@@ -77,12 +82,13 @@ function updateInterface(time){
 // reading five answers off them.
 let topicLevel={topics:[],back:null};
 function renderChoices(topics,back=null){
-  const box=$('dialogueChoices');box.replaceChildren();
+  const box=$('dialogueChoices'),restoreFocus=box.contains(document.activeElement);box.replaceChildren();
   topicLevel={topics,back};
   topics.forEach((topic,i)=>{
     const b=document.createElement('button');
     b._topic=topic;b.dataset.reply=topic.reply;b.setAttribute('aria-pressed','false');
     if(topic.follow?.length)b.classList.add('has-more');
+    if(conversationMemory.record(conversation.dataset.resident).topics[topic.id])b.classList.add('asked');
     const key=document.createElement('kbd');key.textContent=String(i+1);
     const label=document.createElement('span');label.textContent=topic.label;
     b.append(key,label);
@@ -97,6 +103,7 @@ function renderChoices(topics,back=null){
     b.addEventListener('click',()=>{audio.click();renderChoices(back.topics,back.back);});
     box.append(b);
   }
+  if(restoreFocus)box.querySelector('button')?.focus({preventScroll:true});
   $('dialogueHint').innerHTML=`<kbd>1</kbd>–<kbd>${topics.length}</kbd> ask`
     +(back?' <span>·</span> <kbd>0</kbd> back':'')+' <span>·</span> <kbd>E</kbd> or <kbd>Esc</kbd> step away';
 }
@@ -105,10 +112,11 @@ function askTopic(button){
   if(button._back){button.click();return;}
   if(!button._topic&&!button.dataset.reply){button.click();return;}
   const topic=button._topic;
+  $('dialogueQuestion').hidden=false;$('dialogueQuestion').textContent=topic?.label||button.textContent;
   if(topic?.sideAction){
     const result=sideMissions.perform(topic.sideAction);$('dialogueLine').textContent=result.message;
     renderChoices(sideMissions.topics(talking?.sideOwner||talking?.id),{topics:talking?.baseTopics||[],back:null});
-    saveStory();sideWorld.update(world,sideMissions,body);audio.click();return;
+    saveStory();sideWorld.update(world,sideMissions,body);conversation.scrollTop=0;audio.click();return;
   }
   $('dialogueLine').textContent=topic?conversationMemory.reply(talking?.id,topic):button.dataset.reply;
   if(talking?.id==='algorithm')animateAlgorithm();
@@ -116,6 +124,7 @@ function askTopic(button){
   button.classList.add('asked');
   audio.click();
   if(topic?.follow?.length)renderChoices(topic.follow,{topics:topicLevel.topics,back:topicLevel.back});
+  conversation.scrollTop=0;
 }
 function startConversation(person,actor=null){
   if(person.id==='billings'&&story?.story){billingsConversation();return;}
@@ -123,6 +132,8 @@ function startConversation(person,actor=null){
   const text=person.topics?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name,visits});
   $('algorithmQuery').hidden=person.id!=='algorithm';conversation.classList.toggle('archive-conversation',person.id==='algorithm');
   $('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;
+  conversation.dataset.resident=person.id;$('dialogueQuestion').hidden=true;
+  $('speakerActivity').hidden=!person.currentWork;$('speakerActivity').textContent=person.currentWork?.task||'';
   const sideOwner=person.sideOwner||person.id,baseTopics=[...text.topics];
   renderChoices([...baseTopics,...sideMissions.topics(sideOwner)]);
   // The panel is shown, not modalled: the silo keeps running behind it, the
@@ -131,6 +142,7 @@ function startConversation(person,actor=null){
   for(const d of pausingDialogs)if(d.open)d.close();
   talking={actor,name:text.name,id:person.id,sideOwner,baseTopics};population.talkingTo=actor;
   if(!conversation.open)conversation.show();
+  conversation.scrollTop=0;$('dialogueChoices').querySelector('button')?.focus({preventScroll:true});
   document.body.classList.add('talking');audio.click();syncPause();
 }
 $('algorithmQuery').addEventListener('submit',event=>{event.preventDefault();const input=$('archiveQuestion');if(!input.value.trim())return;$('dialogueLine').textContent=algorithmAnswer(input.value,{freeRoam:!story?.story,blueprint:story?.hasFlag('blueprint-found')});input.value='';animateAlgorithm();audio.click();});
@@ -140,6 +152,7 @@ function endConversation(){
   document.body.classList.remove('talking');syncPause();if(started)canvas.focus();
 }
 function billingsConversation(){
+  $('speakerActivity').hidden=true;$('dialogueQuestion').hidden=true;
   $('algorithmQuery').hidden=true;conversation.classList.remove('archive-conversation');
   $('speakerName').textContent='Officer Paul Billings';$('speakerRole').textContent='SHERIFF’S STATION';
   $('dialogueLine').textContent=story.hasFlag('billings-helped')?'I have put my name against that weapon. Get your suit, and come back with something we can believe.':'There are rules about the things you have been carrying. Tell me why I should hear you out.';
@@ -183,13 +196,12 @@ function updateSettings(){
 }
 function syncCharacterUI(){
   if(!cast)return;const active=cast.active.definition;$('characterStatus').textContent=`Playing as ${active.name}`;$('viewButton').textContent=cast.thirdPerson?'View: third person':'View: first person';
-  for(const b of $('characterList').children){const chosen=b.dataset.character===cast.selected;b.setAttribute('aria-pressed',String(chosen));b.querySelector('.selection-label').textContent=chosen?'SELECTED':'PLAY AS THIS CHARACTER';}
+  const button=$('welcomeCharacters');button.dataset.subtitle=`Playing as ${active.name} · choose or create`;
 }
 function chooseCharacter(id){if(!cast?.select(id))return;const height=cast.active.definition.height;body.standHeight=height;body.height=height;cast.active.heading=yaw+Math.PI;if(population)population.rebalance=0;syncCharacterUI();saveSettings();closeDialog(characters);notify(`Playing as ${cast.active.definition.name}`);}
 function toggleView(){if(!cast)return;cast.thirdPerson=!cast.thirdPerson;syncCharacterUI();saveSettings();}
-function renderCharacters(){
-  $('characterList').replaceChildren();for(const c of PLAYABLE_CHARACTERS){const b=document.createElement('button');b.className='character-card'+(c.generated?' resident-card':'');b.dataset.character=c.id;b.setAttribute('aria-pressed','false');if(!c.generated){const im=document.createElement('img');im.src=`./assets/characters/${c.id}.jpg`;im.alt=c.name;b.append(im);}const copy=document.createElement('span');copy.className='character-copy';const name=document.createElement('strong');name.textContent=c.name;const role=document.createElement('small');role.textContent=c.role;const place=document.createElement('small');place.textContent=`Level ${String(c.level).padStart(3,'0')} · ${c.place}`;const label=document.createElement('span');label.className='selection-label';copy.append(name,role,place,label);b.append(copy);b.addEventListener('click',()=>chooseCharacter(c.id));$('characterList').append(b);}syncCharacterUI();
-}
+function renderCharacters(){characterStudio.selected=cast?.selected||'juliette';characterStudio.renderList();syncCharacterUI();}
+function openCharacters(){if(!ready)return;openDialog(characters);characterStudio.open(cast.selected);}
 // The soundtrack belongs to the story. Nothing plays while you are looking for
 // the book: the cafeteria is quiet, the way the room is quiet in the show. The
 // opening piece — the cleaning speech, turning into the score — starts on the
@@ -230,7 +242,7 @@ function syncGuidance(){
   if(fresh)hintLine.textContent=hint;
   const left=story?.story?story.hintsLeft:0;
   button.hidden=!story?.story||!story.hintsTotal;
-  button.textContent=left?'Think about it':'Nothing more to work out';
+  buttonLabel(button,left?'Think about it':'No more hints');
   button.disabled=!left;
   button.dataset.exhausted=String(!left);
   // The card grew a destination line, a hint and a third button, and on a short
@@ -262,9 +274,11 @@ function syncStoryHud(force=false){
   $('crosshair').hidden=!firearms.held;
   if(!story.story)return;
   if(force||lastChapter!==story.chapter){
+    const newLead=lastChapter!==null&&lastChapter!==story.chapter&&opening?.directoryReady;
     if(lastChapter!==story.chapter)chapterEnteredAt=performance.now();
     lastChapter=story.chapter;
     showObjective(story.chapterInfo.title,story.objective,force?7000:9000);
+    if(newLead)notify(story.destination?.place||story.objective,'NEW LEAD');
     saveStory();
   }else syncGuidance();
 }
@@ -369,7 +383,7 @@ function openingChanged(state){
   $('chapterHud').hidden=state==='explore';$('chapterTitle').textContent=state==='find-book'?'A book on the table':watching?'Holston’s cleaning':'The room falls quiet';
   $('chapterObjective').textContent=state==='find-book'?'The directory book is on the table in front of you.':watching?'Holston is outside. Watch from the room, or focus on the screen.':'Your directory is ready.';
   $('focusScreenButton').hidden=!watching;$('skipOpening').hidden=!watching;$('openBookButton').hidden=!reading;
-  $('focusScreenButton').textContent=opening?.focus?'Back to cafeteria':'Focus on screen';$('focusScreenButton').setAttribute('aria-pressed',String(!!opening?.focus));document.body.classList.toggle('watching-cleaning',watching);
+  buttonLabel($('focusScreenButton'),opening?.focus?'Back to cafeteria':'Focus');$('focusScreenButton').setAttribute('aria-pressed',String(!!opening?.focus));document.body.classList.toggle('watching-cleaning',watching);
   document.body.classList.toggle('screen-focused',!!opening?.focus);
   if(reading||state==='explore'){story?.beginSearch();if(story?.story)syncStoryHud(true);saveStory();}
   if(reading||state==='explore')try{localStorage.setItem('silo18-opening-complete','1');}catch{}
@@ -699,9 +713,9 @@ $('directoryLead').addEventListener('click',()=>{const lead=story.destination;if
   if(lead.special&&!story.travelAllowed(lead.special)){travel(lead.special);return;}
   $('search').value=String(lead.level);setDirectoryMode(true);});
 for(const id of ['allLevelsTab','landmarksTab'])$(id).addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const all=e.key==='Home'?true:e.key==='End'?false:!showAll;setDirectoryMode(all);$(all?'allLevelsTab':'landmarksTab').focus();}});
-$('focusScreenButton').addEventListener('click',()=>{opening.focus=!opening.focus;$('focusScreenButton').textContent=opening.focus?'Back to cafeteria':'Focus on screen';$('focusScreenButton').setAttribute('aria-pressed',String(opening.focus));document.body.classList.toggle('screen-focused',opening.focus);cinemaUntil=0;hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');canvas.focus();keys.clear();stick.x=stick.y=0;});
+$('focusScreenButton').addEventListener('click',()=>{opening.focus=!opening.focus;buttonLabel($('focusScreenButton'),opening.focus?'Back to cafeteria':'Focus');$('focusScreenButton').setAttribute('aria-pressed',String(opening.focus));document.body.classList.toggle('screen-focused',opening.focus);cinemaUntil=0;hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');canvas.focus();keys.clear();stick.x=stick.y=0;});
 $('skipOpening').addEventListener('click',()=>opening.finish());$('openBookButton').addEventListener('click',requestDirectory);
-$('characterButton').addEventListener('click',()=>{renderCharacters();openDialog(characters);});$('viewButton').addEventListener('click',toggleView);
+$('characterButton').addEventListener('click',openCharacters);$('welcomeCharacters').addEventListener('click',openCharacters);$('viewButton').addEventListener('click',toggleView);
 $('settingsButton').addEventListener('click',()=>openDialog(settings));$('aboutButton').addEventListener('click',()=>openDialog(about));
 for(const button of document.querySelectorAll('[data-travel]'))button.addEventListener('click',()=>travel(button.dataset.travel));
 $('landmarksTab').addEventListener('click',()=>setDirectoryMode(false));$('allLevelsTab').addEventListener('click',()=>setDirectoryMode(true));$('search').addEventListener('input',renderDirectory);
@@ -745,7 +759,7 @@ addEventListener('keydown',e=>{
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
   if(e.repeat){keys.add(e.code);return;}
   if(e.code==='KeyM'){if(directory.open)closeDialog(directory);else requestDirectory();return;}
-  if(e.code==='KeyC'){if(characters.open)closeDialog(characters);else{renderCharacters();openDialog(characters);}return;}
+  if(e.code==='KeyC'){if(characters.open)closeDialog(characters);else openCharacters();return;}
   if(paused())return;
   if(talking){
     if(/^Digit[0-9]$/.test(e.code)){
@@ -883,7 +897,7 @@ function applyPad(dt){
   if(tapped(PAD.R3))toggleView();
   if(tapped(PAD.DOWN)||tapped(PAD.SHARE)){if(story){renderSatchel();openDialog(satchel);}}
   if(tapped(PAD.LEFT)&&story?.story)askForHint();
-  if(tapped(PAD.RIGHT)){renderCharacters();openDialog(characters);}
+  if(tapped(PAD.RIGHT))openCharacters();
   if(tapped(PAD.CIRCLE))openDialog(welcome);
   // Right stick look. The squared response above the deadzone gives fine aim
   // near centre and a usable sweep at full deflection, and aiming slows it so
@@ -1000,7 +1014,7 @@ function frame(){
     }
     const wasOffering=lastInteractionLabel;
     interaction=body.climbing||opening.focus||talking?null:world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;
-    if(interaction){$('interactionLabel').textContent=interaction.label;$('interactionHint').textContent=interaction.hint||'';}
+    if(interaction)paintInteraction(document,interaction);
     // One light tick the moment something new comes within reach, so you can
     // feel that there is a thing here without watching the bottom of the
     // screen for it. Keyed on the label, or turning on the spot in a corridor
@@ -1014,7 +1028,7 @@ function frame(){
   }else{if(workAction)workAction.until+=dt*1000;world.update(dt,body.position);cast?.update(0,body,started);}
   audio.setStoryPaused?.(document.hidden||(opening?.watching&&paused()));
   if(relic.open)inspector.render();
-  if(opening?.watching)$('cinemaStatus').textContent=`Holston’s cleaning · ${Math.max(0,Math.ceil(OPENING_DURATION-opening.time))}s`;
+  if(opening?.watching)paintCinema(document,opening.time,OPENING_DURATION);
   updateInterface(time);
   if(time-lastHUD>.25){
     updateHUD();lastHUD=time;
@@ -1052,14 +1066,14 @@ async function boot(){
     renderer=new THREE.WebGLRenderer({canvas,antialias:!coarse,alpha:false,powerPreference:'high-performance'});renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.setClearColor(0x111b17);updateSettings();resize();
     world=new SiloWorld(scene);rendering=new Rendering(renderer);makeEnvironment(renderer,scene);updateSettings();
     await world.loadAssets(progress=>{$('enterButton').textContent=`Preparing the silo · ${Math.round(progress*45)}%`;});
-    cast=new CharacterCast(scene,world);await cast.load(progress=>{$('enterButton').textContent=`Preparing characters · ${Math.round(45+progress*55)}%`;});cast.select(saved.character||'juliette');cast.thirdPerson=saved.thirdPerson!==false;body.standHeight=body.height=cast.active.definition.height;cast.active.heading=yaw+Math.PI;renderCharacters();
+    cast=new CharacterCast(scene,world);await cast.load(progress=>{$('enterButton').textContent=`Preparing characters · ${Math.round(45+progress*55)}%`;});const customProfile=loadProfile(conversationStorage);if(customProfile)cast.register(definitionFromProfile(customProfile));cast.select(saved.character||'juliette');cast.thirdPerson=saved.thirdPerson!==false;body.standHeight=body.height=cast.active.definition.height;cast.active.heading=yaw+Math.PI;renderCharacters();
     world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;world.update(0,body.position);cast.update(0,body,false);
     population=new Population(scene,world);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);
     story=Story.load(savedStory);sideMissions=story.story?SideMissions.load(savedStory?.sideMissions):loadExploreMissions();terminal=GeorgeTerminal.load(savedStory?.terminal);world.driveSeated=terminal.view.driveInserted;if(savedStory?.clock)siloClock=SiloClock.load(savedStory.clock);world.story=story;props=new StoryProps(scene,world.m);const relicFailures=await props.loadAssets();if(relicFailures)notify('Some relic models could not load. Refresh to retry.');drone=new Drone(scene,world.m);
     if(story.story&&story.chapter!=='cleaning'){opening.finish();const cp=savedStory?.checkpoint;if(cp&&Number.isInteger(cp.level)&&cp.level>=1&&cp.level<=144&&Array.isArray(cp.position)&&cp.position.length===3&&cp.position.every(Number.isFinite)&&[null,'generator','mines','excavator','tunnel','pipe-gallery','silo17'].includes(cp.special)){world.setLevel(cp.level,cp.special);const [x,y,z]=cp.position;const floor=world.colliders.floorAt(x,z,.3,y+1);if(Number.isFinite(floor)&&Math.abs(floor-y)<2)body.teleport(x,floor+.05,z);else{const dest=world.destination(cp.special||cp.level);body.teleport(...dest.position.toArray());}yaw=Number.isFinite(cp.yaw)?cp.yaw:0;}if(story.hasFlag('hideout-open'))world.openBreach();if(story.chapter==='drone'){story.killedByDrone();const back=world.destination('airlock');world.setLevel(1);body.teleport(...back.position.toArray());}world.update(0,body.position);}
     openingChanged(opening.state);syncStoryHud(true);
     outsideTarget=world.surface.initFeed(renderer);renderer.compile(scene,camera);setDirectoryMode(true);
-    ready=true;$('resumeButton').hidden=!savedStory;$('enterButton').disabled=false;$('enterButton').textContent='Story · New game';
+    ready=true;$('welcomeCharacters').disabled=false;$('resumeButton').hidden=!savedStory;$('enterButton').disabled=false;$('enterButton').textContent='Story · New game';
     if(world.materialFailures)notify('Some surface materials could not load. Refresh to retry.');
     if(world.assetFailures)notify('Some Lost Signal props could not load. The complete architectural reconstruction is still available.');
     frame();

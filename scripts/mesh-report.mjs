@@ -17,7 +17,7 @@ import path from 'node:path';
 import { readGLB, accessor } from './glb.mjs';
 
 const DEFAULTS=['juliette','sims','bernard']
-  .map(id=>new URL(`../dist/assets/characters/${id}.glb`,import.meta.url));
+  .map(id=>new URL(`../tests/fixtures/imported-characters/${id}.glb`,import.meta.url));
 
 // Weld by position with a neighbouring-cell search rather than a grid snap.
 // A plain snap leaves any two points that straddle a cell boundary unmerged,

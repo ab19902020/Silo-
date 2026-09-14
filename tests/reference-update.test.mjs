@@ -49,7 +49,7 @@ test('the panorama includes sky above the crater and night lighting reaches both
 
 test('all three supplied rigs distinguish jump ascent, fall and grounded recovery',async()=>{
   for(const [id,height] of [['juliette',1.73],['sims',1.83],['bernard',1.87]]){
-    const {json,bin}=await readGLB(new URL(`../dist/assets/characters/${id}.glb`,import.meta.url)),gltf=await geometryGLTF(json,bin),motion=new SkeletalMotion(gltf.scene,height),body=new CharacterBody({standHeight:height}),colliders=new ColliderSet();
+    const {json,bin}=await readGLB(new URL(`./fixtures/imported-characters/${id}.glb`,import.meta.url)),gltf=await geometryGLTF(json,bin),motion=new SkeletalMotion(gltf.scene,height),body=new CharacterBody({standHeight:height}),colliders=new ColliderSet();
     colliders.addRing({innerRadius:0,outerRadius:30,minY:-1,maxY:0,climbable:true});body.teleport(0,0,0);const states=new Set();
     for(let i=0;i<180;i++){body.step(1/60,new T.Vector3(0,0,1.4),colliders,{jump:i===30});gltf.scene.position.copy(body.position);gltf.scene.updateMatrixWorld(true);motion.update(1/60,{speed:body.horizontalSpeed,position:body.position,grounded:body.grounded,impact:body.landingImpact,ground:()=>0});states.add(motion.state);for(const b of Object.values(motion.bones))assert.ok(b.quaternion.toArray().every(Number.isFinite));}
     assert.ok(states.has('Jump')&&states.has('Fall'),`${id}: ${[...states]}`);assert.ok(body.grounded&&motion.air<.001);assert.ok(motion.legs.every(l=>l.error<.02));

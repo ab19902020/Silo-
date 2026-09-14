@@ -15,7 +15,7 @@ if (typeof document !== 'undefined') {
           url('./assets/ui/silo18-main-menu.webp') 50% 50%/cover no-repeat;
         box-shadow:inset 0 0 150px #000b;
       }
-      .welcome::backdrop{background:#020403;backdrop-filter:none}
+      .welcome{overflow-y:auto}.main-menu-shell{max-height:calc(100dvh - 90px);overflow-y:auto;scrollbar-width:thin}.welcome::backdrop{background:#020403;backdrop-filter:none}
       .welcome::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 60% 43%,transparent 0 27%,rgba(1,4,3,.06) 56%,rgba(0,0,0,.46) 100%)}
       .main-menu-shell{position:absolute;z-index:2;left:clamp(26px,5.2vw,88px);top:50%;width:min(390px,34vw);transform:translateY(-48%)}
       .menu-brand{margin-bottom:25px;text-shadow:0 3px 22px #000}
@@ -65,17 +65,18 @@ if (typeof document !== 'undefined') {
           <button id="resumeButton" class="menu-option menu-primary" data-subtitle="Resume your current story" hidden>Continue</button>
           <button id="enterButton" class="menu-option menu-primary" data-subtitle="Chapter One · The Cleaning" disabled>Preparing the silo…</button>
           <button id="exploreButton" class="menu-option" data-subtitle="All 144 levels · unrestricted exploration">Free Roam</button>
+          <button id="welcomeCharacters" class="menu-option" type="button" data-subtitle="TV cast · create your own resident" disabled>Character</button>
           <button id="menuSettings" class="menu-option" type="button" data-subtitle="Graphics · audio · controls">Settings</button>
           <button id="menuExtras" class="menu-option" type="button" data-subtitle="Directory · opening · research" aria-expanded="false">Extras</button>
         </nav>
-        <div id="menuUtility" class="menu-utility" aria-hidden="true"><div class="menu-utility-inner">
+        <div id="menuUtility" class="menu-utility" aria-hidden="true" inert><div class="menu-utility-inner">
           <button id="welcomeDirectory" type="button">Directory</button>
           <button id="replayOpening" type="button">Replay Opening</button>
           <button id="aboutButton" type="button">Research & Accuracy</button>
         </div></div>
         <p id="modeNote" class="menu-note">Story follows George’s clues from the cleaning to the way out. Free Roam opens the silo immediately and keeps your story save untouched.</p>
       </section>
-      <div class="menu-corner menu-corner-top" aria-hidden="true">SILO 18<br><span>VER 1.0 · UNITED BUILD</span></div>
+      <div class="menu-corner menu-corner-top" aria-hidden="true">SILO 18<br><span>RESIDENT REGISTRY · SEASONS 1–3</span></div>
       <div class="menu-corner menu-corner-bottom" aria-hidden="true">MAINTAIN · PRESERVE · PROTECT</div>
     `;
 
@@ -85,6 +86,7 @@ if (typeof document !== 'undefined') {
       const open = !utility.classList.contains('open');
       utility.classList.toggle('open', open);
       utility.setAttribute('aria-hidden', String(!open));
+      utility.inert = !open;
       extras.setAttribute('aria-expanded', String(open));
     });
     document.getElementById('menuSettings')?.addEventListener('click', () => {

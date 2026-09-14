@@ -57,7 +57,7 @@ test('clock changes alter jobs and dialogue while named contacts stay available 
   const records=population.records.get(144),worker=records.find(r=>r.id==='walker');assert.ok(worker);
   population.schedule=siloSchedule(worker.workday.start+1);population.update(.01,body);const first=worker.currentWork;
   population.schedule=siloSchedule(worker.workday.start+4.4);population.update(.01,body);assert.equal(worker.currentWork.phase,'meal');assert.notEqual(first.task,worker.currentWork.task);
-  const dialogue=conversationFor({...worker.definition,workday:worker.workday,currentWork:worker.currentWork});assert.ok(dialogue.topics.some(t=>t.id==='daily-work'&&t.reply.includes('Having a meal')));
+  const dialogue=conversationFor({...worker.definition,workday:worker.workday,currentWork:worker.currentWork});assert.ok(dialogue.topics.some(t=>t.id==='daily-work'&&t.reply.toLowerCase().includes('having a meal')));
   assert.ok(population.actors.has('walker'));assert.ok(population.count<=CROWD_LIMITS.balanced);
   assert.deepEqual(worker.home,worker.position,'a story contact was teleported to another department');
 });

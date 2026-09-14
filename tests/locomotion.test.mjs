@@ -4,7 +4,7 @@ import * as T from '../dist/vendor/three.module.js';
 import { readGLB,geometryGLTF,accessor } from '../scripts/glb.mjs';
 import { SkeletalMotion,MOTION_CLIPS } from '../dist/src/locomotion.js';
 const definitions=[['juliette',1.73],['sims',1.83],['bernard',1.87]];
-async function person(id,h){const {json,bin}=await readGLB(new URL(`../dist/assets/characters/${id}.glb`,import.meta.url));const gltf=await geometryGLTF(json,bin);return {json,bin,gltf,motion:new SkeletalMotion(gltf.scene,h)};}
+async function person(id,h){const {json,bin}=await readGLB(new URL(`./fixtures/imported-characters/${id}.glb`,import.meta.url));const gltf=await geometryGLTF(json,bin);return {json,bin,gltf,motion:new SkeletalMotion(gltf.scene,h)};}
 
 test('all embedded motions loop without a pose discontinuity or invalid joint rotation',async()=>{
   for(const [id,h] of definitions){const {gltf}=await person(id,h);assert.equal(gltf.animations.length,Object.keys(MOTION_CLIPS).length);
