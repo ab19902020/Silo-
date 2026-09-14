@@ -19,16 +19,20 @@ const shaders=new Set();
 export function residentMaterial(){
   const material=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.80,metalness:0,envMapIntensity:.9,side:THREE.DoubleSide});
   material.onBeforeCompile=shader=>{
-    shader.uniforms.residentFaces={value:faces()};shaders.add(shader);
+    shader.uniforms.residentFaces={value:faces()};shader.uniforms.residentFaceMeans={value:RESIDENT_HEAD.means.map(c=>new THREE.Vector3(...c))};shaders.add(shader);
     shader.vertexShader='attribute vec3 skinUV; varying vec3 faceUV; attribute vec4 residentSurface; varying vec4 residentFinish; varying vec3 residentPoint;\n'+shader.vertexShader;
     shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
       faceUV=skinUV;residentFinish=residentSurface;residentPoint=position;
     `);
-    shader.fragmentShader='uniform sampler2D residentFaces; varying vec3 faceUV; varying vec4 residentFinish; varying vec3 residentPoint;\n'+shader.fragmentShader;
+    shader.fragmentShader='uniform sampler2D residentFaces; uniform vec3 residentFaceMeans[8]; varying vec3 faceUV; varying vec4 residentFinish; varying vec3 residentPoint;\n'+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
       float dye=.98+.014*sin(residentPoint.y*47.+sin(residentPoint.x*29.)*2.)+.008*sin(residentPoint.z*143.+residentPoint.y*91.);
       diffuseColor.rgb*=mix(1.,dye,residentFinish.w);
-      diffuseColor.rgb*=mix(vec3(1.),texture2D(residentFaces,faceUV.xy).rgb,faceUV.z);
+      // Normalize in the fragment, before blending. Interpolating the inverse
+      // tint at vertices made pale zigzags where scalp texture faded away.
+      int faceTile=int(clamp(floor(faceUV.x*4.)+floor(faceUV.y*2.)*4.,0.,7.));
+      vec3 faceDetail=texture2D(residentFaces,faceUV.xy).rgb/max(residentFaceMeans[faceTile],vec3(.01));
+      diffuseColor.rgb*=mix(vec3(1.),faceDetail,faceUV.z);
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
       vec3 weavePoint=residentPoint*420.;float weaveFade=1.-smoothstep(.45,2.8,length(fwidth(weavePoint)));
@@ -48,5 +52,5 @@ export function residentMaterial(){
       normal=normalize(abs(det)*normal-gradient+normal*1e-9);
     `);
   };
-  material.customProgramCacheKey=()=> 'silo-resident-fabric-face-v2';return material;
+  material.customProgramCacheKey=()=> 'silo-resident-fabric-face-v3';return material;
 }

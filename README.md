@@ -1,5 +1,18 @@
 # Silo 18
 
+## Expressive residents and face sculpting
+
+**Create character → Face** now offers 12 feature controls, six starting faces,
+new variations and reset. Shape the jaw, chin, cheeks, nose, eyes and mouth in a
+close-up preview, then check the full outfit standing, walking or running.
+Identity, Face, Hair & skin and Clothing have separate editing sections; existing
+saved residents remain compatible.
+
+Residents have stable facial differences, fitted glasses, cleaner skin blending
+and independently timed blinking. Porters carry parcels by a handle below the
+palm with a supported arm, closing fingers and an upright load, including while
+walking. See [character and carrying update](docs/expressive-residents.md).
+
 ## Character finish and start-menu creation
 
 **Create character** is now a dedicated start-menu button. Choose your name,

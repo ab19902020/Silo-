@@ -7,7 +7,7 @@ import { RESIDENT_CAST, CROWD_APPEARANCES } from './resident-data.js';
 import { residentName } from './resident-stories.js';
 import { createResident, poseResident } from './resident-model.js';
 import { assignWorkday, workAt, JOBS } from './workday.js';
-import { attachWorkProps, showWorkProps } from './work-props.js';
+import { attachWorkProps, showWorkProps, updateWorkGrip } from './work-props.js';
 import { PorterTraffic } from './porter-traffic.js';
 
 export const CROWD_LIMITS=Object.freeze({low:28,balanced:48,high:72});
@@ -276,7 +276,7 @@ export class Population{
         if(r.workElapsed>9+(r.seed%8)){r.workElapsed=0;r.completedTasks=(r.completedTasks||0)+1;if(dist<18)this.events.push({id:JOBS[r.workday.job].sound,position:a.root.position.clone()});}
       }
       if(a.poseFrom){a.poseMix=Math.min(1,a.poseMix+step/.28);const t=a.poseMix*a.poseMix*(3-2*a.poseMix);for(const [n,b] of Object.entries(a.motion.bones)){const old=a.poseFrom[n];b.quaternion.copy(old.q.clone().slerp(b.quaternion,t));b.position.copy(old.p.clone().lerp(b.position,t));}if(t>=1)a.poseFrom=null;a.model.updateWorldMatrix(true,true);}
-
+      updateWorkGrip(a,step);
     }
   }
   actorPosition(id){const a=this.actors.get(id);return a?a.root.position.clone():this.porters.actorPosition(id);}

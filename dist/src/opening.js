@@ -132,6 +132,7 @@ function posedCleaner(actor,sample,time,dt){
     for(const [i,s] of ['L','R'].entries()){const step=Math.sin(time*3+i*Math.PI);m.rotate('Thigh'+s,-1.1+step*.15);m.rotate('Shin'+s,1.50);m.rotate('UpperArm'+s,-.48-step*.13);m.rotate('Forearm'+s,-.28);}
   }
   if(sample.phase==='rest'){
+    for(const mesh of actor.expressionMeshes||[])mesh.morphTargetInfluences[0]=Math.max(mesh.morphTargetInfluences[0],sample.progress??1);
     // Lower onto the slope rather than snapping a standing rig into a corpse,
     // and settle onto the hillside's own plane rather than the horizontal.
     const u=sample.progress??1,normal=groundNormal(sample.position.x,sample.position.z).applyAxisAngle(UP,-sample.heading);
@@ -144,6 +145,7 @@ function posedCleaner(actor,sample,time,dt){
   if(sample.phase==='rest'&&actor.definition.id==='allison'){const u=sample.progress??1;m.rotate('ThighL',-.12*u);m.rotate('ShinL',.24*u);m.rotate('ForearmL',-.15*u);m.rotate('Head',.17*u,UP);}
   if(actor.blendFrom){actor.blendTime+=dt;const w=ease(actor.blendTime/.6);for(const [n,b] of Object.entries(m.bones)){const from=actor.blendFrom[n];b.quaternion.copy(from.q.clone().slerp(b.quaternion,w));b.position.copy(from.p.clone().lerp(b.position,w));}if(w>=1)actor.blendFrom=null;}
   if(sample.phase==='rest'){
+    for(const mesh of actor.expressionMeshes||[])mesh.morphTargetInfluences[0]=Math.max(mesh.morphTargetInfluences[0],sample.progress??1);
     const u=sample.progress??1,hip=m.bones.Hips.position.clone().applyQuaternion(actor.model.quaternion);
     // Rotate around the pelvis rather than sweeping a rigid body around its
     // feet. Both final bodies use the same heading and settle side by side.

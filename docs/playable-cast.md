@@ -37,7 +37,9 @@ Create character button opens Create your resident directly.
 The same studio opens from the HUD, C key, and controller D-pad. Players can edit
 name, department, body frame, height, build, face width, age, skin, hair style and
 colour, eye colour, facial hair, clothing cut and colour, sleeves and glasses.
-A draggable 3D preview includes a walking demonstration and keyboard rotation.
+A draggable 3D preview includes full-body idle/walk/run, close-up facial framing
+and keyboard rotation. The Face section has 12 independently adjustable features,
+six starting faces, variations and reset; see [the expansion](expressive-residents.md).
 
 Profiles are normalized and stored in `silo18-custom-resident-v1`; the existing
 settings save retains the selected identity. Story progress remains independent.

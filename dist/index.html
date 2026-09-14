@@ -61,13 +61,13 @@
           <p class="cast-intro">Choose a familiar face. Every selection can explore the same story and Free Roam.</p><p id="castCount" class="eyebrow" aria-live="polite"></p>
           <div id="characterList" class="character-list"></div><p id="castEmpty" hidden>No residents found. Try another name or season.</p>
         </div>
-        <div id="createPane" role="tabpanel" aria-labelledby="createTab" hidden><p class="cast-intro">A new face. A place to belong. Build your own resident and make the silo yours.</p><form id="residentForm" class="resident-form"></form></div>
+        <div id="createPane" role="tabpanel" aria-labelledby="createTab" hidden><p class="cast-intro">A new face. A place to belong. Shape your features, find your style and make the silo yours. Changes are saved only when you choose Save & play.</p><form id="residentForm" class="resident-form"></form></div>
       </section>
       <section class="studio-preview" aria-label="Character preview">
         <span id="previewOrigin" class="eyebrow"></span><canvas id="residentPreview" tabindex="0" aria-label="3D character. Drag or use left and right arrows to turn."></canvas>
         <div class="preview-caption"><h3 id="previewName">Juliette Nichols</h3><p id="previewRole">Mechanical engineer</p></div>
-        <div class="preview-actions"><button id="residentTurnLeft" aria-label="Turn character left">↶</button><button id="residentWalk" aria-pressed="false">Preview walk</button><button id="residentTurnRight" aria-label="Turn character right">↷</button></div>
-        <p id="previewHint">Drag to turn · see your outfit in motion</p>
+        <div class="preview-framing" aria-label="Preview framing"><button id="faceView" aria-pressed="false">Face</button><button id="fullView" aria-pressed="true">Full body</button></div><div class="preview-actions"><button id="residentTurnLeft" aria-label="Turn character left">↶</button><label class="sr-only" for="residentPose">Preview motion</label><select id="residentPose"><option value="Idle">Still</option><option value="Walk">Walk</option><option value="Run">Run</option></select><button id="residentTurnRight" aria-label="Turn character right">↷</button></div>
+        <p id="previewHint">Drag to turn · Face for details · Full body for motion</p>
       </section>
     </div>
     <div class="studio-footer"><div><span id="characterStatus">Preparing characters…</span><p id="studioMessage" role="status">Your story progress stays with you.</p></div><button id="playResident" class="primary">Play as Juliette Nichols</button></div>

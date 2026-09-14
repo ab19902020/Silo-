@@ -1,3 +1,4 @@
+import {updateResidentExpression} from './resident-expression.js';
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { clone } from '../vendor/SkeletonUtils.js';
@@ -54,8 +55,9 @@ export class CharacterCast{
         else {if(a.state==='Climb')a.motion.reset();a.motion.update(dt,{speed:started?speed:0,position:body.position,grounded:body.grounded,heading:a.heading,ground,active:started,impact:body.landingImpact||0});a.state=a.motion.state;}
         a.root.visible=started&&this.thirdPerson;
       }
+      a.expressionTime=(a.expressionTime||0)+dt;updateResidentExpression(a,a.expressionTime);
       a.root.updateMatrixWorld(true);a.feed.visible=selected&&this.world.outside&&started;
-      if(a.feed.visible){a.feed.position.copy(a.root.position);a.feed.quaternion.copy(a.root.quaternion);for(let i=0;i<a.bones.length;i++){const b=a.bones[i],f=a.feedBones[i];f.position.copy(b.position);f.quaternion.copy(b.quaternion);f.scale.copy(b.scale);}a.feed.updateMatrixWorld(true);}
+      if(a.feed.visible){a.feed.position.copy(a.root.position);a.feed.quaternion.copy(a.root.quaternion);for(let i=0;i<a.bones.length;i++){const b=a.bones[i],f=a.feedBones[i];f.position.copy(b.position);f.quaternion.copy(b.quaternion);f.scale.copy(b.scale);}let index=0;a.feed.traverse(o=>{if(o.isSkinnedMesh&&o.morphTargetInfluences?.length)o.morphTargetInfluences[0]=a.expressionMeshes[index++]?.morphTargetInfluences[0]||0;});a.feed.updateMatrixWorld(true);}
     }
     if(this.relic){
       const story=this.world.story;

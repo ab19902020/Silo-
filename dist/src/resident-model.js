@@ -6,6 +6,8 @@ import { addResidentHead } from './resident-head.js';
 import { addResidentClothes } from './resident-clothes.js';
 import { addResidentBody } from './resident-body.js';
 import { workGesture,conversationGesture } from './resident-activity.js';
+import { updateResidentExpression } from './resident-expression.js';
+import { residentAppearance } from './face-shape.js';
 import { shoeGeometry } from './resident-footwear.js';
 import { fitHandFrame } from './hand-frame.js';
 
@@ -17,7 +19,7 @@ const V=(x,y,z)=>new THREE.Vector3(x,y,z),clamp=THREE.MathUtils.clamp;
 // than disconnected primitive limbs. Vertex colour keeps each resident at
 // one draw call; the source geometry and bind-pose rig can also export to GLB.
 export function buildResidentModel(definition,{suit=false}={}){
-  const a=definition.appearance||{},female=!!a.female,wide=(a.build||1)*(female?.92:1),bones=[],points={},byName={};
+  const a=residentAppearance(definition),female=!!a.female,wide=(a.build||1)*(female?.92:1),bones=[],points={},byName={};
   const rig=(name,parent,x,y,z)=>{const b=new THREE.Bone();b.name=name;points[name]=V(x,y,z);b.position.copy(points[name]);if(parent)b.position.sub(points[parent]);(parent?byName[parent]:model).add(b);bones.push(b);byName[name]=b;return b;};
   const model=new THREE.Group();model.name=definition.name;
   // The ankle joint sat at 6.5% of standing height; a real one is near 4%, and
@@ -34,7 +36,7 @@ export function buildResidentModel(definition,{suit=false}={}){
     rig('Fingers'+s,'Hand'+s,sign*.208*wide,.793,.02);rig('FingerTips'+s,'Fingers'+s,sign*.208*wide,.755,.025);
     rig('Thigh'+s,'Hips',sign*.092*wide,.90,0);rig('Shin'+s,'Thigh'+s,sign*.095*wide,.50,.012);rig('Foot'+s,'Shin'+s,sign*.095*wide,.080,.018);rig('Toe'+s,'Foot'+s,sign*.095*wide,.07,.155);rig('Coat'+s,'Hips',sign*.118,.85,-.04);
   }
-  const positions=[],normals=[],colors=[],skinUVs=[],surfaces=[],weights=[],joints=[],indices=[],skin=new THREE.Color(a.skin??0xb79476),coat=new THREE.Color(suit?0xd4d0b6:a.coat??0x66715f),hair=new THREE.Color(a.hair??0x44352b),dark=new THREE.Color(0x242923),shirt=new THREE.Color(a.shirt??0xa29981);let helmetRange=null,visorRange=null;
+  const blinks=[],positions=[],normals=[],colors=[],skinUVs=[],surfaces=[],weights=[],joints=[],indices=[],skin=new THREE.Color(a.skin??0xb79476),coat=new THREE.Color(suit?0xd4d0b6:a.coat??0x66715f),hair=new THREE.Color(a.hair??0x44352b),dark=new THREE.Color(0x242923),shirt=new THREE.Color(a.shirt??0xa29981);let helmetRange=null,visorRange=null;
   const binding=(b,b2=null,w=1)=>[bones.indexOf(byName[b]),bones.indexOf(byName[b2||b]),clamp(w,0,1)];
   const torso=y=>y<1.08?binding('Hips','Spine',clamp((1.13-y)/.15,0,1)):binding('Spine','Chest',clamp((1.34-y)/.25,0,1));
   // `paint` colours a surface per vertex from its own position, which is how
@@ -45,6 +47,7 @@ export function buildResidentModel(definition,{suit=false}={}){
     for(let i=0;i<p.count;i++){
       const x=p.getX(i),y=p.getY(i),z=p.getZ(i),[b,c,w]=typeof bind==='function'?bind(y,x,z,i):binding(bind);
       const uv=geometry.attributes.skinUV;skinUVs.push(uv?uv.getX(i):0,uv?uv.getY(i):0,uv?uv.getZ(i):0);
+      const blink=geometry.attributes.blinkOffset;blinks.push(blink?blink.getX(i):0,blink?blink.getY(i):0,blink?blink.getZ(i):0);
       positions.push(x,y,z);normals.push(n.getX(i),n.getY(i),n.getZ(i));
       if(geometry.attributes.attachmentSkinIndex){for(let k=0;k<4;k++){joints.push(geometry.attributes.attachmentSkinIndex.array[i*4+k]);weights.push(geometry.attributes.attachmentSkinWeight.array[i*4+k]);}}
       else{joints.push(b,c,0,0);weights.push(w,1-w,0,0);}
@@ -124,6 +127,7 @@ export function buildResidentModel(definition,{suit=false}={}){
   geometry.setAttribute('skinUV',new THREE.Float32BufferAttribute(skinUVs,3));
   geometry.setAttribute('residentSurface',new THREE.Float32BufferAttribute(surfaces,4));
   geometry.computeBoundingBox();const factor=definition.height/geometry.boundingBox.max.y;geometry.scale(factor,factor,factor);for(const b of bones)b.position.multiplyScalar(factor);
+  geometry.morphAttributes.position=[new THREE.Float32BufferAttribute(blinks.map(v=>v*factor),3)];geometry.morphAttributes.position[0].name='blink';geometry.morphTargetsRelative=true;
   let finishes=material;
   if(helmetRange){geometry.addGroup(0,helmetRange[0],0);geometry.addGroup(helmetRange[0],visorRange[0]-helmetRange[0],1);geometry.addGroup(visorRange[0],visorRange[1],2);geometry.addGroup(visorRange[0]+visorRange[1],helmetRange[0]+helmetRange[1]-visorRange[0]-visorRange[1],1);geometry.addGroup(helmetRange[0]+helmetRange[1],indices.length-helmetRange[0]-helmetRange[1],0);
     finishes=[material,residentMaterial(),new THREE.MeshPhysicalMaterial({vertexColors:true,roughness:.22,metalness:.66,clearcoat:1,clearcoatRoughness:.12,envMapIntensity:1.1,side:THREE.DoubleSide})];}
@@ -146,7 +150,7 @@ export function createResident(definition,options={}){
 }
 
 export function poseResident(actor,pose,time,dt=0,speed=0){
-  const m=actor.motion;
+  updateResidentExpression(actor,time);const m=actor.motion;
   // Idle decelerates through the same gait. Activities release old foot
   // anchors, so resuming a route cannot consume stale movement history.
   if(pose==='walk'||pose==='idle'){m.update(dt,{speed,position:actor.root.position,heading:actor.root.rotation.y,grounded:true,active:pose==='walk'||speed>.025,ground:actor.ground||null});return;}
@@ -158,7 +162,7 @@ export function poseResident(actor,pose,time,dt=0,speed=0){
     m.bones.Hips.position.y=.525;
     for(const s of ['L','R']){m.rotate('Thigh'+s,-Math.PI*.48);m.rotate('Shin'+s,Math.PI*.49);m.rotate('Foot'+s,-.03);m.rotate('UpperArm'+s,-.19);m.rotate('Forearm'+s,-1.28);m.rotate('Hand'+s,1.12);}
     m.rotate('Spine',.055);m.rotate('Head',.07);
-  }else if(pose==='work'){workGesture(m,actor.record?.workday?.tool||'spanner',time);}
+  }else if(pose==='work'){workGesture(m,actor.record?.workday?.tool||actor.workTool||'spanner',time);}
   else if(pose==='talk'){conversationGesture(m,time);}
   else if(pose==='watch'){m.rotate('Head',-.04);}
   actor.model.updateWorldMatrix(true,true);

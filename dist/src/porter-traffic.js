@@ -4,7 +4,7 @@ import { createResident, poseResident } from './resident-model.js';
 import { CROWD_APPEARANCES } from './resident-data.js';
 import { residentName } from './resident-stories.js';
 import { assignWorkday, workAt } from './workday.js';
-import { attachWorkProps, showWorkProps, deliveryCounter } from './work-props.js';
+import { attachWorkProps, showWorkProps, updateWorkGrip, deliveryCounter } from './work-props.js';
 
 const V=(x,y,z)=>new THREE.Vector3(x,y,z),routeCache=new Map();
 const landing=(n,r,lane=0)=>{const p=landingPoint(n,r,lane);return V(p.cx,levelY(n),p.cz);};
@@ -80,7 +80,7 @@ export class PorterTraffic{
       a.heading+=Math.atan2(Math.sin(target-a.heading),Math.cos(target-a.heading))*(1-Math.exp(-12*dt));a.root.rotation.y=a.heading;
       a.ground=(x,z)=>{const floor=this.world.colliders.floorAt(x,z,.03,r.position.y+.35);return Number.isFinite(floor)&&Math.abs(floor-r.position.y)<.5?floor:r.position.y;};
       const speed=r.moving?r.sample.speed:0;poseResident(a,talkingTo===r.id?'talk':speed>.01?'walk':r.state.onDuty?'work':'idle',this.time,dt,speed);
-      showWorkProps(a,r.roster,r.state,speed<.01,r.sample.loaded);
+      showWorkProps(a,r.roster,r.state,speed<.01,r.sample.loaded);updateWorkGrip(a,dt);
       if(speed>0&&a.motion.stepCount!==a.lastStep){a.lastStep=a.motion.stepCount;if(distance<22)this.events.push({id:r.position.y>body.position.y?'steps-above':'steps-below',position:r.position.clone(),steps:1,interval:.4});}
       if(distance<4.5)this.interactions.push({position:r.position.clone().add(V(0,1.25,0)),label:`Talk to ${a.definition.name}`,hint:r.state.task,action:`resident-${r.id}`,actor:r.id,resident:{...a.definition,id:r.id,kind:'porter',level:levelAt(r.position.y),workday:r.roster,currentWork:r.state}});
       a.root.updateMatrixWorld(true);
