@@ -29,15 +29,16 @@ export class GarmentSurface{
   }
   return hit;
  }
- fit(geometry,{offset=.0018,axis='z',side=1}={}){
-  const p=geometry.attributes.position,indices=[],weights=[],supports=[];
+ fit(geometry,{offset=.0018,axis='z',side=1,smooth=false}={}){
+  const p=geometry.attributes.position,indices=[],weights=[],supports=[],normals=[];
   for(let i=0;i<p.count;i++){
    const x=p.getX(i),y=p.getY(i),z=p.getZ(i),sample=this.sample(axis==='x'?side:x,y,axis==='z'?side:z,axis);
    if(!sample)throw Error(`Garment has no body support at ${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)}`);
+   if(smooth)normals.push(...sample.normal.toArray());
    if(this.capture)supports.push({triangle:sample.triangle,bary:sample.bary});
    const relief=axis==='z'?z:x,point=sample.point.addScaledVector(sample.normal,offset+relief*side);p.setXYZ(i,point.x,point.y,point.z);indices.push(...sample.indices);weights.push(...sample.weights);
   }
   if(this.capture)geometry.userData.supports=supports;
-  geometry.setAttribute('attachmentSkinIndex',new T.Uint16BufferAttribute(indices,4));geometry.setAttribute('attachmentSkinWeight',new T.Float32BufferAttribute(weights,4));geometry.computeVertexNormals();return geometry;
+  geometry.setAttribute('attachmentSkinIndex',new T.Uint16BufferAttribute(indices,4));geometry.setAttribute('attachmentSkinWeight',new T.Float32BufferAttribute(weights,4));if(smooth)geometry.setAttribute('normal',new T.Float32BufferAttribute(normals,3));else geometry.computeVertexNormals();return geometry;
  }
 }

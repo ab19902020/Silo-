@@ -2,9 +2,11 @@ import * as T from '../vendor/three.module.js';
 
 // Rounded horizontal sections: the sole follows the shoe's footprint instead
 // of being a rectangular plate underneath an ellipsoid.
-export function shoeGeometry(x,{sole=false}={}){
+export function shoeGeometry(x,{sole=false,style='work'}={}){
   const rings=sole?[[.010,.051,-.073,.193],[.014,.060,-.078,.201],[.030,.060,-.078,.201],[.037,.056,-.074,.195]]
     :[[.033,.054,-.071,.191],[.060,.058,-.071,.193],[.089,.055,-.067,.174],[.117,.048,-.057,.124],[.144,.040,-.043,.062],[.170,.038,-.039,.049]];
+  if(!sole&&style==='boots')rings.push([.215,.041,-.043,.052],[.267,.043,-.045,.053]);
+  if(!sole&&style==='slipon'){rings[4]=[.127,.039,-.044,.058];rings[5]=[.141,.037,-.040,.047];}
   const p=[],idx=[],segments=40;
   for(const [y,width,back,front]of rings)for(let j=0;j<segments;j++){
     const a=j/segments*Math.PI*2,z=(front+back)/2+Math.cos(a)*(front-back)/2;

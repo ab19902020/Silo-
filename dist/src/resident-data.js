@@ -25,13 +25,24 @@ export const RESIDENT_CAST=Object.freeze([
   person('amundsen','Amundsen','Judicial raider',14,0,{skin:0xb28e76,hair:0x38322b,outfit:'coat',coat:0x343d3a},{height:1.85}),
   person('george','George Wilkins','Computer repair · relic researcher',100,0,{skin:0xb48e75,hair:0x3c2d21,outfit:'shirt',coat:0x758079,beard:.65,hairStyle:'waves'},{height:1.78,story:'memory'}),
 ]);
+// Crowd art direction: seven of ten generic complexion slots are light.
+// This is a requested visual balance, not a claim about canonical demographics.
+// Named cast appearances above are independent and are never remapped.
 export const CROWD_APPEARANCES=Object.freeze([
-  {skin:0xc19a7c,hair:0x403124,coat:0x6e786d,outfit:'work'},
-  {skin:0x71513e,hair:0x26201a,coat:0x797b65,outfit:'shirt',female:true,hairStyle:'bun'},
-  {skin:0xa27858,hair:0x393026,coat:0x4f6870,outfit:'work',beard:.4},
-  {skin:0xb8977d,hair:0x99948a,coat:0x7f7361,outfit:'cardigan',female:true,age:.8,hairStyle:'waves'},
-  {skin:0x6c4a33,hair:0x302521,coat:0x766855,outfit:'coat',hairStyle:'curls'},
-  {skin:0xcba586,hair:0x774f31,coat:0x6c7777,outfit:'shirt',female:true,hairStyle:'long'},
-  {skin:0x96755c,hair:0x28231c,coat:0x898370,outfit:'uniform'},
-  {skin:0xa98b71,hair:0x756a54,coat:0x687960,outfit:'work',build:1.1},
+ {skin:0xe1ba9c,hair:0x493526,coat:0x66756a,pants:0x353e39,shirt:0xa7aa97,outfit:'work',footwear:'boots',trouserFit:'cargo'},
+ {skin:0xcba586,hair:0xa68b57,coat:0x536972,pants:0x7c715c,shirt:0xa7aa97,outfit:'shirt',female:true,hairStyle:'bun',shortSleeves:true,footwear:'slipon'},
+ {skin:0xd8b49a,hair:0x795134,coat:0x78635e,pants:0x353e39,shirt:0xa7aa97,outfit:'cardigan',age:.4,hairStyle:'waves',fabric:'ribbed',glasses:true,frameStyle:'rectangular',frameColor:0x776c62},
+ {skin:0xc49b7d,hair:0xa7a396,coat:0x7c715c,pants:0x353e39,shirt:0x968776,outfit:'coat',female:true,age:.8,hairStyle:'waves',shoeColor:0x574432},
+ {skin:0xdfb99e,hair:0x26201b,coat:0x66756a,pants:0x536972,shirt:0xa7aa97,outfit:'vest',hairStyle:'short',beard:.3,trouserFit:'tapered'},
+ {skin:0xd1ae92,hair:0x8b4330,coat:0x78635e,pants:0x353e39,outfit:'knit',female:true,hairStyle:'ponytail',fabric:'ribbed',footwear:'slipon'},
+ {skin:0xe1ba9c,hair:0x493526,coat:0x7c715c,pants:0x353e39,shirt:0xa7aa97,outfit:'work',build:1.1,beard:.6,footwear:'boots'},
+ {skin:0xaf8160,hair:0x26201b,coat:0x536972,pants:0x7c715c,shirt:0xa7aa97,outfit:'shirt',hairStyle:'waves',trouserFit:'tapered'},
+ {skin:0x795039,hair:0x26201b,coat:0x968776,pants:0x353e39,shirt:0x66756a,outfit:'cardigan',female:true,hairStyle:'braids',footwear:'slipon',glasses:true,frameColor:0x82704b},
+ {skin:0x593a29,hair:0x26201b,coat:0x66756a,pants:0x7c715c,shirt:0xa7aa97,outfit:'work',hairStyle:'curls',footwear:'boots',trouserFit:'cargo'},
 ]);
+// Mix the seed before selecting: sequential floor/route seeds must not alias
+// with the palette length. Streaming the same resident always gives the same fit.
+export function crowdAppearanceIndex(seed){
+ let h=(Number(seed)||0)>>>0;h=Math.imul(h^(h>>>16),0x45d9f3b);h=Math.imul(h^(h>>>16),0x45d9f3b);h=(h^(h>>>16))>>>0;
+ return h%CROWD_APPEARANCES.length;
+}

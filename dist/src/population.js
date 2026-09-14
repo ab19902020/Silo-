@@ -3,7 +3,7 @@ import { SILO, TAU, levelY, roomType, landingAngle, landingPoint } from './data.
 import { roomPoint } from './characters.js';
 import { topPoint } from './surface.js';
 import { CharacterBody } from './physics.js';
-import { RESIDENT_CAST, CROWD_APPEARANCES } from './resident-data.js';
+import { RESIDENT_CAST, CROWD_APPEARANCES, crowdAppearanceIndex } from './resident-data.js';
 import { residentName } from './resident-stories.js';
 import { createResident, poseResident } from './resident-model.js';
 import { assignWorkday, workAt, JOBS } from './workday.js';
@@ -183,7 +183,7 @@ export class Population{
   }
   remove(actor){actor.root.removeFromParent();actor.model.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.dispose();if(o.isInstancedMesh)o.dispose();});}
   spawn(r){
-    const index=r.seed%CROWD_APPEARANCES.length;
+    const index=crowdAppearanceIndex(r.seed);
     const definition=r.definition||{id:`crowd-${index}`,name:residentName(r.seed),role:r.workday.title,height:1.63+(index%5)*.045,appearance:CROWD_APPEARANCES[index]};
     const actor=createResident(definition);actor.record=r;actor.root.position.copy(r.position);actor.root.rotation.y=r.heading??(r.seed%628)/100;actor.heading=actor.root.rotation.y;actor.body=new CharacterBody({radius:.26,standHeight:definition.height,stepHeight:.3});actor.body.teleport(r.position.x,r.position.y,r.position.z);actor.tick=0;attachWorkProps(actor,this.world.m,r.workday);this.scene.add(actor.root);this.actors.set(r.id,actor);return actor;
   }
