@@ -1,5 +1,17 @@
 # Silo 18
 
+## Layered wardrobes and fitted eyewear
+
+Create character now separates outer clothing, the shirt underneath, trouser cut
+and colour, footwear, fabric and glasses. Coats open over a shirt, cardigans end
+at the hip, medical coats have their own hem and lapels, and a sleeveless waistcoat
+joins the wardrobe. Glasses flare outside the brow before following the temples;
+the scanned neck edge is tucked into the existing skin bridge.
+
+The shared NPC pipeline uses these clothes and accessories too. Generic residents
+use a stable, approximately 70% light-complexion art-direction balance, with named
+cast appearances preserved. See [wardrobe changes and checks](docs/layered-wardrobes.md).
+
 ## Expressive residents and face sculpting
 
 **Create character → Face** now offers 12 feature controls, six starting faces,

@@ -1,6 +1,7 @@
 import * as T from '../vendor/three.module.js';
 import {eyelidGeometry} from './resident-expression.js';
 import {GarmentSurface} from './garment-surface.js';
+import {fitSpectacles} from './resident-eyewear.js';
 import {shapeFace} from './face-shape.js';
 import {RESIDENT_HEAD as data} from './resident-head-data.js';
 
@@ -13,7 +14,17 @@ export function addResidentHead({a,skin,hair,dark,add,binding,ell,box,tube}){
  const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(data.positions,3));geometry.setIndex(data.indices);
  const p=geometry.attributes.position,uv=[];const [u0,u1,v0,v1]=data.crop;
  for(let i=0;i<p.count;i++){
-  const shaped=shapeFace(p.getX(i),p.getY(i),p.getZ(i),a);p.setXYZ(i,shaped.x,shaped.y,shaped.z);
+  const shaped=shapeFace(p.getX(i),p.getY(i),p.getZ(i),a);
+  // Tuck the scanned neck's jagged, flared cut into the continuous skin bridge.
+  // The blend ends below the jaw so facial controls retain their full range.
+  const neck=1-T.MathUtils.smoothstep(shaped.y,1.475,1.525);
+  if(neck>0){
+   const angle=Math.atan2(shaped.x,shaped.z+.010);
+   shaped.x=T.MathUtils.lerp(shaped.x,Math.sin(angle)*.051,neck);
+   shaped.z=T.MathUtils.lerp(shaped.z,Math.cos(angle)*.046+.004,neck);
+   if(shaped.y<1.475)shaped.y=1.442+(shaped.y-1.455)*.10;
+  }
+  p.setXYZ(i,shaped.x,shaped.y,shaped.z);
   const y=shaped.y,x=shaped.x,z=shaped.z;
   const u=data.uv[i*2],v=data.uv[i*2+1],scalpLine=1.665+.026*clamp((z+.04)/.13,0,1),valid=u>=u0&&v>=v0&&v<=v1;
   const mask=valid?(a.bald?1-T.MathUtils.smoothstep(y,scalpLine-.022,scalpLine+.007):1):0;
@@ -47,16 +58,11 @@ export function addResidentHead({a,skin,hair,dark,add,binding,ell,box,tube}){
   for(const upper of [true,false])add(eyelidGeometry(eyeCenters[index],r,upper),skin,'Head');
  }
  if(a.glasses){
-  const surface=new GarmentSurface(scalp,()=>binding('Head')),depths=[];
-  for(const [index,side] of [-1,1].entries()){
-   const eye=eyeCenters[index],radius=.021*(a.eyeSize??1);let depth=eye.z+.016;
-   for(let i=0;i<32;i++){const angle=i/32*Math.PI*2,sample=surface.sample(eye.x+Math.cos(angle)*radius,eye.y+.001+Math.sin(angle)*radius*.78);if(sample)depth=Math.max(depth,sample.point.z+.005);}
-   depths.push(depth);const g=new T.TorusGeometry(radius,.0018,6,32);g.scale(1,.78,.7);g.translate(eye.x,eye.y+.001,depth);add(g,dark,'Head');
-   tube(new T.Vector3(eye.x+side*radius,eye.y+.004,depth),shapeFace(side*.084,1.623,-.006,a),.0016,.0016,dark,'Head',6);
+  const surface=new GarmentSurface(scalp,()=>binding('Head')),fit=fitSpectacles(surface,eyeCenters,a),metal=new T.Color(a.frameColor??0x242923);metal.residentSurface=[.32,.4,0,0];
+  for(const points of fit.frames){
+   const path=new T.CatmullRomCurve3(points,true,'centripetal'),g=new T.TubeGeometry(path,64,.0017,6,true);add(g,metal,'Head');
   }
-  const [left,right]=eyeCenters;const nose=surface.sample(0,(left.y+right.y)/2+.003),bridge=Math.max(...depths,(nose?.point.z||0)+.004);
-  tube(new T.Vector3(left.x+.020,left.y+.003,depths[0]),new T.Vector3(0,(left.y+right.y)/2+.003,bridge),.0016,.0016,dark,'Head',8);
-  tube(new T.Vector3(0,(left.y+right.y)/2+.003,bridge),new T.Vector3(right.x-.020,right.y+.003,depths[1]),.0016,.0016,dark,'Head',8);
+  for(const path of [...fit.arms,fit.bridge])for(let i=1;i<path.length;i++)tube(path[i-1],path[i],.0015,.0015,metal,'Head',6);
  }
  if(a.bald){scalp.dispose();return;}
  const sp=scalp.attributes.position,sn=scalp.attributes.normal,keep=[],masks=[];

@@ -69,9 +69,9 @@ export function buildResidentModel(definition,{suit=false}={}){
     const hip=points['Thigh'+s],knee=points['Shin'+s],ankle=points['Foot'+s],upper=points['UpperArm'+s],elbow=points['Forearm'+s],hand=points['Hand'+s];
     const legSkin=y=>y>.53?binding('Thigh'+s,'Shin'+s,clamp((y-.45)/.13,0,1)):binding('Shin'+s,'Foot'+s,clamp((y-.10)/.13,0,1));
     const pants=suit?coat:coat.clone().multiplyScalar(.64);
-    add(shoeGeometry(ankle.x,{sole:true}),dark.clone().multiplyScalar(.68),'Foot'+s);
-    add(shoeGeometry(ankle.x),dark,'Foot'+s);
-    if(!suit){for(let row=0;row<5;row++){const y=.095+row*.013,z=.14-row*.023;tube(V(ankle.x-.025,y,z),V(ankle.x+.025,y+.005,z-.012),.0025,.0025,shirt,'Foot'+s,6);}for(const side of [-1,1])tube(V(ankle.x+side*.052,.04,-.025),V(ankle.x+side*.048,.041,.16),.002,.002,coat,'Foot'+s,6);}
+    add(shoeGeometry(ankle.x,{sole:true,style:a.footwear}),dark.clone().multiplyScalar(.68),'Foot'+s);
+    add(shoeGeometry(ankle.x,{style:a.footwear}),new THREE.Color(a.shoeColor??0x242923),'Foot'+s);
+    if(!suit){for(let row=0;row<(a.footwear==='slipon'?0:5);row++){const y=.095+row*.013,z=.14-row*.023;tube(V(ankle.x-.025,y,z),V(ankle.x+.025,y+.005,z-.012),.0025,.0025,shirt,'Foot'+s,6);}for(const side of [-1,1])tube(V(ankle.x+side*.052,.04,-.025),V(ankle.x+side*.048,.041,.16),.002,.002,coat,'Foot'+s,6);}
     if(suit){for(const y of [.2,.24])torus(ankle.x,y,0,.053,.012,dark,'Shin'+s,Math.PI/2,1,1);}
     if(suit)torus(hand.x,.898,.015,.035,.0035,dark,'Forearm'+s,Math.PI/2);
   }

@@ -23,3 +23,18 @@
 @media(max-height:560px) and (min-width:701px){.preview-framing{margin:4px}.preview-framing button{min-height:32px}.preview-actions select{min-height:32px!important}}
 
 @media(max-height:600px) and (max-width:700px){.studio-body{grid-template-columns:minmax(0,1.3fr) minmax(0,.8fr);grid-template-rows:minmax(0,1fr)}.studio-controls{grid-row:1;grid-column:1}.studio-preview{grid-row:1;grid-column:2;border-bottom:0;border-left:1px solid var(--registry-line)}.studio-preview canvas{width:100%;height:calc(100% - 92px)}.studio-preview .preview-caption,.studio-preview>#previewOrigin,#previewHint{display:none}.preview-framing{left:0;right:0;bottom:49px;justify-content:center}.preview-actions{left:0;right:0;bottom:3px;justify-content:center}.character-studio .panel-head{padding:8px 14px}.character-studio h2{font-size:20px}.studio-tabs button{padding:8px 0}.studio-footer{padding:8px 12px}.studio-footer .primary{min-height:36px}.resident-field input[type=range]{height:32px}}
+
+/* Portrait editing leaves room for actual controls; the preview stays visible. */
+@media(max-width:700px) and (min-height:601px){
+ .character-studio .panel-head{padding:12px 18px 8px;padding-top:max(12px,env(safe-area-inset-top))}
+ .character-studio h2{font-size:22px}.studio-tabs button{padding:10px 0}
+ .studio-body{grid-template-rows:210px minmax(0,1fr)}
+ .studio-preview>#previewOrigin{top:12px;font-size:9px}
+ .studio-preview .preview-caption{top:31px}.preview-caption h3{font-size:16px}.preview-caption p{font-size:10px;line-height:1.3}
+ .preview-framing{bottom:73px;gap:4px}.preview-framing button{min-height:36px;font-size:11px;padding:5px 7px}
+ .preview-actions{bottom:25px;gap:4px}.preview-actions button{min-height:40px}
+ #previewHint{font-size:9px;bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .editor-tabs{top:-14px}.resident-palette label{width:34px;height:34px}
+ .resident-form .resident-palette{gap:8px}.resident-field{font-size:12px}
+ .studio-footer{padding-top:9px;padding-bottom:max(9px,env(safe-area-inset-bottom))}
+}

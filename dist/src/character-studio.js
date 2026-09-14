@@ -1,7 +1,7 @@
 import {FACE_CONTROLS,FACE_PRESETS} from './face-shape.js';
 import {PLAYABLE_CHARACTERS} from './characters.js';
 import {CharacterPreview} from './character-preview.js';
-import {DEFAULT_PROFILE,DEPARTMENTS,SKIN_TONES,HAIR_TONES,CLOTH_TONES,EYE_TONES,HAIR_STYLES,OUTFITS,normalizeProfile,definitionFromProfile,loadProfile,saveProfile,applyFacePreset,randomizeFace} from './character-profile.js';
+import {DEFAULT_PROFILE,DEPARTMENTS,SKIN_TONES,HAIR_TONES,CLOTH_TONES,EYE_TONES,HAIR_STYLES,OUTFITS,TROUSER_FITS,FOOTWEAR,FRAME_STYLES,SHOE_TONES,FRAME_TONES,normalizeProfile,definitionFromProfile,loadProfile,saveProfile,applyFacePreset,randomizeFace} from './character-profile.js';
 const title=s=>s.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^./,v=>v.toUpperCase());
 
 export class CharacterStudio{
@@ -47,13 +47,23 @@ export class CharacterStudio{
   select(box,'Hair style','hairStyle',HAIR_STYLES.map(v=>[v,title(v)]));
   palette(box,'Hair colour','hair',HAIR_TONES,['Black','Brown','Chestnut','Blonde','Auburn','Grey','Silver']);
   palette(box,'Eye colour','eyes',EYE_TONES,['Brown','Blue','Green','Grey']);range(box,'Facial hair','beard',0,1,.1);
-  box=group('clothing','Clothing & accessories');select(box,'Outfit','outfit',OUTFITS.map(v=>[v,{work:'Utility coveralls',uniform:'Deputy uniform',coat:'Long coat',shirt:'Work shirt',knit:'Knitted top',cardigan:'Cardigan',robe:'Formal robe',medical:'Medical coat'}[v]]));
-  palette(box,'Clothing colour','cloth',CLOTH_TONES,['Silo green','Khaki','Slate blue','Charcoal','Sand','Stone','Rust']);
+  box=group('clothing','Clothing & accessories');select(box,'Outfit','outfit',OUTFITS.map(v=>[v,{work:'Utility coveralls',uniform:'Deputy uniform',coat:'Long coat',shirt:'Work shirt',knit:'Knitted top',cardigan:'Cardigan',robe:'Formal robe',medical:'Medical coat',vest:'Sleeveless waistcoat'}[v]]));
+  const clothNames=['Silo green','Khaki','Slate blue','Charcoal','Sand','Stone','Rust'];
+  select(box,'Fabric','fabric',[['plain','Plain woven'],['ribbed','Fine rib'],['striped','Muted stripes']]);
+  palette(box,'Top / outer layer','cloth',CLOTH_TONES,clothNames);
+  palette(box,'Shirt underneath','underlayer',CLOTH_TONES,clothNames);
+  select(box,'Trouser cut','trouserFit',TROUSER_FITS.map(v=>[v,title(v)]));
+  palette(box,'Trousers','trousers',CLOTH_TONES,clothNames);
+  select(box,'Footwear','footwear',FOOTWEAR.map(v=>[v,{work:'Laced work shoes',boots:'Ankle boots',slipon:'Slip-on shoes'}[v]]));
+  palette(box,'Footwear colour','shoes',SHOE_TONES,['Black','Brown leather','Worn tan','Stone']);
+  select(box,'Glasses shape','frameStyle',FRAME_STYLES.map(v=>[v,title(v)]));
+  palette(box,'Glasses frame','frames',FRAME_TONES,['Dark metal','Brass','Pewter']);
   for(const [key,label] of [['glasses','Glasses'],['shortSleeves','Short sleeves']]){const input=document.createElement('input');input.type='checkbox';field(box,label,key,input).parentElement.classList.add('resident-check');}
   this.writeForm();this.setSection('identity');
  }
  setSection(id){
-  this.editorSection=id;
+  const changed=this.editorSection!==id;this.editorSection=id;
+  if(changed){const scroller=this.dialog.querySelector('.studio-controls');if(scroller)scroller.scrollTop=0;}
   for(const [key,group] of Object.entries(this.editorGroups)){group.hidden=key!==id;const tab=this.editorTabs[key];tab.setAttribute('aria-selected',String(key===id));tab.tabIndex=key===id?0:-1;}
   this.setView(['face','hair'].includes(id)?'face':'full');
  }
