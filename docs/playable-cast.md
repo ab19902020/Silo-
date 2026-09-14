@@ -32,7 +32,8 @@ Times selections do not rewrite the opening-era NPC population or quest script.
 
 ## Creator and continuity
 
-The welcome menu’s Character button opens TV selection or Create your resident.
+The welcome menu’s Choose character button opens TV selection. Its separate
+Create character button opens Create your resident directly.
 The same studio opens from the HUD, C key, and controller D-pad. Players can edit
 name, department, body frame, height, build, face width, age, skin, hair style and
 colour, eye colour, facial hair, clothing cut and colour, sleeves and glasses.

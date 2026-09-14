@@ -1,5 +1,15 @@
 # Silo 18
 
+## Character finish and start-menu creation
+
+**Create character** is now a dedicated start-menu button. Choose your name,
+appearance and clothing, select **Save & play as your resident**, then start
+New Game or Free Roam. **Choose character** retains the latest 114-resident cast.
+
+NPCs and playable residents share rounded shoe soles, a continuous neckline,
+and a clean shirt hem. The latest fitted coats, pockets and movement work are
+preserved. See [character repairs and verification](docs/character-finish.md).
+
 ## Steady artificial lighting
 
 Stair and room lights now overlap smoothly across floor boundaries, with working

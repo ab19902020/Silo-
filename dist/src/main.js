@@ -196,12 +196,12 @@ function updateSettings(){
 }
 function syncCharacterUI(){
   if(!cast)return;const active=cast.active.definition;$('characterStatus').textContent=`Playing as ${active.name}`;$('viewButton').textContent=cast.thirdPerson?'View: third person':'View: first person';
-  const button=$('welcomeCharacters');button.dataset.subtitle=`Playing as ${active.name} · choose or create`;
+  const button=$('welcomeCharacters');button.dataset.subtitle=`Playing as ${active.name}`;
 }
 function chooseCharacter(id){if(!cast?.select(id))return;const height=cast.active.definition.height;body.standHeight=height;body.height=height;cast.active.heading=yaw+Math.PI;if(population)population.rebalance=0;syncCharacterUI();saveSettings();closeDialog(characters);notify(`Playing as ${cast.active.definition.name}`);}
 function toggleView(){if(!cast)return;cast.thirdPerson=!cast.thirdPerson;syncCharacterUI();saveSettings();}
 function renderCharacters(){characterStudio.selected=cast?.selected||'juliette';characterStudio.renderList();syncCharacterUI();}
-function openCharacters(){if(!ready)return;openDialog(characters);characterStudio.open(cast.selected);}
+function openCharacters(tab='cast'){if(!ready)return;openDialog(characters);characterStudio.open(cast.selected,typeof tab==='string'?tab:'cast');}
 // The soundtrack belongs to the story. Nothing plays while you are looking for
 // the book: the cafeteria is quiet, the way the room is quiet in the show. The
 // opening piece — the cleaning speech, turning into the score — starts on the
@@ -715,7 +715,7 @@ $('directoryLead').addEventListener('click',()=>{const lead=story.destination;if
 for(const id of ['allLevelsTab','landmarksTab'])$(id).addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const all=e.key==='Home'?true:e.key==='End'?false:!showAll;setDirectoryMode(all);$(all?'allLevelsTab':'landmarksTab').focus();}});
 $('focusScreenButton').addEventListener('click',()=>{opening.focus=!opening.focus;buttonLabel($('focusScreenButton'),opening.focus?'Back to cafeteria':'Focus');$('focusScreenButton').setAttribute('aria-pressed',String(opening.focus));document.body.classList.toggle('screen-focused',opening.focus);cinemaUntil=0;hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');canvas.focus();keys.clear();stick.x=stick.y=0;});
 $('skipOpening').addEventListener('click',()=>opening.finish());$('openBookButton').addEventListener('click',requestDirectory);
-$('characterButton').addEventListener('click',openCharacters);$('welcomeCharacters').addEventListener('click',openCharacters);$('viewButton').addEventListener('click',toggleView);
+$('characterButton').addEventListener('click',openCharacters);$('welcomeCharacters').addEventListener('click',openCharacters);$('welcomeCreateCharacter').addEventListener('click',()=>openCharacters('create'));$('viewButton').addEventListener('click',toggleView);
 $('settingsButton').addEventListener('click',()=>openDialog(settings));$('aboutButton').addEventListener('click',()=>openDialog(about));
 for(const button of document.querySelectorAll('[data-travel]'))button.addEventListener('click',()=>travel(button.dataset.travel));
 $('landmarksTab').addEventListener('click',()=>setDirectoryMode(false));$('allLevelsTab').addEventListener('click',()=>setDirectoryMode(true));$('search').addEventListener('input',renderDirectory);
@@ -1073,7 +1073,7 @@ async function boot(){
     if(story.story&&story.chapter!=='cleaning'){opening.finish();const cp=savedStory?.checkpoint;if(cp&&Number.isInteger(cp.level)&&cp.level>=1&&cp.level<=144&&Array.isArray(cp.position)&&cp.position.length===3&&cp.position.every(Number.isFinite)&&[null,'generator','mines','excavator','tunnel','pipe-gallery','silo17'].includes(cp.special)){world.setLevel(cp.level,cp.special);const [x,y,z]=cp.position;const floor=world.colliders.floorAt(x,z,.3,y+1);if(Number.isFinite(floor)&&Math.abs(floor-y)<2)body.teleport(x,floor+.05,z);else{const dest=world.destination(cp.special||cp.level);body.teleport(...dest.position.toArray());}yaw=Number.isFinite(cp.yaw)?cp.yaw:0;}if(story.hasFlag('hideout-open'))world.openBreach();if(story.chapter==='drone'){story.killedByDrone();const back=world.destination('airlock');world.setLevel(1);body.teleport(...back.position.toArray());}world.update(0,body.position);}
     openingChanged(opening.state);syncStoryHud(true);
     outsideTarget=world.surface.initFeed(renderer);renderer.compile(scene,camera);setDirectoryMode(true);
-    ready=true;$('welcomeCharacters').disabled=false;$('resumeButton').hidden=!savedStory;$('enterButton').disabled=false;$('enterButton').textContent='Story · New game';
+    ready=true;$('welcomeCharacters').disabled=false;$('welcomeCreateCharacter').disabled=false;$('resumeButton').hidden=!savedStory;$('enterButton').disabled=false;$('enterButton').textContent='Story · New game';
     if(world.materialFailures)notify('Some surface materials could not load. Refresh to retry.');
     if(world.assetFailures)notify('Some Lost Signal props could not load. The complete architectural reconstruction is still available.');
     frame();

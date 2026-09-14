@@ -65,7 +65,8 @@ if (typeof document !== 'undefined') {
           <button id="resumeButton" class="menu-option menu-primary" data-subtitle="Resume your current story" hidden>Continue</button>
           <button id="enterButton" class="menu-option menu-primary" data-subtitle="Chapter One · The Cleaning" disabled>Preparing the silo…</button>
           <button id="exploreButton" class="menu-option" data-subtitle="All 144 levels · unrestricted exploration">Free Roam</button>
-          <button id="welcomeCharacters" class="menu-option" type="button" data-subtitle="TV cast · create your own resident" disabled>Character</button>
+          <button id="welcomeCharacters" class="menu-option" type="button" data-subtitle="114 residents · television cast" disabled>Choose character</button>
+          <button id="welcomeCreateCharacter" class="menu-option" type="button" data-subtitle="Your name · appearance · clothing" disabled>Create character</button>
           <button id="menuSettings" class="menu-option" type="button" data-subtitle="Graphics · audio · controls">Settings</button>
           <button id="menuExtras" class="menu-option" type="button" data-subtitle="Directory · opening · research" aria-expanded="false">Extras</button>
         </nav>
