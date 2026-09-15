@@ -63,19 +63,50 @@ test('fitted clothing remains close to its supporting skin while the torso bends
 
 
 test('waistbands stay on the torso and collars inherit only minor shoulder influence',()=>{
+ // What this is for: a collar and a shoulder yoke legitimately share a little
+ // of the shoulder's skinning, because that is where the garment sits. Nothing
+ // lower may — a waistband that follows the arm swings with it, and a ray from
+ // the chest must not hit an arm resting beside the body.
+ //
+ // It used to draw that line at a fixed world height of 1.35 m, and that is
+ // wrong for a cast of different heights: the shoulder joint runs from 1.354 m
+ // on Jahns to 1.505 m on Knox, a 15 cm spread. Pete is 1.84 m, his shoulder is
+ // at 1.466, and his collar reaches down to 1.335 — which fell under the fixed
+ // line and was judged as a waistband. The clothing was never wrong. Measured
+ // across all four, every garment vertex carrying any arm weight at all sits
+ // within 13.2 cm of the shoulder joint, and the heaviest is 0.055.
+ //
+ // So the line is drawn on the body instead of on the room.
+ const YOKE=.18;        // collar and shoulder yoke, below the joint
+ const COLLAR_MAX=.10;  // how much of the shoulder a collar may share
  for(const id of ['knox','marnes','pete','jahns']){
   const def=RESIDENT_CAST.find(d=>d.id===id),actor=createResident(def);let mesh;actor.model.traverse(o=>{if(o.isSkinnedMesh)mesh=o;});
   const names=mesh.skeleton.bones.map(b=>b.name),binding=(b,b2=b,w=1)=>[names.indexOf(b),names.indexOf(b2),w],a=def.appearance,wide=(a.build||1)*(a.female?.92:1),coat=new T.Color(a.coat),skin=new T.Color(a.skin),dark=new T.Color(0x242923);
+  const shoulder=Math.min(...['UpperArmL','UpperArmR'].map(n=>{
+    const b=mesh.skeleton.bones.find(x=>x.name===n);
+    assert.ok(b,`${id}: no ${n} to measure the yoke against`);
+    return b.getWorldPosition(new T.Vector3()).y;
+  }));
   const surface=addResidentBody({a,wide,suit:false,coat,skin,dark,binding,add(){}});
+  let shared=0,deepest=0;
   addResidentClothes({a,wide,coat,shirt:new T.Color(0xa29981),dark,surface,binding,add(g){
    const index=g.attributes.attachmentSkinIndex,weight=g.attributes.attachmentSkinWeight;if(!index)return;
    for(let vertex=0;vertex<index.count;vertex++){
     let armWeight=0;for(let k=0;k<4;k++)if(/Arm|Forearm|Hand|Finger/.test(names[index.array[vertex*4+k]]))armWeight+=weight.array[vertex*4+k];
-    // The collar shares a little shoulder skinning. Waist and chest details
-    // must have none: a ray must not hit an arm resting beside the body.
-    const allowance=g.attributes.position.getY(vertex)>1.35?.10:.001;
-    assert.ok(armWeight<=allowance,`${id}: clothing at ${g.attributes.position.getY(vertex)} has ${armWeight} arm influence`);
+    if(armWeight<=0)continue;
+    const y=g.attributes.position.getY(vertex),drop=shoulder-y;
+    shared++;deepest=Math.max(deepest,drop);
+    assert.ok(drop<=YOKE,
+      `${id}: clothing ${drop.toFixed(3)} m below the shoulder carries ${armWeight.toFixed(4)} arm influence — that is a waistband following an arm`);
+    assert.ok(armWeight<=COLLAR_MAX,
+      `${id}: collar at ${drop.toFixed(3)} m below the shoulder takes ${armWeight.toFixed(4)} of the arm`);
    }
   }});
+  // And the opposite failure: a collar with no shoulder skinning at all would
+  // sail through both assertions above while hanging in the air off the body.
+  // `deepest` can be negative and that is correct — a collar sits at the neck,
+  // which is above the shoulder ball. Jahns's is 15 mm above hers.
+  assert.ok(shared>0,`${id}: no garment vertex follows the shoulder at all`);
+  assert.ok(deepest<=YOKE,`${id}: the yoke reaches ${deepest.toFixed(3)} m below the shoulder`);
  }
 });
