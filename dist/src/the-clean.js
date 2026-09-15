@@ -87,39 +87,25 @@ export const DISMISSALS_TO_FEEL_IT=3;
 export const CLOSED_RANKS='Nobody in that room saw a thing. You did, and so did one runner.';
 
 // The job itself. A runner carries; the whole of Chapter One is the walk.
-export const DISPATCH=Object.freeze({
-  id:'dispatch',
-  name:'A sealed shift dispatch',
-  eyebrow:'DISPATCH · LEVEL 001 → 110',
-  level:1, wing:0,
-  at:[-6.1,.96,4.3],
-  needs:'the-clean',
-  blurb:'Grey card, folded twice and sealed with a dab of wax the colour of the '+
-    'landing paint. The routing line reads 001 → 110, SUPPLY, SAME DAY. Your own '+
-    'name is on the runner’s line, in the dispatcher’s hand. It is not heavy. It '+
-    'is the reason you are allowed on the stairs.',
-  source:'Original game writing. The runner’s dispatch and the Level 001 rack are '+
-    'this game’s invention.',
-});
+//
+// The dispatch and the parcel are *items*, and items are described in exactly
+// one place: COLLECTABLES in story.js, which owns the name, the blurb, where
+// the thing lies and what unlocks it. This file used to restate both of them,
+// and the copies had already begun to disagree — the dispatch's position here
+// was a landing it is no longer on. So only what is this scene's own writing
+// lives below, and only the fields the staging actually reads.
+//
+// (story.js cannot be imported from here: it reaches THREE through mementos.js,
+// and this file is deliberately loadable without a renderer.)
 
 // Later in Chapter One. Before he was sent out, Reeve lodged something at
 // Supply against the player's name, with a release date and no explanation.
 // A clerk hands it over because the paperwork is in order.
 export const PACKAGE=Object.freeze({
   id:'package',
-  name:'A parcel lodged against your name',
-  eyebrow:'SUPPLY · HELD FOR RELEASE',
+  // Supply, in the wing the directory sends you to. The staging reads these two
+  // to place the clerk and the counter; the item itself is in story.js.
   level:110, wing:0,
-  // Supply's counter, in the wing the directory sends you to.
-  at:[.95,.835,4.18],
-  needs:'the-package',
-  blurb:'Brown paper, string, and a Supply hold-slip filled out eleven days '+
-    'ago in a careful hand: release to the named runner, and a date. The date '+
-    'is today. Inside there is no letter — only a bar chit from Level 026 with '+
-    'a name written across the back of it: G. WILKINS. The lodging signature '+
-    'is N. REEVE.',
-  source:'Original game writing. The parcel, the hold-slip and Sheriff Reeve '+
-    'are this game’s invention and are not drawn from the television series.',
   // What the clerk says when the slip checks out.
   counter:'“Held for release.” She turns the slip round so you can read the '+
     'date. “Eleven days it has sat there. He paid the holding fee himself.”',

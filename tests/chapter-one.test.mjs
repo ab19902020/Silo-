@@ -196,6 +196,18 @@ test('Chapter One runs from the cleaning to the parcel, and the parcel hands off
   assert.match(s.objective,/026/,'the chapter after the parcel does not follow the chit');
 });
 
+test('the scene staging and the item agree on where Supply is',()=>{
+ // the-clean.js cannot import story.js — story.js reaches THREE through
+ // mementos.js and the writing is meant to load without a renderer — so the
+ // two numbers the staging needs are restated there by hand. They used to be
+ // a whole second copy of the item, blurb and all, and the copies drifted.
+ // These are all that is left of that, and this is what keeps them honest: if
+ // Supply ever moves, the clerk and the counter move with it.
+ const parcel=COLLECTABLES.find(c=>c.id==='package');
+ assert.equal(PACKAGE.level,parcel.level,'the clerk is staged on a different level from the parcel');
+ assert.equal(PACKAGE.wing,parcel.wing,'the clerk is staged in a different wing from the parcel');
+});
+
 test('a Chapter One save comes back where it was left',()=>{
   const s=new Story('story');s.beginSearch();s.spokeToMara();
   s.askedAbout('marnes');s.askedAbout('billings');s.askedAbout('jahns');
