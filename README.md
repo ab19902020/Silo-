@@ -57,10 +57,23 @@ thing the cleaner does in the last second of it.
   about three quarters of a second, and is down before he turns.
 - **Mara saw it.** The room goes back to its trays; one runner does not. The
   exchange after the cleaning explains nothing, and a test enforces that.
-- **You are a runner.** Chapter One puts you on shift with a dispatch for
-  Supply, Level 110 — and Supply is holding a parcel lodged against your name
-  eleven days before the cleaning, with the holding fee paid by N. Reeve.
-  Inside is a bar chit from Level 026 with a name on the back: G. Wilkins.
+- **The room closes ranks.** Four people who were in that cafeteria, each with
+  a reasonable answer ready and **none of them lying**: he was steadying
+  himself, everyone waves, his arm cramped, it is a lens and not a window. You
+  are not being silenced, you are being agreed with. Ask three and the
+  objective changes to *"Nobody in that room saw a thing."* Entirely optional.
+- **You are a runner, and the job is a job.** The dispatch is a real object on
+  a real rack beside the station door — pigeonholes, a chalked shift list — and
+  without it there is no shift and Supply has no reason to look anybody up.
+- **The parcel has to be earned.** Delen Osgood breaks the seal, reads the
+  dispatch in four seconds, writes in a ledger the size of a paving slab, and
+  then does not dismiss you. There is a hold against your name, eleven days
+  old, holding fee paid up front — *which people do not do*. She checks the
+  signature, and something goes out of her face.
+- **Chapter Two ends on a turn.** Deputy Aron Kell is holding the stair door.
+  You can tell him who lodged it or not; neither is punished and neither is
+  safe. Either way he writes your name and the level in a notebook, and you
+  watch him do it.
 - **Everything after that is the game that was already built.** The duck, the
   watch, the void, the hideout, the hard drive, George's machine, the gas line,
   Billings, the airlock and the drone all run exactly as before.

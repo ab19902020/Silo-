@@ -149,12 +149,25 @@ test('the whole run walks: every relic collected, every chapter entered, out ont
   assert.equal(story.chapter,'the-clean');
   assert.equal(story.destination.level,1,'Chapter One opens where the cleaning was watched');
   assert.equal(story.spokeToMara(),true,'Mara will not talk about what she saw');
-  assert.equal(story.destination.level,110,'after Mara the shift does not send you to Supply');
+  // The room closes ranks. Optional, and the whole texture of the chapter.
+  for(const who of ['marnes','billings','jahns'])story.askedAbout(who);
+  assert.equal(story.hasFlag('closed-ranks'),true,'asking three people changes nothing');
+  // A runner carries. The rack is in the cafeteria, beside the station door.
+  assert.equal(story.reachedSupply(),false,'the shift can be worked without the job');
+  h.go(1);
+  const rack=world.interactions.find(i=>i.action==='take-dispatch');
+  assert.ok(rack,'there is no runners’ rack on Level 001');
+  h.reach(rack.position.clone(),'take-dispatch');
+  assert.ok(story.take('dispatch'));
+  assert.equal(story.destination.level,110,'with the job in hand the shift does not send you to Supply');
   h.go(110);
-  assert.equal(story.reachedSupply(),true,'arriving at Supply does not release the parcel');
+  assert.equal(story.reachedSupply(),true,'arriving at Supply does not open Chapter Two');
   assert.equal(story.chapter,'the-package');
+  assert.equal(story.visible('package'),false,'the parcel is released before the dispatch is handed over');
+  assert.equal(story.deliverDispatch(),true);
   h.collect('package');
   assert.equal(story.chapter,'clues','the parcel does not hand off to George');
+  assert.equal(story.metTheDeputy(true),true,'nobody notices a dead man’s parcel leaving Supply');
 
   // 3 · the duck on the bar, and the watch on the trader's counter.
   h.collect('pez');

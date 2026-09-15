@@ -23,7 +23,9 @@ import { WEAPONS } from './weapons.js';
 import { updateRangeTargets } from './gun-range.js';
 import {RelicInspector} from './relic-inspector.js';
 import { GeorgeTerminal } from './george-terminal.js';
-import { WITNESS, AFTER_THE_CLEAN, WITNESS_OPENER, WITNESS_CLOSE, PACKAGE as PARCEL } from './the-clean.js';
+import { WITNESS, AFTER_THE_CLEAN, WITNESS_OPENER, WITNESS_CLOSE, PACKAGE as PARCEL,
+  CLERK, DEPUTY, DISMISSALS, DISMISSALS_TO_FEEL_IT, CLOSED_RANKS, COUNTER_AT, STAIR_DOOR_AT } from './the-clean.js';
+import { roomPoint } from './characters.js';
 const PARCEL_LEVEL=PARCEL.level;
 import { StoryProps, Drone } from './relics.js';
 import { SiloClock } from './silo-time.js';
@@ -115,6 +117,15 @@ function askTopic(button){
   if(!button._topic&&!button.dataset.reply){button.click();return;}
   const topic=button._topic;
   $('dialogueQuestion').hidden=false;$('dialogueQuestion').textContent=topic?.label||button.textContent;
+  // Asking about the hand is counted here, on the topic's own id, rather than
+  // by matching the button's text: renderChoices puts a numbered <kbd> inside
+  // every button, so the label never read back as the written question and the
+  // count never moved at all.
+  if(topic?.id==='the-hand'&&story?.story&&talking?.id&&!story.hasFlag('asked:'+talking.id)){
+    const heard=story.askedAbout(talking.id);
+    if(heard===DISMISSALS_TO_FEEL_IT)notify(CLOSED_RANKS);
+    syncStoryHud();saveStory();
+  }
   if(topic?.sideAction){
     const result=sideMissions.perform(topic.sideAction);$('dialogueLine').textContent=result.message;
     renderChoices(sideMissions.topics(talking?.sideOwner||talking?.id),{topics:talking?.baseTopics||[],back:null});
@@ -138,15 +149,15 @@ function startConversation(person,actor=null){
   conversation.dataset.resident=person.id;$('dialogueQuestion').hidden=true;
   $('speakerActivity').hidden=!person.currentWork;$('speakerActivity').textContent=person.currentWork?.task||'';
   const sideOwner=person.sideOwner||person.id,baseTopics=[...text.topics];
+  // The hand. Four people who were in that room, each with a reasonable answer
+  // ready, and none of them lying. Asking around is optional and it is the
+  // whole texture of Chapter One: you are not being silenced, you are being
+  // agreed with.
+  const dismissal=story?.story&&story.chapterIndex<=2?DISMISSALS.find(d=>d.who===person.id):null;
+  if(dismissal&&!(dismissal.who===WITNESS.id&&!story.hasFlag('mara-spoke')))
+    baseTopics.unshift({id:'the-hand',label:dismissal.ask,reply:dismissal.reply,
+      follow:[{id:'the-hand-again',label:'You are sure that is all it was?',reply:dismissal.close}]});
   renderChoices([...baseTopics,...sideMissions.topics(sideOwner)]);
-  // The panel is shown, not modalled: the silo keeps running behind it, the
-  // person turns to face you and the camera settles on them while you talk.
-  hudOpen=false;document.body.classList.remove('hud-open');
-  for(const d of pausingDialogs)if(d.open)d.close();
-  talking={actor,name:text.name,id:person.id,sideOwner,baseTopics};population.talkingTo=actor;
-  if(!conversation.open)conversation.show();
-  conversation.scrollTop=0;$('dialogueChoices').querySelector('button')?.focus({preventScroll:true});
-  document.body.classList.add('talking');audio.click();syncPause();
 }
 $('algorithmQuery').addEventListener('submit',event=>{event.preventDefault();const input=$('archiveQuestion');if(!input.value.trim())return;$('dialogueLine').textContent=algorithmAnswer(input.value,{freeRoam:!story?.story,blueprint:story?.hasFlag('blueprint-found')});input.value='';animateAlgorithm();audio.click();});
 function endConversation(){
@@ -160,41 +171,75 @@ function endConversation(){
 //
 // It explains nothing on purpose: the gesture is the hook for the whole story,
 // and the only thing this scene establishes is that two people saw it.
-function maraConversation(){
+// Three scripted scenes now run on the same shape: a named speaker, a list of
+// beats, a player line on each, and a pause that leaves the last thing said on
+// the screen while it waits. Written once rather than three times.
+//
+// `beats` entries are {say, reply, stage?, beat?}. A `beat` entry has no `say`:
+// it holds, then speaks, and nothing is clickable while it does.
+function playScene({name,role,opener,beats,close='Leave it',onEnd,pick}){
   $('speakerActivity').hidden=true;$('dialogueQuestion').hidden=true;
   $('algorithmQuery').hidden=true;conversation.classList.remove('archive-conversation');
-  $('speakerName').textContent=WITNESS.name;$('speakerRole').textContent=WITNESS.role;
-  $('dialogueLine').textContent=WITNESS_OPENER;
+  $('speakerName').textContent=name;$('speakerRole').textContent=role;
+  $('dialogueLine').textContent=opener;
   const choices=$('dialogueChoices');choices.replaceChildren();
   const add=(label,run)=>{const b=document.createElement('button');b.textContent=label;b.onclick=run;choices.append(b);};
-  const done=()=>{if(story?.chapter==='the-clean'&&!story.hasFlag('mara-spoke')){story.spokeToMara();syncStoryHud(true);saveStory();}};
-  const play=i=>{
+  let ended=false;const finish=chosen=>{if(ended)return;ended=true;onEnd?.(chosen);};
+  const show=(beat,chosen)=>{
+    $('dialogueLine').textContent=(beat.stage?beat.stage+'\n\n':'')+beat.reply;audio.click();
+    return chosen;
+  };
+  const play=(i,chosen)=>{
     choices.replaceChildren();
-    const beat=AFTER_THE_CLEAN[i];
-    if(!beat){done();add(WITNESS_CLOSE,()=>closeDialog(conversation));return;}
+    const beat=beats[i];
+    if(!beat){finish(chosen);add(close,()=>closeDialog(conversation));return;}
     if(beat.beat){
-      // A real pause, and the reason it is written as one: what she said last
-      // stays on the screen through it. An earlier version cleared the line to
-      // an ellipsis the instant the player clicked, so "I don't know." was
-      // never actually readable — it was replaced in the same tick it appeared.
-      // Nothing is clickable while she decides.
-      setTimeout(()=>{
-        if(!conversation.open)return;
-        $('dialogueLine').textContent=beat.reply;audio.click();
-        // She has said it. It counts from here, whether or not the panel is
-        // closed politely.
-        done();choices.replaceChildren();
-        add(WITNESS_CLOSE,()=>closeDialog(conversation));
-      },beat.beat);
+      // The pause leaves what was just said on the screen. An earlier version
+      // cleared the line to an ellipsis the instant the player clicked, so a
+      // reply was replaced in the same tick it appeared and never read.
+      setTimeout(()=>{if(!conversation.open)return;show(beat,chosen);finish(chosen);
+        choices.replaceChildren();add(close,()=>closeDialog(conversation));},beat.beat);
       return;
     }
-    add(beat.say,()=>{
-      $('dialogueLine').textContent=(beat.stage?beat.stage+'\n\n':'')+beat.reply;
-      audio.click();play(i+1);
-    });
+    // A branch: several beats offered at once, and the story remembers which.
+    if(pick&&pick(beat)!==undefined){
+      const branch=beats.filter(b=>pick(b)!==undefined);
+      for(const option of branch)add(option.say,()=>{show(option,pick(option));play(beats.length,pick(option));});
+      return;
+    }
+    add(beat.say,()=>{show(beat,chosen);play(i+1,chosen);});
   };
-  play(0);
+  play(0,undefined);
   openDialog(conversation);
+}
+
+function maraConversation(){
+  playScene({name:WITNESS.name,role:WITNESS.role,opener:WITNESS_OPENER,beats:AFTER_THE_CLEAN,
+    close:WITNESS_CLOSE,
+    onEnd:()=>{if(story?.chapter==='the-clean'&&!story.hasFlag('mara-spoke')){story.spokeToMara();syncStoryHud(true);saveStory();}}});
+}
+// The Supply counter. She is not an obstacle and she is not a puzzle: she is a
+// woman doing her job correctly, which is worse.
+function clerkConversation(){
+  const delivered=story.hasFlag('dispatch-delivered');
+  playScene({name:CLERK.name,role:CLERK.role,
+    opener:delivered?CLERK.release:CLERK.greet,
+    beats:delivered?[]:[CLERK.hand,...CLERK.hold],
+    close:delivered?'Take it':'Take the parcel',
+    onEnd:()=>{
+      if(story?.chapter==='the-package'&&!story.hasFlag('dispatch-delivered')&&story.has('dispatch')){
+        story.deliverDispatch();syncStoryHud(true);saveStory();
+        notify('She sets the parcel on the counter between you and steps back from it.');
+      }
+    }});
+}
+// Leaving. Somebody whose job is noticing has noticed. Either answer is
+// allowed; neither is punished and neither is safe.
+function deputyConversation(){
+  playScene({name:DEPUTY.name,role:DEPUTY.role,opener:DEPUTY.greet,beats:DEPUTY.beats,
+    close:'Take the stairs',pick:b=>b.tell,
+    onEnd:told=>{story?.metTheDeputy(!!told);syncStoryHud(true);saveStory();
+      notify(DEPUTY.close);}});
 }
 function billingsConversation(){
   $('speakerActivity').hidden=true;$('dialogueQuestion').hidden=true;
@@ -691,6 +736,14 @@ function use(){
   }
   if(interaction.action==='opening-book'){audio.click();audio.playOpeningTheme();opening.takeBook();return;}
   if(interaction.action==='billings'){billingsConversation();return;}
+  if(interaction.action==='supply-clerk'){clerkConversation();return;}
+  if(interaction.action==='deputy'){deputyConversation();return;}
+  if(interaction.action==='take-dispatch'){
+    if(!story?.story){notify('The rack is empty. The day’s dispatches went out hours ago.');return;}
+    if(story.has('dispatch')){notify('Your dispatch is in your satchel. 001 to 110, same day.');return;}
+    if(!story.visible('dispatch')){notify('The rack is not yours to take from yet.');return;}
+    takeRelic('dispatch');return;
+  }
   if(interaction.action?.startsWith('floor-memory:')){inspectFloorMemory(Number(interaction.action.split(':')[1]));return;}
   if(interaction.action==='drive-bay'){audio.click();notify(terminal.view.driveInserted?'Hard Drive 18 is seated in the bay and the lamp is green. The note folded under it reads: “The directory is not the collection. Ask for the whole library.”':inspectionText['drive-bay']);return;}
   if(interaction.action==='george-terminal'){story.reachGeorgeHome();renderTerminal();openDialog(terminalDialog);syncStoryHud();return;}
@@ -1032,6 +1085,23 @@ function frame(){
     // it in story mode has to clear it from the bench there.
     if(cast?.relic&&story.story&&story.has('harddrive'))cast.relic.visible=false;
     world.actorInteractions.push(...props.interactions(story,world.activeLevel,world.special));
+    // Chapter One and Two put three people in the way of the job. They are
+    // pushed here, beside the relic prompts, because they come and go with the
+    // state of the story rather than with the level being loaded.
+    if(story?.story&&!world.special&&!world.outside){
+      const here=(where,y,z)=>{const p=roomPoint(PARCEL.level,PARCEL.wing,where,z);p.y+=y;return p;};
+      if(world.activeLevel===PARCEL.level){
+        if(story.chapter==='the-package'&&!story.hasFlag('dispatch-delivered')&&story.has('dispatch'))
+          world.actorInteractions.push({position:here(COUNTER_AT[0],COUNTER_AT[1],COUNTER_AT[2]),
+            label:`Hand the dispatch to ${CLERK.name}`,hint:CLERK.role,action:'supply-clerk'});
+        else if(story.chapter==='the-package'&&story.hasFlag('dispatch-delivered')&&!story.has('package'))
+          world.actorInteractions.push({position:here(COUNTER_AT[0],COUNTER_AT[1],COUNTER_AT[2]),
+            label:`Ask ${CLERK.name} about the hold`,hint:CLERK.role,action:'supply-clerk'});
+        if(story.hasFlag('parcel-taken')&&!story.hasFlag('deputy-met'))
+          world.actorInteractions.push({position:here(STAIR_DOOR_AT[0],STAIR_DOOR_AT[1],STAIR_DOOR_AT[2]),
+            label:`${DEPUTY.name} is holding the stair door`,hint:DEPUTY.role,action:'deputy'});
+      }
+    }
     // world.storyInteractions belongs to the opening, which rebuilt it above.
     // A second writer here used to overwrite it every frame with a hardcoded
     // Billings prompt, so the directory book could never be picked up and the
@@ -1143,6 +1213,8 @@ async function boot(){
 // One handle on the running game, for the headless smoke test that drives the
 // whole story through in a real browser. Nothing in the game reads it.
 window.__silo={begin,fire,use,travel,takeRelic,stepOutside,firearms,takeWeapon,camera,
+  // Chapter One's scenes, so a check can play them without a mouse.
+  talk:startConversation,maraScene:maraConversation,clerkScene:clerkConversation,deputyScene:deputyConversation,
   look(y,p=0){yaw=y;pitch=p;},
   get story(){return story;},get world(){return world;},get body(){return body;},
   get drone(){return drone;},get opening(){return opening;},get ready(){return ready;},

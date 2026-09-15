@@ -14,12 +14,12 @@ test('every collectable is a real thing in a real room, and says where it came f
     assert.ok(!ids.has(item.id),`two collectables share the id ${item.id}`);ids.add(item.id);
     assert.ok(item.level>=1&&item.level<=144,`${item.id} is on level ${item.level}`);
     assert.ok(item.wing>=0&&item.wing<6);
-    assert.ok(Math.abs(item.at[0])<10&&item.at[2]>0&&item.at[2]<24,`${item.id} sits outside its room`);
+    if(!item.handed)assert.ok(Math.abs(item.at[0])<10&&item.at[2]>0&&item.at[2]<24,`${item.id} sits outside its room`);
     assert.ok(item.blurb.length>80,`${item.id} has nothing to read`);
     assert.ok(item.source.length>30,`${item.id} does not say whether it is sourced or placed`);
   }
   assert.equal(RELICS.length,4);
-  assert.equal(EQUIPMENT.length,5,'the Chapter One parcel is part of the kit list');
+  assert.equal(EQUIPMENT.length,6,'Chapter One’s dispatch and parcel are both part of the kit list');
   // Spread across the silo: a run that only visits one end is not a run.
   const levels=[...new Set(COLLECTABLES.map(c=>c.level))];
   assert.ok(levels.length>=5,'the collectables are not spread through the silo');
@@ -51,8 +51,14 @@ test('story mode follows George from relic clue to pipe and Billings',()=>{
   // the reason to go, which is the parcel.
   assert.equal(s.destination.level,1,'Chapter One starts where the cleaning was watched');
   assert.equal(s.spokeToMara(),true);
+  // A runner carries. Without the dispatch there is no shift to work, and
+  // without the shift Supply has no reason to look up a hold.
+  assert.equal(s.reachedSupply(),false,'the shift can be worked without the job');
+  assert.ok(s.take('dispatch'));
   assert.equal(s.reachedSupply(),true);
   assert.equal(s.chapter,'the-package');
+  assert.equal(s.visible('package'),false,'the parcel is released before the dispatch is handed over');
+  assert.equal(s.deliverDispatch(),true);
   assert.ok(s.visible('package'));
   s.take('package');
   assert.equal(s.chapter,'clues','the parcel is what starts the hunt for George');
@@ -139,6 +145,8 @@ test('the drone closes, fires if it is left alone, and comes down when it is hit
 test('every collectable stands in open space you can actually walk up to',()=>{
   const world=new SiloWorld(new T.Scene());
   for(const item of COLLECTABLES){
+    // Things a person puts into your hands have no spot on a floor to stand in.
+    if(item.handed)continue;
     world.setLevel(item.level);
     const room=world.loaded.get(item.level).rooms[item.wing];
     room.updateWorldMatrix(true,false);

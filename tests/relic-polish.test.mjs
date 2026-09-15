@@ -11,6 +11,7 @@ import {SiloWorld} from '../dist/src/world.js';
 import {roomPoint} from '../dist/src/characters.js';
 import {StoryProps} from '../dist/src/relics.js';
 import {INTERIOR_LIGHT,floorAtmosphere} from '../dist/src/atmosphere.js';
+import { playChapterOne } from './helpers/chapter-one.mjs';
 globalThis.document={createElement:()=>({getContext:()=>({fillRect(){},strokeRect(){},fillText(){}})})};
 
 test('the three Blender relics load with materials, correct scale and bounded draw counts',async()=>{
@@ -24,11 +25,10 @@ test('the three Blender relics load with materials, correct scale and bounded dr
  }
 });
 test('guidance follows the PEZ ticket and recovers the missing book before Billings',()=>{
- const s=new Story('story');s.beginSearch();
- // Chapter One first: the cleaning, Mara, the run to Supply and the parcel are
- // what put the player on George's trail at all.
- s.spokeToMara();s.reachedSupply();s.take('package');
- assert.equal(s.chapter,'clues');
+ const s=new Story('story');
+ // Chapter One first: the cleaning, Mara, the shift and the parcel are what put
+ // the player on George's trail at all.
+ playChapterOne(s);
  s.revealHint();s.arriving(26);s.take('pez');assert.equal(s.destination.level,100);assert.equal(s.hintsShown,0);assert.equal(s.arriving(100),true);
  s.take('watch');s.inspectVoidDoor();s.take('crowbar');s.pryHideout();assert.match(s.objective,/Descend/);
  s.take('harddrive');s.reachGeorgeHome();s.terminalDiscovered();s.take('pipekit');s.openPipeCover();for(const a of ['isolate','collar','torque'])s.capPipe(a);
@@ -59,7 +59,7 @@ test('all ordinary floors share a practical light tone and rear fittings illumin
 });
 test('every small relic has a supported, unobstructed pickup approach and remains stationary',()=>{
  const w=new SiloWorld(new T.Scene()),props=new StoryProps(w.scene,w.m),s=new Story('explore');
- for(const item of COLLECTABLES.filter(i=>!i.prop&&i.id!=='shotgun')){
+ for(const item of COLLECTABLES.filter(i=>!i.prop&&!i.handed)){
   w.setLevel(item.level);const room=w.loaded.get(item.level).rooms[item.wing];
   const target=roomPoint(item.level,item.wing,...item.at);let reachable=false;
   for(let i=0;i<32&&!reachable;i++)for(const r of [1,1.6,2.4]){

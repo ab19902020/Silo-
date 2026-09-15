@@ -9,7 +9,14 @@ const { CafeteriaOpening, cleaningSample, CLEAN_START, CLEAN_END, GESTURE_FROM,
 const { SiloWorld }=await import('../dist/src/world.js');
 const { Story, CHAPTERS, COLLECTABLES }=await import('../dist/src/story.js');
 const { RESIDENT_CAST }=await import('../dist/src/resident-data.js');
-const { CLEANER, PARTNER, WITNESS, AFTER_THE_CLEAN, PACKAGE }=await import('../dist/src/the-clean.js');
+const { CLEANER, PARTNER, WITNESS, AFTER_THE_CLEAN, PACKAGE, DISMISSALS,
+  DISMISSALS_TO_FEEL_IT, CLERK, DEPUTY }=await import('../dist/src/the-clean.js');
+const { COUNTER_AT, STAIR_DOOR_AT }=await import('../dist/src/the-clean.js');
+const { StoryProps }=await import('../dist/src/relics.js');
+const { CharacterBody }=await import('../dist/src/physics.js');
+const { roomPoint }=await import('../dist/src/characters.js');
+const { conversationFor }=await import('../dist/src/conversations.js');
+const { playChapterOne }=await import('./helpers/chapter-one.mjs');
 const { topLocal }=await import('../dist/src/surface.js');
 
 // Chapter One is a redirection of the story, not a rebuild of the game. The
@@ -166,12 +173,18 @@ test('Chapter One runs from the cleaning to the parcel, and the parcel hands off
   assert.match(s.chapterInfo.title,/Chapter One/);
   assert.match(s.objective,/runner/i,'Chapter One does not put the player to work as a runner');
   assert.match(s.objective,/110/,'Chapter One does not say where the shift goes');
-  assert.equal(s.reachedSupply(),false,'the shift can be finished without talking to Mara');
+  assert.equal(s.reachedSupply(),false,'the shift can be worked without the job');
   assert.equal(s.visible('package'),false);
   assert.equal(s.spokeToMara(),true);
+  // A runner carries. Without the dispatch there is no shift, and without the
+  // shift Supply has no reason to look anybody up.
+  assert.equal(s.reachedSupply(),false,'the shift can be worked without the dispatch');
+  assert.ok(s.take('dispatch'));
   assert.equal(s.destination.level,PACKAGE.level);
   assert.equal(s.reachedSupply(),true);
   assert.equal(s.chapter,'the-package');
+  assert.equal(s.visible('package'),false,'the parcel is released before the job is done');
+  assert.equal(s.deliverDispatch(),true);
   assert.equal(s.visible('package'),true);
   assert.ok(s.take('package'));
   assert.equal(s.chapter,'clues');
@@ -185,12 +198,230 @@ test('Chapter One runs from the cleaning to the parcel, and the parcel hands off
 
 test('a Chapter One save comes back where it was left',()=>{
   const s=new Story('story');s.beginSearch();s.spokeToMara();
+  s.askedAbout('marnes');s.askedAbout('billings');s.askedAbout('jahns');
+  s.take('dispatch');
   const midRun=Story.load(JSON.parse(JSON.stringify(s.save())));
   assert.equal(midRun.chapter,'the-clean');
   assert.equal(midRun.hasFlag('mara-spoke'),true,'a reload forgets that Mara spoke');
+  assert.equal(midRun.hasFlag('closed-ranks'),true,'a reload forgets who was asked');
+  assert.equal(midRun.dismissalsHeard,3);
+  assert.equal(midRun.has('dispatch'),true,'a reload loses the job you are carrying');
   assert.equal(midRun.destination.level,PACKAGE.level);
-  s.reachedSupply();s.take('package');
+  s.reachedSupply();s.deliverDispatch();s.take('package');s.metTheDeputy(true);
   const after=Story.load(JSON.parse(JSON.stringify(s.save())));
   assert.equal(after.chapter,'clues');
   assert.equal(after.has('package'),true);
+  assert.equal(after.hasFlag('dispatch-delivered'),true,'a reload forgets the shift was worked');
+  assert.equal(after.hasFlag('deputy-met'),true,'a reload forgets the deputy');
+  assert.equal(after.hasFlag('deputy-told'),true,'a reload forgets what was said to him');
+});
+
+// --- what makes the chapter worth playing -------------------------------
+// The first version of Chapter One was five inputs: pick up a book, watch,
+// click three times, travel, press Use. The structure was right and there was
+// no game in it. These are the parts that were added to fix that, and each one
+// is here because without it the chapter goes back to being an errand.
+
+test('asking the room about the hand is four different people, and none of them explains it',()=>{
+  assert.equal(DISMISSALS.length,4);
+  const ids=new Set(DISMISSALS.map(d=>d.who));
+  assert.equal(ids.size,4,'two of them are the same person');
+  for(const d of DISMISSALS){
+    const who=RESIDENT_CAST.find(r=>r.id===d.who);
+    assert.ok(who,`${d.who} is not in the cast`);
+    assert.ok(who.level<=110,`${d.who} is on ${who.level}, nowhere near the chapter`);
+    assert.ok(d.ask.length>12&&d.reply.length>60&&d.close.length>20,`${d.who} has nothing to say`);
+  }
+  // Every answer has to be reasonable. Nobody is lying and nobody is hiding
+  // anything — that is the whole point, and it is what makes it frightening.
+  const all=DISMISSALS.map(d=>`${d.reply} ${d.close}`).join(' ').toLowerCase();
+  for(const giveaway of ['signal','code','message','conspiracy','they know','cover'])
+    assert.ok(!all.includes(giveaway),`a dismissal gives the game away: "${giveaway}"`);
+  // And they do not all say the same thing.
+  const openers=DISMISSALS.map(d=>d.reply.slice(0,18));
+  assert.equal(new Set(openers).size,4,'the brush-offs are interchangeable');
+});
+
+test('asking three of them changes what the chapter says, and asking twice does not count twice',()=>{
+  const s=new Story('story');s.beginSearch();s.spokeToMara();
+  assert.equal(s.hasFlag('closed-ranks'),false);
+  assert.equal(s.askedAbout('marnes'),1);
+  assert.equal(s.askedAbout('marnes'),1,'asking the same person twice counted twice');
+  assert.equal(s.askedAbout('billings'),2);
+  assert.equal(s.hasFlag('closed-ranks'),false,`${DISMISSALS_TO_FEEL_IT - 1} people is enough`);
+  assert.equal(s.askedAbout('jahns'),DISMISSALS_TO_FEEL_IT);
+  assert.equal(s.hasFlag('closed-ranks'),true);
+  s.take('dispatch');
+  assert.match(s.objective,/Nobody in that room saw a thing/,
+    'the chapter does not notice that the room closed ranks');
+  // And it is optional: the chapter finishes without asking anybody.
+  const quiet=new Story('story');quiet.beginSearch();quiet.spokeToMara();
+  quiet.take('dispatch');quiet.reachedSupply();quiet.deliverDispatch();
+  assert.ok(quiet.take('package'),'the chapter cannot be finished without asking around');
+  assert.equal(quiet.hasFlag('closed-ranks'),false);
+});
+
+test('the parcel has to be earned: the dispatch is carried, handed over, and only then released',()=>{
+  const s=new Story('story');s.beginSearch();s.spokeToMara();
+  // You cannot work a shift you have not been given.
+  assert.equal(s.reachedSupply(),false);
+  assert.equal(s.visible('dispatch'),true,'the rack will not give out the job');
+  assert.ok(s.take('dispatch'));
+  assert.equal(s.visible('dispatch'),false,'the rack hands out a second one');
+  // Arriving is not delivering.
+  assert.equal(s.reachedSupply(),true);
+  assert.equal(s.deliverDispatch(),true);
+  assert.equal(s.deliverDispatch(),false,'the dispatch can be handed over twice');
+  assert.equal(s.visible('package'),true);
+  // The dispatch stays in the satchel afterwards — it is your stamped copy.
+  assert.equal(s.has('dispatch'),true);
+  // The clerk's lines are a person doing her job, not a lock.
+  assert.equal(CLERK.hold.length,4);
+  assert.ok(CLERK.hold.at(-1).beat>=1200,'she does not stop to think before the last of it');
+  assert.match(CLERK.hold.map(b=>b.reply).join(' '),/REEVE|Reeve/,'she never reads the name out');
+  assert.match(CLERK.hold.at(-1).reply,/forget/i,'she is not frightened by what she just read');
+});
+
+test('Chapter Two ends with somebody having noticed',()=>{
+  const s=new Story('story');playChapterOne(s);
+  assert.equal(s.hasFlag('parcel-taken'),true);
+  assert.equal(s.hasFlag('deputy-met'),false);
+  // Two answers, neither of them a fail state and neither of them safe.
+  const branch=DEPUTY.beats.filter(b=>b.tell!==undefined);
+  assert.equal(branch.length,2,'the deputy asks a question with only one answer');
+  assert.ok(branch.some(b=>b.tell===true)&&branch.some(b=>b.tell===false));
+  assert.match(DEPUTY.close,/notebook/,'he does not write anything down');
+  const quiet=new Story('story');playChapterOne(quiet);
+  assert.equal(quiet.metTheDeputy(false),true);
+  assert.equal(quiet.hasFlag('deputy-met'),true);
+  assert.equal(quiet.hasFlag('deputy-told'),false);
+  const told=new Story('story');playChapterOne(told);
+  assert.equal(told.metTheDeputy(true),true);
+  assert.equal(told.hasFlag('deputy-told'),true,'telling him is not remembered');
+  // He cannot appear before there is anything to notice.
+  const early=new Story('story');early.beginSearch();
+  assert.equal(early.metTheDeputy(true),false,'the deputy stops you before you have the parcel');
+});
+
+test('the runners’ rack is a real thing in the cafeteria you can walk up to',{timeout:120000},()=>{
+  const world=new SiloWorld(new T.Scene());
+  world.story=new Story('explore');
+  world.setLevel(1);
+  const rack=world.interactions.find(i=>i.action==='take-dispatch');
+  assert.ok(rack,'there is no runners’ rack on Level 001');
+  // It stands on its own feet rather than floating, and you cannot walk
+  // through it — the Supply counter had that bug and this is the same shape.
+  const room=world.loaded.get(1).rooms[0];
+  const solid=(room.userData.solids||[]).find(s=>
+    Math.hypot(s.x-33.2,s.z-26.6)<1&&s.y1>.8&&s.y1<1.1);
+  assert.ok(solid,'the rack has no collider, so you can walk through it');
+  assert.ok(rack.position.y-solid.y1>.1,'the prompt is inside the shelf');
+});
+
+test('the clerk and the deputy are people you walk up to, in the right order',{timeout:300000},()=>{
+  // They are pushed into the frame's interaction pool rather than baked into
+  // the level, because they come and go with the state of the story. That is
+  // easy to get wrong in a way no story test would notice, so this walks a
+  // body at each of them and requires the game to offer exactly that.
+  const world=new SiloWorld(new T.Scene()),story=new Story('story');world.story=story;
+  const props=new StoryProps(world.scene,world.m);
+  const body=new CharacterBody({radius:.3,stepHeight:.35});
+  story.beginSearch();story.spokeToMara();story.take('dispatch');
+  world.setLevel(110);story.reachedSupply();
+  const at=(x,y,z)=>{const p=roomPoint(PACKAGE.level,PACKAGE.wing,x,z);p.y+=y;return p;};
+  // The pool main.js assembles each frame, for this level.
+  const frame=()=>{
+    world.actorInteractions=[];
+    props.update(1/60,0,story,world.activeLevel,world.special);
+    world.actorInteractions.push(...props.interactions(story,world.activeLevel,world.special));
+    if(story.chapter==='the-package'&&!story.hasFlag('dispatch-delivered')&&story.has('dispatch'))
+      world.actorInteractions.push({position:at(...COUNTER_AT),label:'clerk',action:'supply-clerk'});
+    else if(story.chapter==='the-package'&&story.hasFlag('dispatch-delivered')&&!story.has('package'))
+      world.actorInteractions.push({position:at(...COUNTER_AT),label:'clerk',action:'supply-clerk'});
+    if(story.hasFlag('parcel-taken')&&!story.hasFlag('deputy-met'))
+      world.actorInteractions.push({position:at(...STAIR_DOOR_AT),label:'deputy',action:'deputy'});
+  };
+  const spawn=world.destination(110);
+  body.teleport(spawn.position.x,spawn.position.y+.1,spawn.position.z);
+  for(const d of world.doors)d.open=true;
+  for(let i=0;i<200;i++)world.update(1/60,body.position);
+  world.rebuildCollision();
+  const walkTo=target=>{
+    for(let i=0;i<2400;i++){
+      const v=target.clone().sub(body.position);v.y=0;
+      if(v.length()<.45)break;
+      body.step(1/120,v.normalize().multiplyScalar(3.2),world.colliders);
+      if(i%8===0)world.update(1/15,body.position);
+    }
+    frame();
+    const eye=body.position.clone();eye.y+=body.eyeHeight;
+    return world.nearestInteraction(eye,target.clone().sub(eye).normalize());
+  };
+  const counter=at(...COUNTER_AT);
+  assert.equal(walkTo(counter)?.action,'supply-clerk','the clerk is not offered at her own counter');
+  // The parcel is not on the counter until the job is done.
+  frame();
+  assert.ok(!world.actorInteractions.some(i=>i.action==='relic:package'),
+    'the parcel is on the counter before the dispatch is handed over');
+  story.deliverDispatch();frame();
+  assert.ok(world.actorInteractions.some(i=>i.action==='relic:package'),
+    'handing the dispatch over does not put the parcel on the counter');
+  // And nobody is at the stair door until there is something to notice.
+  assert.ok(!world.actorInteractions.some(i=>i.action==='deputy'),
+    'the deputy is waiting before the parcel has been picked up');
+  story.take('package');frame();
+  assert.equal(walkTo(at(...STAIR_DOOR_AT))?.action,'deputy',
+    'the deputy is not offered at the stair door');
+  story.metTheDeputy(false);frame();
+  assert.ok(!world.actorInteractions.some(i=>i.action==='deputy'),
+    'the deputy is still there after you have spoken to him');
+});
+
+test('the dismissal is counted on its own topic, not on what the button happens to say',()=>{
+  // It was counted by comparing the button's text to the written question.
+  // renderChoices puts a numbered <kbd> inside every button, so the label read
+  // back as "1Did you see what Reeve did at the end?" and never matched: you
+  // could ask all four people and the chapter would not notice. Playing it in
+  // a browser is what found that, so the shape of the fix is pinned here.
+  const main=fs.readFileSync(path.join(import.meta.dirname,'..','dist','src','main.js'),'utf8');
+  assert.ok(!/textContent===dismissal\.ask/.test(main),
+    'the dismissal is counted by matching button text again');
+  assert.match(main,/topic\?\.id==='the-hand'/,
+    'nothing counts the dismissal when the topic is asked');
+  // And the topic the conversation offers carries that id.
+  assert.match(main,/id:'the-hand',label:dismissal\.ask/,
+    'the dismissal topic does not carry the id the counter looks for');
+});
+
+test('the question about the hand is actually offered, to the right four people, at the right time',()=>{
+  // main.js unshifts it onto whatever the conversation would otherwise show.
+  // This builds the same topic list the panel renders, so "it is in the data"
+  // and "it is on screen" cannot drift apart.
+  const offered=(resident,story)=>{
+    const base=conversationFor(resident,{cleaned:true,playerName:'',visits:0}).topics.map(t=>({...t}));
+    const dismissal=story?.story&&story.chapterIndex<=2?DISMISSALS.find(d=>d.who===resident.id):null;
+    if(dismissal&&!(dismissal.who===WITNESS.id&&!story.hasFlag('mara-spoke')))
+      base.unshift({id:'the-hand',label:dismissal.ask,reply:dismissal.reply});
+    return base;
+  };
+  const s=new Story('story');s.beginSearch();s.spokeToMara();
+  for(const d of DISMISSALS){
+    const who=RESIDENT_CAST.find(r=>r.id===d.who);
+    const topics=offered(who,s);
+    assert.equal(topics[0]?.id,'the-hand',`${d.who} is not asked about the hand, or it is buried`);
+    assert.equal(topics[0].label,d.ask);
+  }
+  // Somebody who was not in the room is not asked.
+  const walker=RESIDENT_CAST.find(r=>r.id==='walker');
+  assert.ok(!offered(walker,s).some(t=>t.id==='the-hand'),'somebody on 144 is asked what they saw on 001');
+  // Nor is anybody in Free Roam, or once the chapter is long past.
+  assert.ok(!offered(RESIDENT_CAST.find(r=>r.id==='marnes'),new Story('explore')).some(t=>t.id==='the-hand'));
+  const later=new Story('story');playChapterOne(later);
+  later.setChapter('void-lead');later.setChapter('crowbar');later.setChapter('hideout');
+  assert.ok(!offered(RESIDENT_CAST.find(r=>r.id==='marnes'),later).some(t=>t.id==='the-hand'),
+    'people are still being asked about the hand three chapters later');
+  // And Mara is not asked before she has said her piece.
+  const fresh=new Story('story');fresh.beginSearch();
+  assert.ok(!offered(RESIDENT_CAST.find(r=>r.id===WITNESS.id),fresh).some(t=>t.id==='the-hand'),
+    'Mara is asked what the others think before she has spoken herself');
 });

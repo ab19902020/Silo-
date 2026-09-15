@@ -24,6 +24,12 @@ export const RELICS=Object.freeze([
 ]);
 
 export const EQUIPMENT=Object.freeze([
+  // Chapter One. The job. A runner carries, and the whole of the chapter is
+  // the walk: you cannot start the shift without this in your hand, and the
+  // parcel is what you are given for finishing it.
+  {id:'dispatch',sound:'paper',name:'A sealed shift dispatch',eyebrow:'DISPATCH · LEVEL 001 → 110',level:1,wing:0,at:[0,.96,6],handed:true,rackAt:[-9.4,.96,12.4],needs:'the-clean',
+   blurb:'Grey card, folded twice and sealed with a dab of wax the colour of the landing paint. The routing line reads 001 → 110, SUPPLY, SAME DAY. Your own name is on the runner’s line, in the dispatcher’s hand. It is not heavy. It is the reason you are allowed on the stairs.',
+   source:'Original game writing. The runner’s dispatch and the Level 001 rack are this game’s invention.'},
   // Chapter One. Lodged at Supply eleven days before the cleaning, against the
   // player's name, with a release date. Reeve paid the holding fee himself.
   // This is the hand-off: the cleaning is the inciting event, and the parcel is
@@ -37,7 +43,7 @@ export const EQUIPMENT=Object.freeze([
    blurb:'A split steel collar, seal compound, torque handle and pressure key. The sizes match the service line drawn in the hidden blueprint.',source:'The kit and its placement are reconstructed for this game; the exact gas-pipe location is not presented as canon.'},
   {id:'suit',sound:'cloth',name:'A sealed outside suit',eyebrow:'SUPPLY · NOT ON THE MANIFEST',level:144,wing:3,at:[5.6,0,18.5],needs:'escape-kit',
    blurb:'A suit with sound seals and Mechanical heat tape. It was prepared to survive the hill, not to perform a cleaning.',source:'The importance of correctly made heat tape is established in the television series; this stored suit is reconstructed.'},
-  {id:'shotgun',sound:'metal',name:'Billings’ shotgun',eyebrow:'SHERIFF · ISSUED',level:1,wing:0,at:[1.9,.95,11.7],needs:'billings',
+  {id:'shotgun',sound:'metal',name:'Billings’ shotgun',eyebrow:'SHERIFF · ISSUED',level:1,wing:0,at:[1.9,.95,11.7],handed:true,needs:'billings',
    blurb:'Officer Billings has opened the armoury and placed the shotgun in your hands. It is not permission to clean. It is his decision to believe the evidence.',source:'Billings, the Atlanta book and sheriff’s station are established. This handoff is reconstructed for the game’s finale.'},
 ]);
 export const COLLECTABLES=Object.freeze([...RELICS,...EQUIPMENT,...MEMENTOS]);
@@ -62,16 +68,18 @@ const CHAPTERS=Object.freeze([
           'Walk up to it and press Use. Everything starts from the book.',
           'When he finishes the lens, keep watching. He does one more thing before he turns away.']},
   // Chapter One. The cleaning is over and the room has decided it was nothing.
-  {id:'the-clean',title:'Chapter One · The Clean',objective:'Mara saw it too. Talk to her, then take your shift: you are a runner, and there is a dispatch for Supply, Level 110.',
+  {id:'the-clean',title:'Chapter One · The Clean',objective:'Mara saw it too. Ask the room what it saw — then take the dispatch off the runners’ rack and work your shift. Supply, Level 110.',
    where:{level:1,wing:0,place:'Cafeteria · Level 001'},
    hints:['Mara Teague is the runner standing beside you at the screen wall.',
-          'Nobody is going to explain the hand. Go to work: the dispatch goes to Supply, Level 110.',
-          'Open the directory and travel to 110, wing A.']},
-  {id:'the-package',title:'Chapter One · The Parcel',objective:'Supply is holding something against your name, lodged eleven days ago. Collect it from the counter on Level 110.',
+          'Ask the others about it while you are up here — Marnes, Billings, the Mayor. You will not like how reasonable they are.',
+          'The runners’ rack is outside wing A on Level 001. You cannot work a shift without the dispatch.',
+          'With the dispatch in your satchel, open the directory and travel to 110.']},
+  {id:'the-package',title:'Chapter Two · The Parcel',objective:'Hand the dispatch to the Supply counter on Level 110, and find out why they will not let you leave straight away.',
    where:{level:110,wing:0,place:'Supply · Level 110 · wing A'},
-   hints:['The hold shelf is behind the Supply counter in wing A.',
-          'You do not have to explain yourself. The slip is in order and the date on it is today.',
-          'It is a brown paper parcel on the counter. Pick it up.']},
+   hints:['The counter is the table in front of you as you come into wing A.',
+          'Give her the dispatch first. Runners carry; runners do not read.',
+          'She is not stopping you. There is a hold against your name and she has to read it out.',
+          'The parcel is on the counter once she releases it. Pick it up.']},
   {id:'clues',title:'Things George left',objective:'The parcel held a bar chit from Level 026 with a name on the back of it: G. Wilkins. Start at the bar.',
    where:{level:26,wing:0,place:'The bar · Level 026'},
    hints:['The receipt gives you a level: 026. Open the directory and travel to it.',
@@ -144,7 +152,10 @@ export class Story{
   constructor(mode='explore'){this.mode=MODES.includes(mode)?mode:'explore';this.held=new Set();this.flags=new Set();this.chapter=this.story?'cleaning':'free';this.pipeSteps=[];this.wearing=false;this.armed=false;this.droneDown=false;this.deaths=0;this.hints={};this.seen=new Set();}
   get story(){return this.mode==='story';} get chapterInfo(){
     const c=CHAPTERS.find(c=>c.id===this.chapter)||CHAPTERS.at(-1);
-    if(c.id==='the-clean'&&this.flags.has('mara-spoke'))return {...c,objective:'Mara has no more idea than you do. Take your shift: the dispatch goes to Supply, Level 110.',where:{level:110,wing:0,place:'Supply · Level 110 · wing A'}};
+    if(c.id==='the-clean'&&this.has('dispatch'))return {...c,objective:(this.flags.has('closed-ranks')?'Nobody in that room saw a thing. ':'')+'You have the dispatch. Work the shift: Supply, Level 110, same day.',where:{level:110,wing:0,place:'Supply · Level 110 · wing A'},
+      hints:['Open the directory and travel to 110.','Wing A. The counter is in front of you as you come in.','Hand her the dispatch before you ask her anything.']};
+    if(c.id==='the-clean'&&this.flags.has('mara-spoke'))return {...c,objective:'Mara has no more idea than you do, and the room has gone back to its trays. Take the dispatch off the runners’ rack outside wing A and work your shift.',where:{level:1,wing:0,place:'Runners’ rack · Level 001 · wing A'}};
+    if(c.id==='the-package'&&this.flags.has('dispatch-delivered'))return {...c,objective:'She has a hold against your name, lodged eleven days ago by a man who was sent outside this morning. Take the parcel.'};
     if(c.id==='clues'&&this.has('pez'))return {...c,title:'The repair ticket',objective:'The duck concealed a repair ticket: George left his watch at the market, Level 100. Find the watch.',where:{level:100,wing:0,place:'Bazaar · Level 100 · wing A'},hints:['The ticket mentions a watch left for repair at the market.','Travel to Level 100, wing A. Look at the trader’s counter.','The leather strap lies beside the repair goods. Pick it up and turn it over.']};
     if(c.id==='hideout'&&this.hasFlag('hideout-open'))return {...c,objective:'The bulkhead is open. Descend into the flooded void and search George’s camp beside the excavator.',where:{level:144,wing:0,place:'George’s hideout · below Level 144'},hints:['Go through the open bulkhead and down the maintenance route.','Follow the camp lights beside the digging machine.','Look on George’s work surface for an old drive stamped 18.']};
     if(c.id==='billings'&&!this.has('georgia'))return {...c,objective:'Billings needs evidence. George left the Georgia travel book with Medical returns on Level 062. Bring him the Atlanta page.',where:{level:62,wing:0,place:'Medical returns · Level 062 · wing A'},hints:['George’s repair ticket mentioned a book at Medical returns, Level 062.','Look on the low return table in wing A.','Keep the book. Billings is in the sheriff’s station off the cafeteria on Level 001.']};
@@ -188,11 +199,26 @@ export class Story{
   spokeToMara(){if(!this.story)return false;if(this.chapter!=='the-clean')return false;this.flags.add('mara-spoke');delete this.hints['the-clean'];this.seen.delete('arrived:the-clean');return true;}
   // The run itself: arriving at Supply with the dispatch is what puts the
   // parcel on the counter.
-  reachedSupply(){if(!this.story)return true;if(this.chapter!=='the-clean'||!this.flags.has('mara-spoke'))return false;return this.setChapter('the-package');}
-  opened(key){if(!this.story)return true;if(key==='the-package')return this.chapterIndex>=indexOf('the-package');if(key==='supply')return this.opened('escape-kit');if(key==='crowbar')return this.chapter==='crowbar';if(key==='hideout-open')return this.flags.has('hideout-open');if(key==='pipe-tools')return this.chapter==='pipe-tools';if(key==='billings')return this.flags.has('billings-helped');if(key==='escape-kit')return this.chapterIndex>=indexOf('escape-kit');if(key==='george')return this.flags.has('george-home-known');return true;}
+  reachedSupply(){if(!this.story)return true;if(this.chapter!=='the-clean'||!this.has('dispatch'))return false;return this.setChapter('the-package');}
+  // Asking the room. Optional, and the whole point of it is that every answer
+  // is reasonable: three of them and the player knows they are on their own.
+  askedAbout(who){
+    if(!this.story||this.chapterIndex>indexOf('the-package'))return 0;
+    this.flags.add('asked:'+who);
+    const asked=[...this.flags].filter(f=>f.startsWith('asked:')).length;
+    if(asked>=3)this.flags.add('closed-ranks');
+    return asked;
+  }
+  get dismissalsHeard(){return [...this.flags].filter(f=>f.startsWith('asked:')).length;}
+  // Handing the dispatch over is the job. It is also what earns the parcel:
+  // she has no reason to look up a hold for somebody who has not delivered.
+  deliverDispatch(){if(!this.story)return true;if(this.chapter!=='the-package'||!this.has('dispatch'))return false;if(this.flags.has('dispatch-delivered'))return false;this.flags.add('dispatch-delivered');return true;}
+  // Leaving. Somebody whose job is noticing has noticed.
+  metTheDeputy(told){if(!this.story)return false;if(!this.has('package'))return false;this.flags.add('deputy-met');if(told)this.flags.add('deputy-told');return true;}
+  opened(key){if(!this.story)return true;if(key==='the-clean')return this.chapter==='the-clean';if(key==='the-package')return this.chapterIndex>=indexOf('the-package')&&this.flags.has('dispatch-delivered');if(key==='supply')return this.opened('escape-kit');if(key==='crowbar')return this.chapter==='crowbar';if(key==='hideout-open')return this.flags.has('hideout-open');if(key==='pipe-tools')return this.chapter==='pipe-tools';if(key==='billings')return this.flags.has('billings-helped');if(key==='escape-kit')return this.chapterIndex>=indexOf('escape-kit');if(key==='george')return this.flags.has('george-home-known');return true;}
   visible(id){const item=byId.get(id);return !!item&&!this.held.has(id)&&(!this.story||this.chapter!=='cleaning')&&(!this.story||!item.needs||this.opened(item.needs));}
   sealed(level,wing,type){if(!this.story)return null;for(const [id,seal] of Object.entries(SEALS))if(seal.types.includes(type)&&seal.levels.includes(level)&&!this.opened(id))return seal;return null;}
-  take(id){const item=byId.get(id);if(!item||!this.visible(id))return null;this.held.add(id);if(!this.story)return item;if(id==='pez'&&this.chapter==='clues'){delete this.hints.clues;this.seen.delete('arrived:clues');}if(id==='georgia'&&this.chapter==='billings'){delete this.hints.billings;this.seen.delete('arrived:billings');}if(id==='package')this.setChapter('clues');if(id==='watch'&&this.chapterIndex<=indexOf('clues'))this.setChapter('void-lead');if(id==='crowbar')this.setChapter('hideout');if(id==='harddrive'){this.flags.add('george-home-known');this.setChapter('george-home');}if(id==='pipekit')this.setChapter('pipe');if(id==='shotgun'){this.armed=true;this.setChapter('escape-kit');}if(id==='suit'){this.wearing=true;this.setChapter('airlock');}return item;}
+  take(id){const item=byId.get(id);if(!item||!this.visible(id))return null;this.held.add(id);if(!this.story)return item;if(id==='pez'&&this.chapter==='clues'){delete this.hints.clues;this.seen.delete('arrived:clues');}if(id==='georgia'&&this.chapter==='billings'){delete this.hints.billings;this.seen.delete('arrived:billings');}if(id==='package'){this.flags.add('parcel-taken');this.setChapter('clues');}if(id==='watch'&&this.chapterIndex<=indexOf('clues'))this.setChapter('void-lead');if(id==='crowbar')this.setChapter('hideout');if(id==='harddrive'){this.flags.add('george-home-known');this.setChapter('george-home');}if(id==='pipekit')this.setChapter('pipe');if(id==='shotgun'){this.armed=true;this.setChapter('escape-kit');}if(id==='suit'){this.wearing=true;this.setChapter('airlock');}return item;}
   inspectVoidDoor(){if(!this.story||this.flags.has('hideout-open'))return {open:true};if(!this.has('watch'))return {message:'The bulkhead is old, but nothing tells you why it matters.'};this.setChapter('crowbar');return {needs:'crowbar',message:'Fresh pry marks score the lower seam. A crowbar would move it.'};}
   pryHideout(){if(!this.story){this.flags.add('hideout-open');return true;}if(this.chapter!=='hideout'||!this.has('crowbar'))return false;this.flags.add('hideout-open');delete this.hints.hideout;return true;}
   reachGeorgeHome(){if(!this.story)return true;if(!this.has('harddrive'))return false;this.setChapter('terminal');return true;}
@@ -210,8 +236,12 @@ export class Story{
     if(!s.story){for(const id of held)if(byId.has(id))s.held.add(id);s.wearing=held.has('suit');s.armed=held.has('shotgun');return s;}
     if(past>0||held.size)s.beginSearch();
     if(flags.has('mara-spoke'))s.spokeToMara();
+    for(const f of flags)if(f.startsWith('asked:'))s.askedAbout(f.slice(6));
+    if(held.has('dispatch'))s.take('dispatch');
     if(past>=indexOf('the-package')||held.has('package'))s.reachedSupply();
+    if(flags.has('dispatch-delivered'))s.deliverDispatch();
     if(held.has('package'))s.take('package');
+    if(flags.has('deputy-met'))s.metTheDeputy(flags.has('deputy-told'));
     for(const id of ['pez','georgia','watch'])if(held.has(id))s.take(id);
     if(s.has('watch')&&(past>=indexOf('crowbar')||held.has('crowbar')))s.inspectVoidDoor();
     if(held.has('crowbar'))s.take('crowbar');if(flags.has('hideout-open'))s.pryHideout();

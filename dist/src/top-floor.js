@@ -68,6 +68,27 @@ export function buildTopFloor(m) {
   box('darkConcrete',26,4.9,34,16,.4,20,false);
   for(const x of [22,28])for(const z of [29,35]){desk(k,x,z);chair(k,x,z+1);solids.push({x,z,w:2,d:1,y0:0,y1:1.5});}
   for(const x of [20,22,24]){box('green',x,1.25,42,1.6,2.5,.7);for(const y of [.4,.9,1.4,1.9]){k.box('brass',x,y,41.61,.28,.04,.03);}}
+  // The runners' rack, beside the station door where the dispatchers work.
+  // Chapter One puts the player to work as a runner, and a job you are merely
+  // told you have is not a job: this is the thing you take it off. Pigeonholes
+  // by destination band, a chalked shift list and a shelf at writing height.
+  {
+    const rx=33.2,rz=26.6,ry=-Math.PI/2;
+    const at=(x,y,z)=>[rx+Math.cos(ry)*x+Math.sin(ry)*z,y,rz-Math.sin(ry)*x+Math.cos(ry)*z];
+    const put=(mat,x,y,z,w,h,d)=>{const p=at(x,y,z);k.box(mat,p[0],p[1],p[2],ry?d:w,h,ry?w:d);};
+    for(const x of [-.78,.78])put('darkMetal',x,.47,0,.09,.94,.34);
+    put('darkMetal',0,.055,0,1.68,.11,.34);
+    put('wood',0,.905,0,1.68,.07,.38);                       // the writing shelf
+    solids.push({x:at(0,0,0)[0],z:at(0,0,0)[2],w:.42,d:1.74,y0:0,y1:.94});
+    put('wood',0,1.40,-.10,1.68,.035,.26);                   // pigeonholes
+    for(const y of [1.08,1.24])put('wood',0,y,-.10,1.62,.018,.24);
+    for(let i=0;i<6;i++)put('wood',-.66+i*.264,1.24,-.10,.018,.35,.24);
+    for(let r=0;r<3;r++)for(let c=0;c<5;c++)if((r+c)%3)put('paper',-.53+c*.264,1.32-r*.16,-.06,.13,.005,.16);
+    put('black',0,1.55,-.10,1.62,.13,.025);                  // the chalked shift list
+    for(let r=0;r<4;r++)for(let c=0;c<4;c++)put('pale',-.58+c*.39,1.59-r*.028,-.086,.24,.005,.003);
+    addSign(root,'RUNNERS · DISPATCH',at(0,1.75,-.10).map((v,i)=>i===1?v:v),1.5,.26,ry+Math.PI,{background:'#34453b'});
+    interactions.push({position:at(0,1.15,.52),label:'Take your shift dispatch',action:'take-dispatch'});
+  }
   hangingSign(root,m,'SHERIFF’S STATION',[26,3.8,24.2],6,.7,0,4.7);for(const z of [28,37])fixture(k,26,4.55,z,5);
   // A duty monitor on the station wall, on the same feed. Wool only ever
   // describes two wall-screens — the cafeteria and the cell — so this one is a

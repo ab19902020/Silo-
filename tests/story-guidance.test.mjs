@@ -14,7 +14,7 @@ test('every story item rests on something a player can see',()=>{
   // not find, and from inside the game it looked like a bug rather than a tool
   // somebody had put down.
   for(const item of COLLECTABLES){
-    if(item.prop||item.id==='shotgun')continue;          // placed by the cast, or handed over
+    if(item.prop||item.handed)continue;   // placed by the cast, or put into your hands by a person
     world.loadLevel?.(item.level);
     const room=world.loaded.get(item.level)?.rooms?.[item.wing];
     assert.ok(room,`${item.id} names level ${item.level} wing ${item.wing}, which does not exist`);
