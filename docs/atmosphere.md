@@ -1,5 +1,11 @@
 # Atmosphere — the clock, the noises, and the look
 
+> **Renamed since this was written.** The cleaner and the woman at the foot
+> of the tree are now Sheriff **Nathan Reeve** and **Hana Reeve**, original
+> Silo 18 characters. The sequence itself is unchanged — see
+> [the Chapter One notes](chapter-one.md). The names below are the ones the
+> code used at the time.
+
 Three systems, built to answer one request: make it feel like being inside the
 silo rather than inside a model of it. They are deliberately separate — a clock,
 a sound director and a grade — and they meet only through data.

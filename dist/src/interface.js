@@ -41,7 +41,7 @@ export function paintInteraction(doc,target){
  doc.getElementById('interactionLabel').textContent=copy.name;doc.getElementById('interactionHint').textContent=copy.hint;doc.getElementById('interactionAction').textContent=copy.action;prompt.dataset.kind=copy.kind;
 }
 export function paintCinema(doc,time,duration){
- doc.getElementById('cinemaStatus').textContent='Holston’s Cleaning';doc.getElementById('cinemaProgress').value=Math.max(0,Math.min(1,time/duration));doc.getElementById('cinemaRemaining').textContent=Math.max(0,Math.ceil(duration-time))+'s';
+ doc.getElementById('cinemaStatus').textContent='The cleaning';doc.getElementById('cinemaProgress').value=Math.max(0,Math.min(1,time/duration));doc.getElementById('cinemaRemaining').textContent=Math.max(0,Math.ceil(duration-time))+'s';
 }
 export function paintNotice(doc,message,kind='UPDATE'){
  const toast=doc.getElementById('toast');toast.replaceChildren();

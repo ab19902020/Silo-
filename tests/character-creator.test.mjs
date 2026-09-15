@@ -10,7 +10,7 @@ import {createResident,disposeResident} from '../dist/src/resident-model.js';
 test('registry covers every existing resident and named cast from all three television seasons',()=>{
  const ids=new Set(PLAYABLE_CHARACTERS.map(c=>c.id));assert.equal(ids.size,PLAYABLE_CHARACTERS.length);
  for(const c of RESIDENT_CAST)assert.ok(ids.has(c.id),c.name);
- for(const id of ['juliette','sims','bernard','holston','allison','george','solo','audrey','rick','hope','daniel','helen','thurman','charlotte','anna','henry','victor','per','ed','orla','mike','glenda'])assert.ok(ids.has(id),id);
+ for(const id of ['juliette','sims','bernard','reeve','hana','george','solo','audrey','rick','hope','daniel','helen','thurman','charlotte','anna','henry','victor','per','ed','orla','mike','glenda'])assert.ok(ids.has(id),id);
  for(const season of [1,2,3])assert.ok(PLAYABLE_CHARACTERS.some(c=>c.season===season));
  for(const id of ['juliette','sims','bernard'])assert.ok(!fs.existsSync(`dist/assets/characters/${id}.glb`));
  assert.ok(fs.existsSync('dist/assets/characters/hard-drive-relic.glb'));

@@ -11,6 +11,16 @@ import {loadRelicModel} from './relic-assets.js';
 // tools remain as fallbacks; the supplied drive is placed by characters.js.
 
 const build={
+  // Brown paper, string, and the Supply hold-slip still tied under it. Sized
+  // to something a runner would carry in one hand without thinking about it.
+  package:(k)=>{
+    k.bevel('bread',0,.036,0,.190,.072,.135);                  // the parcel
+    for(const x of [-.048,.048])k.box('linen',x,.073,0,.006,.004,.137);  // string, across
+    k.box('linen',0,.073,0,.192,.004,.006);                    //  and along
+    k.box('paper',.046,.0735,-.024,.082,.002,.058);            // the hold-slip
+    for(let i=0;i<3;i++)k.box('darkMetal',.026+i*.018,.0748,-.030,.012,.0012,.0016);
+    k.box('darkMetal',.058,.0748,-.012,.030,.0012,.0016);      // the countersignature
+  },
   pez:(k)=>{
     k.box('white',0,0,0,.024,.086,.014);                       // the sleeve
     for(let i=0;i<4;i++)k.box('blue',0,-.03+i*.02,.008,.019,.014,.003);

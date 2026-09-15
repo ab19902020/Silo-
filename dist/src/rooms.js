@@ -164,7 +164,11 @@ export function buildRoom(materials,type,level,wing,assets) {
         shelf(k,x,z,2.6,2.3);solids.push({x,z,w:2.7,d:.85,y0:0,y1:2.3});
         for(const y of [.5,1.15,1.8])for(const dx of [-.75,0,.75])k.box(rng()>.5?'wood':'fabric',x+dx,y,z,.62,.55,.67);
       }
-      table(k,0,3,3,1.2);label('SUPPLY · REPAIR · REUSE',0,4.4,1,6,.6);
+      // The counter you are served at. It had no collider, so you could walk
+      // through it; it has one now, and it stands back from the doorway rather
+      // than across it so the room still opens in front of you.
+      table(k,0,4.4,3,1.2);solids.push({x:0,z:4.4,w:3,d:1.2,y0:0,y1:.85});
+      label('SUPPLY · REPAIR · REUSE',0,4.4,1,6,.6);
     },
     workshop(){
       for(const x of [-6.5,6.5])for(const z of [6,13,20]){table(k,x,z,3.4,1.4);solids.push({x,z,w:3.4,d:1.4,y0:0,y1:.9});k.box('green',x,.96,z,.7,.3,.5);for(let i=0;i<5;i++){k.torus('rust',x-1+i*.42,.93,z+.3,.13,.025,Math.PI/2);}}

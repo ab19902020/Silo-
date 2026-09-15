@@ -224,7 +224,7 @@ export class SurfaceWorld {
     // Years of dust on the outside of the glass do three things, and the old
     // pass only did one of them. It tints — but it also scatters, so the
     // picture goes soft, and it absorbs, so the picture goes dark and grey.
-    // Before Holston wipes it you can just make out that there is a world out
+    // Before the cleaner wipes it you can just make out that there is a world out
     // there; the whole point of the clean is that it opens up.
     this.lensMaterial=new THREE.ShaderMaterial({uniforms:{source:{value:this.raw.texture},clean:{value:this.cleanliness},time:{value:0}},vertexShader:'varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:`
       uniform sampler2D source;uniform float clean,time;varying vec2 vUv;

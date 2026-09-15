@@ -38,7 +38,7 @@ const landmark = (level, name, type, description, placement = 'Reconstructed pla
 export const LANDMARKS = [
   landmark(1, 'Cafeteria · sheriff · cleaning exit', 'cafeteria', 'Great viewing hall, sheriff’s station, Holding 3, preparation, airlock and the surface ramp.', 'Television location · connected rooms reconstructed'),
   landmark(3, 'Mayor’s office & civic records', 'office', 'Council desk, meeting room and civic archives.'),
-  landmark(6, 'Holston & Allison’s residential level', 'residential', 'Apartments with kitchens, bedrooms and bathrooms.', 'Wiki-associated residence · interior reconstructed'),
+  landmark(6, 'The Reeve residence', 'residential', 'Apartments with kitchens, bedrooms and bathrooms.', 'Wiki-associated residence · interior reconstructed'),
   landmark(9, 'Marnes’s residential level', 'residential', 'Upper residential quarters.', 'Wiki-associated residence'),
   landmark(10, 'Porter dispatch', 'porter', 'Dispatch counter, pigeonholes, parcel cages and porter equipment.', 'Wiki-associated department'),
   landmark(14, 'Judicial', 'judicial', 'Administrative offices, interview space and records.', 'Television department · interior reconstructed'),

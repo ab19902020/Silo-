@@ -1,5 +1,11 @@
 # Mystery expansion — integration and release notes
 
+> **Renamed since this was written.** The cleaner and the woman at the foot
+> of the tree are now Sheriff **Nathan Reeve** and **Hana Reeve**, original
+> Silo 18 characters. The sequence itself is unchanged — see
+> [the Chapter One notes](chapter-one.md). The names below are the ones the
+> code used at the time.
+
 ## Scope and status
 
 This continues the existing authored Three.js game. Silo 18's 144 floors,

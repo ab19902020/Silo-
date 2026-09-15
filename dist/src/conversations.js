@@ -42,7 +42,7 @@ const CAST={
     t('You are Doctor Nichols’s daughter.','I am. He went up, I came down, and neither of us has managed the stairs since. It is a long way to walk to admit you were both right about different things.',
       ['Do you see him?','Not often enough to be comfortable and not rarely enough to stop counting. He sends word when someone from down here comes up hurt. That is his way of asking after me.'],
       ['Would you go up?','For the right reason. Not to sit in an office and be told which repairs I am allowed to make.']),
-    t('About Holston.','I met him twice. He struck me as a man who checked things properly. Whatever took him out there, it was not a mood. He will have thought about it the way I think about a seal.',
+    t('About Sheriff Reeve.','I met him twice. He struck me as a man who checked things properly. Whatever took him out there, it was not a mood. He will have thought about it the way I think about a seal.',
       ['Why would anyone go out?','Because they decided the answer was worth more than the rest of it. I am not going to pretend I cannot follow the reasoning. That is the part people upstairs would rather I did not say out loud.'],
       ['Does it frighten you?','What frightens me is how quickly everybody went back to work.'])]},
 
@@ -99,14 +99,14 @@ const CAST={
       ['Is he good at the work?','He notices. That is most of the job. The rest is paperwork and standing still while people shout.'],
       ['Only the work?','That is a very direct question for a gallery. Walk on with me and ask me again on the stairs.']),
     t('About the cleaning.','A cleaning leaves a silence behind it. People need time, and mostly what they are given is a shift starting.',
-      ['Did you know Holston?','I appointed him. I have signed a great many pieces of paper and that is one of the few I would sign again.'],
+      ['Did you know Reeve?','I appointed him. I have signed a great many pieces of paper and that is one of the few I would sign again.'],
       ['Did you expect it?','No. And I have gone back over the last months of it wondering which afternoon I should have.'])]},
 
   marnes:{greeting:'Deputy. If it is a dispute, start at the beginning and leave the adjectives out.',topics:[
     t('What does the job amount to?','Disputes, paperwork, and keeping people out of trouble they have not quite got into yet. The last part is most of it and none of it gets written down.',
       ['Is it ever more than that?','Rarely, and I have never once been glad when it was.'],
       ['Where is the station?','Beside this cafeteria. The preparation rooms are further through, and you do not want to be in those.']),
-    t('You worked with Holston.','For years. After enough shifts together you stop needing to explain a look. That is the part I have not got used to being without.',
+    t('You worked with Reeve.','For years. After enough shifts together you stop needing to explain a look. That is the part I have not got used to being without.',
       ['Did you see it coming?','I have asked myself that on every landing between here and Mechanical. I keep arriving at the same unsatisfying place.'],
       ['What was he like?','Careful. Straight. He read a room before he spoke into it. None of that is an explanation and I am tired of being asked for one.']),
     t('You travel with the Mayor.','Jahns listens before she decides. I have watched what that costs her in stairs and I have never heard her complain about it where anyone could hear.',
@@ -253,7 +253,7 @@ const CAST={
       ['What was it?','Not in a cafeteria. Perhaps not at all. I am old enough to be allowed one thing I keep.'],
       ['Who asked it?','Somebody who is not here to be asked again. That is most of my acquaintances now.']),
     t('About the cleaning.','Remember the people, not only the way they left. That is the whole of what I have to offer and it takes a lifetime to mean it.',
-      ['Did you know them?','I knew her. Allison. She came to see me once, and she was better company than most of the people who did.'],
+      ['Did you know them?','I knew her. Hana. She came to see me once, and she was better company than most of the people who did.'],
       ['What was she like?','Quick. Impatient with comfortable answers. That is not an explanation and I am not offering one.'])]},
 
   hank:{greeting:'Deputy down here. Most trouble finds me before a report does.',topics:[
@@ -384,7 +384,7 @@ const OPINIONS={
   shirley:{juliette:'The best of us, and the most trouble. Same fact.',knox:'He backs his people. You learn what that is worth down here.'},
   knox:{juliette:'My best hand and my biggest headache.',shirley:'She tells me when I am wrong. I have had worse deputies.'},
   walker:{juliette:'Jules. She had the hands before I had the patience.',carla:'Carla and I argue about value. She is right about the ledger.'},
-  marnes:{jahns:'The Mayor walks it herself. Not many would.',holston:'Holston was my sheriff. I am not going to perform grief for a stranger.'},
+  marnes:{jahns:'The Mayor walks it herself. Not many would.',reeve:'Reeve was my sheriff. I am not going to perform grief for a stranger.'},
   jahns:{marnes:'Sam has a practical answer for almost everything.',knox:'Knox says what the lower levels think. I would rather hear it.'},
   pete:{juliette:'My daughter. I have had years to find a better answer than the one I have.'},
   lukas:{bernard:'He has never asked to see my drawings. I think about that.'},

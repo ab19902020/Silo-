@@ -15,11 +15,15 @@ test('optional finds cannot skip the opening or change the investigation, and su
  const story=new Story('story');
  for(const item of MEMENTOS)assert.equal(story.take(item.id),null);
  story.beginSearch();
- for(const item of MEMENTOS){assert.ok(story.take(item.id));assert.equal(story.chapter,'clues');}
+ // Whatever the opening leaves you in — Chapter One now, not the relic hunt —
+ // an optional find must not move it.
+ const opened=story.chapter;
+ assert.equal(opened,'the-clean');
+ for(const item of MEMENTOS){assert.ok(story.take(item.id));assert.equal(story.chapter,opened);}
  for(const note of FLOOR_MEMORIES)story.seen.add(`memory:${note.level}`);
  const restored=Story.load(JSON.parse(JSON.stringify(story.save())));
  assert.deepEqual(restored.held,story.held);assert.deepEqual(restored.seen,story.seen);
- assert.equal(restored.chapter,'clues');assert.equal(restored.relicsHeld,0);
+ assert.equal(restored.chapter,opened);assert.equal(restored.relicsHeld,0);
 });
 
 test('every floor has a distinct mounted note that can be approached and read through the actual interaction system',()=>{

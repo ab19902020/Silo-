@@ -24,7 +24,12 @@ test('the three Blender relics load with materials, correct scale and bounded dr
  }
 });
 test('guidance follows the PEZ ticket and recovers the missing book before Billings',()=>{
- const s=new Story('story');s.beginSearch();s.revealHint();s.arriving(26);s.take('pez');assert.equal(s.destination.level,100);assert.equal(s.hintsShown,0);assert.equal(s.arriving(100),true);
+ const s=new Story('story');s.beginSearch();
+ // Chapter One first: the cleaning, Mara, the run to Supply and the parcel are
+ // what put the player on George's trail at all.
+ s.spokeToMara();s.reachedSupply();s.take('package');
+ assert.equal(s.chapter,'clues');
+ s.revealHint();s.arriving(26);s.take('pez');assert.equal(s.destination.level,100);assert.equal(s.hintsShown,0);assert.equal(s.arriving(100),true);
  s.take('watch');s.inspectVoidDoor();s.take('crowbar');s.pryHideout();assert.match(s.objective,/Descend/);
  s.take('harddrive');s.reachGeorgeHome();s.terminalDiscovered();s.take('pipekit');s.openPipeCover();for(const a of ['isolate','collar','torque'])s.capPipe(a);
  assert.equal(s.destination.level,62);s.take('georgia');assert.equal(s.destination.level,1);assert.equal(s.speakToBillings().helped,true);

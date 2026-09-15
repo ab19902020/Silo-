@@ -141,9 +141,22 @@ test('the whole run walks: every relic collected, every chapter entered, out ont
   assert.equal(story.chapter,'cleaning');
   for(const item of COLLECTABLES)assert.equal(story.visible(item.id),false,`${item.id} is collectable before the book is read`);
   story.beginSearch();
-  assert.equal(story.chapter,'clues');
 
-  // 2 · the duck on the bar, and 3 · the watch on the trader's counter.
+  // 2 · Chapter One. The cleaning is what starts the story now: Mara saw the
+  // gesture too, the shift takes the player down to Supply, and the parcel
+  // Reeve lodged there eleven days before he was sent out is the hand-off into
+  // everything George left behind.
+  assert.equal(story.chapter,'the-clean');
+  assert.equal(story.destination.level,1,'Chapter One opens where the cleaning was watched');
+  assert.equal(story.spokeToMara(),true,'Mara will not talk about what she saw');
+  assert.equal(story.destination.level,110,'after Mara the shift does not send you to Supply');
+  h.go(110);
+  assert.equal(story.reachedSupply(),true,'arriving at Supply does not release the parcel');
+  assert.equal(story.chapter,'the-package');
+  h.collect('package');
+  assert.equal(story.chapter,'clues','the parcel does not hand off to George');
+
+  // 3 · the duck on the bar, and the watch on the trader's counter.
   h.collect('pez');
   h.collect('watch');
   assert.equal(story.chapter,'void-lead');

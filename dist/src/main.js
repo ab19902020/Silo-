@@ -23,6 +23,8 @@ import { WEAPONS } from './weapons.js';
 import { updateRangeTargets } from './gun-range.js';
 import {RelicInspector} from './relic-inspector.js';
 import { GeorgeTerminal } from './george-terminal.js';
+import { WITNESS, AFTER_THE_CLEAN, WITNESS_OPENER, WITNESS_CLOSE, PACKAGE as PARCEL } from './the-clean.js';
+const PARCEL_LEVEL=PARCEL.level;
 import { StoryProps, Drone } from './relics.js';
 import { SiloClock } from './silo-time.js';
 import { shiftBell } from './ambient-events.js';
@@ -128,6 +130,7 @@ function askTopic(button){
 }
 function startConversation(person,actor=null){
   if(person.id==='billings'&&story?.story){billingsConversation();return;}
+  if(person.id===WITNESS.id&&story?.story&&story.chapter==='the-clean'&&!story.hasFlag('mara-spoke')){maraConversation();return;}
   const visits=conversationMemory.visit(person.id);
   const text=person.topics?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name,visits});
   $('algorithmQuery').hidden=person.id!=='algorithm';conversation.classList.toggle('archive-conversation',person.id==='algorithm');
@@ -150,6 +153,48 @@ function endConversation(){
   if(!talking)return;
   talking=null;population.talkingTo=null;conversation.close();
   document.body.classList.remove('talking');syncPause();if(started)canvas.focus();
+}
+// Chapter One opens on this. The cleaning has just ended, the room has gone
+// back to its trays, and the one other person who was watching his hands turns
+// round. The lines are in the-clean.js; nothing here decides what is said.
+//
+// It explains nothing on purpose: the gesture is the hook for the whole story,
+// and the only thing this scene establishes is that two people saw it.
+function maraConversation(){
+  $('speakerActivity').hidden=true;$('dialogueQuestion').hidden=true;
+  $('algorithmQuery').hidden=true;conversation.classList.remove('archive-conversation');
+  $('speakerName').textContent=WITNESS.name;$('speakerRole').textContent=WITNESS.role;
+  $('dialogueLine').textContent=WITNESS_OPENER;
+  const choices=$('dialogueChoices');choices.replaceChildren();
+  const add=(label,run)=>{const b=document.createElement('button');b.textContent=label;b.onclick=run;choices.append(b);};
+  const done=()=>{if(story?.chapter==='the-clean'&&!story.hasFlag('mara-spoke')){story.spokeToMara();syncStoryHud(true);saveStory();}};
+  const play=i=>{
+    choices.replaceChildren();
+    const beat=AFTER_THE_CLEAN[i];
+    if(!beat){done();add(WITNESS_CLOSE,()=>closeDialog(conversation));return;}
+    if(beat.beat){
+      // A real pause, and the reason it is written as one: what she said last
+      // stays on the screen through it. An earlier version cleared the line to
+      // an ellipsis the instant the player clicked, so "I don't know." was
+      // never actually readable — it was replaced in the same tick it appeared.
+      // Nothing is clickable while she decides.
+      setTimeout(()=>{
+        if(!conversation.open)return;
+        $('dialogueLine').textContent=beat.reply;audio.click();
+        // She has said it. It counts from here, whether or not the panel is
+        // closed politely.
+        done();choices.replaceChildren();
+        add(WITNESS_CLOSE,()=>closeDialog(conversation));
+      },beat.beat);
+      return;
+    }
+    add(beat.say,()=>{
+      $('dialogueLine').textContent=(beat.stage?beat.stage+'\n\n':'')+beat.reply;
+      audio.click();play(i+1);
+    });
+  };
+  play(0);
+  openDialog(conversation);
 }
 function billingsConversation(){
   $('speakerActivity').hidden=true;$('dialogueQuestion').hidden=true;
@@ -380,17 +425,26 @@ function openingChanged(state){
   // room full of people watching a cleaning; you stay in it, free to look
   // around and walk, and Focus on screen is there if you want the whole wall.
   const watching=state==='watch',reading=state==='read-book';chapterUntil=performance.now()+(state==='find-book'?6500:reading?5000:0);if(watching&&lastOpeningState!=='watch'){cinemaUntil=performance.now()+4500;hudOpen=false;document.body.classList.remove('hud-open');}lastOpeningState=state;
-  $('chapterHud').hidden=state==='explore';$('chapterTitle').textContent=state==='find-book'?'A book on the table':watching?'Holston’s cleaning':'The room falls quiet';
-  $('chapterObjective').textContent=state==='find-book'?'The directory book is on the table in front of you.':watching?'Holston is outside. Watch from the room, or focus on the screen.':'Your directory is ready.';
+  $('chapterHud').hidden=state==='explore';$('chapterTitle').textContent=state==='find-book'?'A book on the table':watching?'The cleaning':'The room falls quiet';
+  $('chapterObjective').textContent=state==='find-book'?'The directory book is on the table in front of you.':watching?'Sheriff Reeve is outside. Watch from the room, or focus on the screen.':'Your directory is ready.';
   $('focusScreenButton').hidden=!watching;$('skipOpening').hidden=!watching;$('openBookButton').hidden=!reading;
   buttonLabel($('focusScreenButton'),opening?.focus?'Back to cafeteria':'Focus');$('focusScreenButton').setAttribute('aria-pressed',String(!!opening?.focus));document.body.classList.toggle('watching-cleaning',watching);
   document.body.classList.toggle('screen-focused',!!opening?.focus);
-  if(reading||state==='explore'){story?.beginSearch();if(story?.story)syncStoryHud(true);saveStory();}
+  if(reading||state==='explore'){
+    const opened=story?.beginSearch();
+    if(story?.story)syncStoryHud(true);
+    saveStory();
+    // Chapter One starts here, on the beat the screen goes back to the hill.
+    // Only when the cleaning was actually watched: finish() is also how a
+    // resumed save and the Skip button get here, and neither of those is a
+    // person who just saw something.
+    if(opened&&reading&&opening?.sawGesture)setTimeout(()=>{if(story?.chapter==='the-clean'&&!story.hasFlag('mara-spoke'))maraConversation();},900);
+  }
   if(reading||state==='explore')try{localStorage.setItem('silo18-opening-complete','1');}catch{}
 }
 function requestDirectory(){
   if(story?.story&&opening?.directoryReady)story.beginSearch();
-  if(!opening?.directoryReady){notify(opening?.watching?'Holston is outside. The book opens after the cleaning.':'Find the book on the cafeteria table first.');return;}
+  if(!opening?.directoryReady){notify(opening?.watching?'Sheriff Reeve is outside. The book opens after the cleaning.':'Find the book on the cafeteria table first.');return;}
   opening.openBook();renderDirectory();openDialog(directory);
 }
 function replayOpening(){
@@ -936,7 +990,7 @@ function frame(){
     if(body.position.y<2&&!world.special){const p=world.spawn(world.activeLevel);body.teleport(p.x,p.y,p.z);notify('Returned to the nearest safe landing.');}
     const bob=$('reduceMotion').checked?0:Math.sin(body.distanceWalked*8)*.018*Math.min(1,body.horizontalSpeed);
     // The silo's hour, read once and handed to everything that depends on it.
-    // It holds still through the cleaning: ninety seconds of Holston crossing
+    // It holds still through the cleaning: ninety seconds of the cleaner crossing
     // the hill should not also be ninety seconds of the sun moving behind him.
     siloClock.running=!opening.watching;
     for(const bell of siloClock.update(dt)){audio.ambient(shiftBell());haptics.play('bell');notify(`Shift change. ${siloClock.schedule.label}, ${siloClock.schedule.clock}.`);}
@@ -1035,6 +1089,13 @@ function frame(){
     // Arriving somewhere correct should say so. Without it there is no way to
     // tell a level you were sent to from a level you wandered into, and the
     // player who is on the right floor goes on looking somewhere else.
+    // Running the dispatch down to Supply is what puts the parcel on the
+    // counter. Arriving is the trigger; nothing has to be pressed.
+    if(started&&story?.story&&!world.special&&!world.outside&&world.activeLevel===PARCEL_LEVEL&&story.reachedSupply()){
+      showObjective(story.chapterInfo.title,story.objective,7000);
+      notify('The Supply clerk takes the dispatch, then checks a second slip. “There is something here against your name.”');
+      syncStoryHud(true);saveStory();
+    }
     if(started&&story?.story&&!world.special&&!world.outside&&story.arriving(world.activeLevel)){
       // The card carries it. Toasting as well stacked two messages saying the
       // same thing in the same corner of a short screen.

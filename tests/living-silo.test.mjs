@@ -24,7 +24,7 @@ test('the basin and tunnel mouth have one water sheet with no duplicate transpar
 
 test('every numbered level has residents and historical cleaners are not duplicated among the living',()=>{
   assert.ok(RESIDENT_CAST.length>=23);assert.ok(RESIDENT_CAST.every(d=>PLAYABLE_CHARACTERS.some(p=>p.id===d.id)));
-  const ids=new Set();for(let n=1;n<=144;n++){const records=populationRecords(n);assert.ok(records.length>=24);assert.ok(records.some(r=>r.kind==='porter'));for(const r of records){assert.ok(!ids.has(`${n}:${r.id}`));ids.add(`${n}:${r.id}`);assert.ok(!['holston','allison','george'].includes(r.id));}}
+  const ids=new Set();for(let n=1;n<=144;n++){const records=populationRecords(n);assert.ok(records.length>=24);assert.ok(records.some(r=>r.kind==='porter'));for(const r of records){assert.ok(!ids.has(`${n}:${r.id}`));ids.add(`${n}:${r.id}`);assert.ok(!['reeve','hana','george'].includes(r.id));}}
 });
 
 test('new character rigs remain finite, grounded and bounded through walk, work, sit and climb',()=>{
@@ -56,7 +56,7 @@ test('the opening starts at an accessible book, plays once, releases the directo
   const phases=new Set();let previous=cleaningSample(0).position,reach=Infinity,blanks=0,covered=false;
   const camera=world.surface.camera,corner=new THREE.Vector3();
   for(let i=0;i<OPENING_DURATION*30;i++){
-    opening.update(1/30);const s=cleaningSample(opening.time);phases.add(s.phase);assert.ok(s.position.distanceTo(previous)<.08,'Holston teleported');assert.ok(Math.abs(s.position.y-surfaceY(s.position.x,s.position.z))<1e-6,'Holston left the ground');previous=s.position;
+    opening.update(1/30);const s=cleaningSample(opening.time);phases.add(s.phase);assert.ok(s.position.distanceTo(previous)<.08,'the cleaner teleported');assert.ok(Math.abs(s.position.y-surfaceY(s.position.x,s.position.z))<1e-6,'the cleaner left the ground');previous=s.position;
     if(opening.time>CLEAN_START+1.2&&opening.time<CLEAN_END-1.2){
       // The wipe has to be a wipe: the hand stays within one stretched arm of
       // the sensor it is cleaning, and the rag it is holding has to cross the

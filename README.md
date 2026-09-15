@@ -35,6 +35,38 @@ NPCs and playable residents share rounded shoe soles, a continuous neckline,
 and a clean shirt hem. The latest fitted coats, pockets and movement work are
 preserved. See [character repairs and verification](docs/character-finish.md).
 
+## Chapter One · The Clean
+
+The story now begins with the cleaning that was already here, and with one
+thing the cleaner does in the last second of it.
+
+- **The existing opening is untouched.** The walk out, the crater, the dead
+  tree, the lens, the climb, the helmet, the long rest — all of it still runs
+  frame for frame, cut against the same audio. The twelve phase beats and their
+  seconds are now pinned by a test so the story cannot quietly move them.
+- **The two people on the hill are ours.** Sheriff **Nathan Reeve**, sent out
+  today, and **Hana Reeve**, sent out before him and lying at the foot of the
+  tree. Both are original Silo 18 characters; the scene and the relationship
+  are exactly as they were. A test reads every shipped file and fails if the
+  names they replaced appear anywhere.
+- **The gesture.** Just before he turns away he raises his free hand to the
+  lens, opens it, and holds it. It sits in the tail of the *existing* clean
+  window — 28.74 s to 30 s — because the wiping arm is already back at rest by
+  then, so **no downstream beat moves**. Measured on the rig: the hand rises
+  from 0.78 m to **1.31 m** and reaches **0.49 m** out from the shoulder, held
+  about three quarters of a second, and is down before he turns.
+- **Mara saw it.** The room goes back to its trays; one runner does not. The
+  exchange after the cleaning explains nothing, and a test enforces that.
+- **You are a runner.** Chapter One puts you on shift with a dispatch for
+  Supply, Level 110 — and Supply is holding a parcel lodged against your name
+  eleven days before the cleaning, with the holding fee paid by N. Reeve.
+  Inside is a bar chit from Level 026 with a name on the back: G. Wilkins.
+- **Everything after that is the game that was already built.** The duck, the
+  watch, the void, the hideout, the hard drive, George's machine, the gas line,
+  Billings, the airlock and the drone all run exactly as before.
+
+See [the Chapter One notes](docs/chapter-one.md).
+
 ## Steady artificial lighting
 
 Stair and room lights now overlap smoothly across floor boundaries, with working

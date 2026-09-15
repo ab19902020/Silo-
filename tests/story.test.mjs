@@ -19,7 +19,7 @@ test('every collectable is a real thing in a real room, and says where it came f
     assert.ok(item.source.length>30,`${item.id} does not say whether it is sourced or placed`);
   }
   assert.equal(RELICS.length,4);
-  assert.equal(EQUIPMENT.length,4);
+  assert.equal(EQUIPMENT.length,5,'the Chapter One parcel is part of the kit list');
   // Spread across the silo: a run that only visits one end is not a run.
   const levels=[...new Set(COLLECTABLES.map(c=>c.level))];
   assert.ok(levels.length>=5,'the collectables are not spread through the silo');
@@ -43,7 +43,19 @@ test('story mode follows George from relic clue to pipe and Billings',()=>{
   assert.equal(s.visible('shotgun'),false);
   assert.equal(s.visible('pez'),false); // The opening cannot be skipped by collecting relics.
   s.beginSearch();
-  assert.equal(s.chapter,'clues');
+  // The cleaning opens Chapter One now, not the relic hunt: Mara, the runner's
+  // shift, and the parcel Reeve lodged are what lead to George at all.
+  assert.equal(s.chapter,'the-clean');
+  // The relics themselves are not locked behind Chapter One — a player who
+  // wanders into the bar early still finds a duck. What Chapter One supplies is
+  // the reason to go, which is the parcel.
+  assert.equal(s.destination.level,1,'Chapter One starts where the cleaning was watched');
+  assert.equal(s.spokeToMara(),true);
+  assert.equal(s.reachedSupply(),true);
+  assert.equal(s.chapter,'the-package');
+  assert.ok(s.visible('package'));
+  s.take('package');
+  assert.equal(s.chapter,'clues','the parcel is what starts the hunt for George');
   s.take('georgia');s.take('watch');
   assert.equal(s.chapter,'void-lead');
   assert.equal(s.inspectVoidDoor().needs,'crowbar');

@@ -1,5 +1,11 @@
 # Camera, directory and movement polish
 
+> **Renamed since this was written.** The cleaner and the woman at the foot
+> of the tree are now Sheriff **Nathan Reeve** and **Hana Reeve**, original
+> Silo 18 characters. The sequence itself is unchanged — see
+> [the Chapter One notes](chapter-one.md). The names below are the ones the
+> code used at the time.
+
 The latest supplied still (`17660.jpg`) is the framing reference for this pass.
 It supersedes the earlier panorama's tree-left composition. This is a staged
 reconstruction of that composition, not a claim of an exact photogrammetric match.

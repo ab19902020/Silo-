@@ -1,5 +1,11 @@
 # Living silo, opening and access repairs
 
+> **Renamed since this was written.** The cleaner and the woman at the foot
+> of the tree are now Sheriff **Nathan Reeve** and **Hana Reeve**, original
+> Silo 18 characters. The sequence itself is unchanged — see
+> [the Chapter One notes](chapter-one.md). The names below are the ones the
+> code used at the time.
+
 This update preserves Claude’s `36a0759` and `532df67` work, including the revised gait, jumping, gamepad support, mobile controls and sound. It extends the landing and concealed-passage work and integrates the new opening and residents.
 
 ## What to try

@@ -46,7 +46,7 @@ test('NPC prompts persist between animation ticks, including unnamed cafeteria r
   for(let i=0;i<5;i++){population.update(.0001,body);assert.deepEqual(world.residentInteractions.map(x=>x.action),candidates);assert.ok(world.residentInteractions.every(x=>x.resident?.name));}
 });
 
-test('Holston and Allison settle on the hillside together, including their visible skinned surfaces',()=>{
+test('the cleaner and the woman at the tree settle on the hillside together, including their visible skinned surfaces',()=>{
   const world=new SiloWorld(new T.Scene());world.setLevel(1);const opening=new CafeteriaOpening(world);opening.takeBook();
   for(let t=79;t<=90;t+=1/30){opening.time=t;opening.sample(1/30);}
   opening.finish();world.scene.updateMatrixWorld(true);const heads=[];
@@ -57,7 +57,7 @@ test('Holston and Allison settle on the hillside together, including their visib
     assert.ok(actor.model.position.length()<1.2,'invalid skin/world-space conversion');
   }
   assert.ok(heads[0].distanceTo(heads[1])>.45&&heads[0].distanceTo(heads[1])<.85,'heads do not lie beside each other');
-  const cloth=opening.cleaners[0].model.children.find(x=>x.isSkinnedMesh);assert.ok(!cloth.material[1].visible&&!cloth.material[2].visible,'Holston still wears the helmet or visor');
+  const cloth=opening.cleaners[0].model.children.find(x=>x.isSkinnedMesh);assert.ok(!cloth.material[1].visible&&!cloth.material[2].visible,'the cleaner still wears the helmet or visor');
 });
 
 test('water reflection mirrors the camera and restores render state even on failure',()=>{
@@ -72,7 +72,7 @@ test('water reflection mirrors the camera and restores render state even on fail
 });
 
 test('exported cleaning suits preserve separate skin, cloth and visor materials with valid primitive references',async()=>{
-  const {json}=await readGLB(residentGLB(RESIDENT_CAST.find(x=>x.id==='holston'),true));
+  const {json}=await readGLB(residentGLB(RESIDENT_CAST.find(x=>x.id==='reeve'),true));
   const materials=new Set();for(const mesh of json.meshes)for(const p of mesh.primitives){assert.ok(json.materials[p.material]);materials.add(p.material);assert.ok(p.attributes.JOINTS_0!==undefined&&p.attributes.WEIGHTS_0!==undefined);}
   for(const index of [0,1,2,3,4,5])assert.ok(materials.has(index));assert.ok(json.materials[2].pbrMetallicRoughness.metallicFactor>.5);assert.ok(json.materials[3].pbrMetallicRoughness.roughnessFactor<json.materials[0].pbrMetallicRoughness.roughnessFactor);
 });
@@ -182,7 +182,7 @@ test('the Algorithm answers, and does not read out television lines',()=>{
 // both grow with speed, roughly as its square root, and a rig that puts every
 // extra metre per second into cadence alone reads as a scurry.
 test('the stride lengthens with the pace, and the pelvis does not bounce',()=>{
-  const def=RESIDENT_CAST.find(d=>d.id==='holston');
+  const def=RESIDENT_CAST.find(d=>d.id==='reeve');
   const gait=speed=>{
     const a=createResident(def,{}),dt=1/60;
     a.root.position.set(0,0,0);a.root.rotation.y=0;
@@ -216,7 +216,7 @@ test('the stride lengthens with the pace, and the pelvis does not bounce',()=>{
 });
 
 test('a planted foot stays planted at every pace',()=>{
-  const def=RESIDENT_CAST.find(d=>d.id==='holston');
+  const def=RESIDENT_CAST.find(d=>d.id==='reeve');
   for(const speed of [1.0,1.25,1.6,2.6,3.6,3.9]){
     const a=createResident(def,{}),dt=1/60;
     a.root.position.set(0,0,0);
