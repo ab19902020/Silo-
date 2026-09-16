@@ -11,7 +11,8 @@ const { Story, CHAPTERS, COLLECTABLES }=await import('../dist/src/story.js');
 const { RESIDENT_CAST }=await import('../dist/src/resident-data.js');
 const { CLEANER, PARTNER, WITNESS, AFTER_THE_CLEAN, PACKAGE, DISMISSALS,
   DISMISSALS_TO_FEEL_IT, CLERK, DEPUTY }=await import('../dist/src/the-clean.js');
-const { COUNTER_AT, STAIR_DOOR_AT }=await import('../dist/src/the-clean.js');
+const { populationRecords }=await import('../dist/src/population.js');
+const { objectiveTarget, OBJECTIVE_RULES }=await import('../dist/src/objective-target.js');
 const { StoryProps }=await import('../dist/src/relics.js');
 const { CharacterBody }=await import('../dist/src/physics.js');
 const { roomPoint }=await import('../dist/src/characters.js');
@@ -125,8 +126,21 @@ test('the two people on the hill are original characters, not television ones',(
     assert.ok(def,`${who.id} is not in the cast`);
     assert.equal(def.name,who.name);
   }
-  assert.equal(RESIDENT_CAST.find(d=>d.id===CLEANER.id).story,'cleaner');
-  assert.equal(RESIDENT_CAST.find(d=>d.id===PARTNER.id).story,'outside');
+  // Neither of them is in the silo to be walked up to: he is on the hill and
+  // she has been at the foot of the tree since before the game started. This
+  // used to assert the tag's spelling; what it is actually for is that they
+  // are not standing in a room, so it asks the placement that question now.
+  for(const who of [CLEANER,PARTNER]){
+    assert.ok(RESIDENT_CAST.find(d=>d.id===who.id).absent,`${who.id} is not marked absent`);
+    for(const level of [1,6,110,144])
+      assert.ok(!populationRecords(level).some(r=>r.id===who.id),
+        `${who.name} is standing about on level ${level}, and they are outside`);
+  }
+  // Mara is the opposite case and the one that was wrong: she is IN the
+  // cafeteria, and Chapter One sends you to talk to her.
+  assert.ok(!RESIDENT_CAST.find(d=>d.id===WITNESS.id).absent,'Mara is marked absent');
+  assert.ok(populationRecords(1).some(r=>r.id===WITNESS.id),
+    'Mara is not in the cafeteria — the chapter points at somebody who is not there');
   // The names that were here are gone from everything that ships, including
   // the page itself. The rest of the television cast is untouched and stays.
   const files=[...fs.readdirSync(path.join(import.meta.dirname,'..','dist','src')).map(f=>['dist','src',f]),
@@ -330,63 +344,69 @@ test('the runners’ rack is a real thing in the cafeteria you can walk up to',{
   assert.ok(rack.position.y-solid.y1>.1,'the prompt is inside the shelf');
 });
 
-test('the clerk and the deputy are people you walk up to, in the right order',{timeout:300000},()=>{
-  // They are pushed into the frame's interaction pool rather than baked into
-  // the level, because they come and go with the state of the story. That is
-  // easy to get wrong in a way no story test would notice, so this walks a
-  // body at each of them and requires the game to offer exactly that.
-  const world=new SiloWorld(new T.Scene()),story=new Story('story');world.story=story;
-  const props=new StoryProps(world.scene,world.m);
-  const body=new CharacterBody({radius:.3,stepHeight:.35});
-  story.beginSearch();story.spokeToMara();story.take('dispatch');
-  world.setLevel(110);story.reachedSupply();
-  const at=(x,y,z)=>{const p=roomPoint(PACKAGE.level,PACKAGE.wing,x,z);p.y+=y;return p;};
-  // The pool main.js assembles each frame, for this level.
-  const frame=()=>{
-    world.actorInteractions=[];
-    props.update(1/60,0,story,world.activeLevel,world.special);
-    world.actorInteractions.push(...props.interactions(story,world.activeLevel,world.special));
-    if(story.chapter==='the-package'&&!story.hasFlag('dispatch-delivered')&&story.has('dispatch'))
-      world.actorInteractions.push({position:at(...COUNTER_AT),label:'clerk',action:'supply-clerk'});
-    else if(story.chapter==='the-package'&&story.hasFlag('dispatch-delivered')&&!story.has('package'))
-      world.actorInteractions.push({position:at(...COUNTER_AT),label:'clerk',action:'supply-clerk'});
-    if(story.hasFlag('parcel-taken')&&!story.hasFlag('deputy-met'))
-      world.actorInteractions.push({position:at(...STAIR_DOOR_AT),label:'deputy',action:'deputy'});
-  };
-  const spawn=world.destination(110);
-  body.teleport(spawn.position.x,spawn.position.y+.1,spawn.position.z);
-  for(const d of world.doors)d.open=true;
-  for(let i=0;i<200;i++)world.update(1/60,body.position);
-  world.rebuildCollision();
-  const walkTo=target=>{
-    for(let i=0;i<2400;i++){
-      const v=target.clone().sub(body.position);v.y=0;
-      if(v.length()<.45)break;
-      body.step(1/120,v.normalize().multiplyScalar(3.2),world.colliders);
-      if(i%8===0)world.update(1/15,body.position);
-    }
-    frame();
-    const eye=body.position.clone();eye.y+=body.eyeHeight;
-    return world.nearestInteraction(eye,target.clone().sub(eye).normalize());
-  };
-  const counter=at(...COUNTER_AT);
-  assert.equal(walkTo(counter)?.action,'supply-clerk','the clerk is not offered at her own counter');
-  // The parcel is not on the counter until the job is done.
-  frame();
-  assert.ok(!world.actorInteractions.some(i=>i.action==='relic:package'),
-    'the parcel is on the counter before the dispatch is handed over');
-  story.deliverDispatch();frame();
-  assert.ok(world.actorInteractions.some(i=>i.action==='relic:package'),
-    'handing the dispatch over does not put the parcel on the counter');
-  // And nobody is at the stair door until there is something to notice.
-  assert.ok(!world.actorInteractions.some(i=>i.action==='deputy'),
-    'the deputy is waiting before the parcel has been picked up');
-  story.take('package');frame();
-  assert.equal(walkTo(at(...STAIR_DOOR_AT))?.action,'deputy',
-    'the deputy is not offered at the stair door');
-  story.metTheDeputy(false);frame();
-  assert.ok(!world.actorInteractions.some(i=>i.action==='deputy'),
-    'the deputy is still there after you have spoken to him');
+test('the clerk and the deputy are people standing in the room',{timeout:300000},()=>{
+ // They used to be two prompts floating at measured points on an empty floor:
+ // you walked up to a bare Supply counter and a voice handed you a parcel, and
+ // the deputy who is the whole last beat of Chapter Two was nobody at all.
+ // They are residents now, placed at a station rather than dropped in the
+ // middle of the room by the generic placement.
+ const records=populationRecords(110);
+ for(const [id,name] of [['delen',CLERK.name],['kell',DEPUTY.name]]){
+  const r=records.find(x=>x.id===id);
+  assert.ok(r,`${name} is not in the room at all — nobody is standing there`);
+  assert.equal(r.definition.name,name,`${id} in the world is not the ${id} in the writing`);
+  // The role is the same fact written twice — the speaker panel reads it from
+  // the writing, the prompt over their head reads it from the cast — so they
+  // have to say the same thing. Case and separators are presentation.
+  const plain=t=>t.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const written=id==='delen'?CLERK.role:DEPUTY.role;
+  assert.equal(plain(r.definition.role),plain(written),
+    `${id}'s posting reads "${r.definition.role}" in the world and "${written}" in the writing`);
+ }
+ // And they stand somewhere a person can stand: on the floor, not inside the
+ // counter they serve from. The counter had no collider once and you could
+ // walk through it; standing a body inside it is the same bug wearing a hat.
+ const world=new SiloWorld(new T.Scene());
+ world.setLevel(110);
+ for(const d of world.doors)d.open=true;
+ world.rebuildCollision();
+ const y=world.destination(110).position.y;
+ for(const id of ['delen','kell']){
+  const r=records.find(x=>x.id===id),p=r.position.clone();
+  const floor=world.colliders.floorAt(p.x,p.z,.3,y+.35);
+  assert.ok(Number.isFinite(floor)&&Math.abs(floor-y)<.06,`${id} is not standing on the floor of 110`);
+  const q=p.clone();q.y=y;const before=q.clone();
+  world.colliders.resolve(q,.3,y+.01,y+1.75,.3);
+  assert.ok(Math.hypot(q.x-before.x,q.z-before.z)<.05,`${id} is standing inside something solid`);
+ }
+});
+
+test('the objective marks one person, and only while it is waiting on them',()=>{
+ // The point of the mark is that everybody in the silo looks like everybody
+ // else. The point of THIS test is that it goes out again: a dot that stays on
+ // somebody you have already spoken to is a dot the player learns to ignore.
+ const s=new Story('story');
+ assert.equal(objectiveTarget(s),null,'somebody is marked during the opening');
+ s.beginSearch();
+ assert.equal(objectiveTarget(s),'mara','Chapter One does not point at the one other witness');
+ s.spokeToMara();
+ assert.equal(objectiveTarget(s),null,'Mara is still marked after she has said her piece');
+
+ s.take('dispatch');s.reachedSupply();
+ assert.equal(objectiveTarget(s),'delen','the counter you were sent to is not marked');
+ s.deliverDispatch();
+ assert.equal(objectiveTarget(s),'delen','she is not marked for the half where she stops you leaving');
+ s.take('package');
+ assert.equal(objectiveTarget(s),'kell','the man on the door is not marked once you have the parcel');
+ s.metTheDeputy(true);
+ assert.equal(objectiveTarget(s),null,'the deputy stays marked after the conversation is over');
+});
+
+test('free roam marks nobody',()=>{
+ // No objective, no mark. The free-roam silo is a place to walk around in.
+ assert.equal(objectiveTarget(new Story('free')),null);
+ assert.equal(objectiveTarget(null),null);
+ assert.equal(objectiveTarget({story:true}),null,'a story without the flags should mark nobody, not throw');
 });
 
 test('the dismissal is counted on its own topic, not on what the button happens to say',()=>{

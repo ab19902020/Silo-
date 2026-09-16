@@ -5,9 +5,25 @@ const person=(id,name,role,level,wing,appearance,extra={})=>({id,name,role,level
 export const RESIDENT_CAST=Object.freeze([
   ...LEAD_CAST,
   // The only person in the cafeteria watching his hands rather than the view.
-  person('mara','Mara Teague','Runner · dispatch',1,0,{skin:0x9a7358,hair:0x2b2420,outfit:'work',coat:0x6d7468,hairStyle:'bun',female:true},{height:1.67,activity:'work',opening:true,story:'witness'}),
-  person('reeve','Nathan Reeve','Sheriff',1,0,{skin:0x76503c,hair:0x211d19,outfit:'uniform',coat:0x655442,beard:.55},{height:1.78,story:'cleaner'}),
-  person('hana','Hana Reeve','IT systems',6,0,{skin:0xb88b70,hair:0x302921,outfit:'knit',coat:0xb1a58e,hairStyle:'fringe',female:true},{height:1.64,story:'outside'}),
+  // Standing at the screen wall, a little to the right of the book table, which
+  // is where the chapter says she is: "the runner standing beside you at the
+  // screen wall". She had no body at all — the tag below used to mean "not in
+  // the world", so Chapter One told you to go and talk to somebody who was not
+  // anywhere, and the scene only worked because it plays itself.
+  person('mara','Mara Teague','Runner · dispatch',1,0,{skin:0x9a7358,hair:0x2b2420,outfit:'work',coat:0x6d7468,hairStyle:'bun',female:true},{height:1.67,activity:'idle',opening:true,top:[4.6,33.4]}),
+  person('reeve','Nathan Reeve','Sheriff',1,0,{skin:0x76503c,hair:0x211d19,outfit:'uniform',coat:0x655442,beard:.55},{height:1.78,absent:'on the hill'}),
+  person('hana','Hana Reeve','IT systems',6,0,{skin:0xb88b70,hair:0x302921,outfit:'knit',coat:0xb1a58e,hairStyle:'fringe',female:true},{height:1.64,absent:'on the hill'}),
+  // Chapter Two's two people. They had lines, a scripted scene each and a
+  // prompt on the floor where they were supposed to be standing, and no
+  // bodies: you walked up to an empty Supply counter and a voice handed you a
+  // parcel. `station` pins them to a measured spot in the room rather than
+  // letting the generic placement drop them in the middle of it — she belongs
+  // behind her counter and he belongs beside the door he is holding.
+  //
+  // Both are deliberately un-tagged by `story`, unlike Reeve and Hana: that
+  // tag means "not in the world", and these two very much are.
+  person('delen','Delen Osgood','Supply counter · Level 110',110,0,{skin:0xa8815f,hair:0x4a4038,outfit:'work',coat:0x6f7a72,hairStyle:'bun',female:true,age:.55},{height:1.66,activity:'work',station:[0,5.3],facing:-Math.PI/2}),
+  person('kell','Aron Kell','Deputy · Down Deep station · Level 110',110,0,{skin:0x7d5942,hair:0x2a2420,outfit:'uniform',coat:0x63553f,beard:.3},{height:1.82,activity:'idle',station:[2.4,1.8]}),
   person('walker','Martha Walker','Electronics workshop',144,1,{skin:0xc39f87,hair:0x73776f,outfit:'cardigan',coat:0x4c5865,hairStyle:'braids',female:true,age:.9},{height:1.65,activity:'work'}),
   person('knox','Knox','Head of Mechanical',144,0,{skin:0xb18b74,hair:0x342b25,outfit:'work',coat:0x79796b,beard:.65,build:1.15,shortSleeves:true,tattoo:true},{height:1.89,activity:'work'}),
   person('shirley','Shirley Campbell','Mechanical engineer',144,0,{skin:0x865b44,hair:0x251e1b,outfit:'work',coat:0x646e67,hairStyle:'bun',female:true},{height:1.70,activity:'work'}),
@@ -25,7 +41,7 @@ export const RESIDENT_CAST=Object.freeze([
   person('cooper','Cooper','Mechanical apprentice',144,0,{skin:0xba947a,hair:0x574532,outfit:'work',coat:0x6d786e,hairStyle:'waves'},{height:1.74,activity:'work'}),
   person('teddy','Teddy','Mechanical worker',144,3,{skin:0x694932,hair:0x211b18,outfit:'work',coat:0x8c7b50},{height:1.79,activity:'work'}),
   person('amundsen','Amundsen','Judicial raider',14,0,{skin:0xb28e76,hair:0x38322b,outfit:'coat',coat:0x343d3a},{height:1.85}),
-  person('george','George Wilkins','Computer repair · relic researcher',100,0,{skin:0xb48e75,hair:0x3c2d21,outfit:'shirt',coat:0x758079,beard:.65,hairStyle:'waves'},{height:1.78,story:'memory'}),
+  person('george','George Wilkins','Computer repair · relic researcher',100,0,{skin:0xb48e75,hair:0x3c2d21,outfit:'shirt',coat:0x758079,beard:.65,hairStyle:'waves'},{height:1.78,absent:'dead before the game starts'}),
 ]);
 // Crowd art direction: seven of ten generic complexion slots are light.
 // This is a requested visual balance, not a claim about canonical demographics.

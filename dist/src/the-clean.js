@@ -150,7 +150,12 @@ export const CLERK=Object.freeze({
 // whose job is noticing. He is not a threat yet. That is the point — he is
 // polite, and he remembers your name.
 export const DEPUTY=Object.freeze({
-  id:'kell', name:'Deputy Aron Kell', role:'DOWN DEEP STATION · LEVEL 105',
+  // The rank belongs in the role, the way it does for every other person in
+  // the cast — "Deputy Aron Kell" in the name slot printed the rank twice in
+  // the speaker panel. And he stands at the Level 110 stair door, so that is
+  // the level his posting says; it read 105 while he was holding a door on a
+  // different floor.
+  id:'kell', name:'Aron Kell', role:'DEPUTY · DOWN DEEP STATION · LEVEL 110',
   greet:'Held the door for you. Long way down for a 001 runner.',
   beats:Object.freeze([
     Object.freeze({say:'Supply run. Same-day dispatch.',
@@ -172,10 +177,11 @@ export const DEPUTY=Object.freeze({
     'him do it.',
 });
 
-// Where the two of them stand. Room-local, so this file still needs no
-// Three.js: main.js turns them into world points with roomPoint.
-export const COUNTER_AT=Object.freeze([0,1.02,3.5]);      // in front of the Supply counter
-export const STAIR_DOOR_AT=Object.freeze([0,1.5,-1.7]);   // the wing door, on the way out
+// Where the two of them stand used to be here, as two points main.js turned
+// into floating prompts on an empty floor. They are people in the room now,
+// with bodies, so their positions live with the rest of the cast in
+// resident-data.js — `station`, which is a spot measured against the furniture
+// they work at, rather than a number in the writing that nothing keeps honest.
 
 // The runner's first shift. The player is a message runner on Level 001: the
 // job is why they are standing in the cafeteria at all, and it is what carries

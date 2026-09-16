@@ -24,7 +24,9 @@ import { updateRangeTargets } from './gun-range.js';
 import {RelicInspector} from './relic-inspector.js';
 import { GeorgeTerminal } from './george-terminal.js';
 import { WITNESS, AFTER_THE_CLEAN, WITNESS_OPENER, WITNESS_CLOSE, PACKAGE as PARCEL,
-  CLERK, DEPUTY, DISMISSALS, DISMISSALS_TO_FEEL_IT, CLOSED_RANKS, COUNTER_AT, STAIR_DOOR_AT } from './the-clean.js';
+  CLERK, DEPUTY, DISMISSALS, DISMISSALS_TO_FEEL_IT, CLOSED_RANKS } from './the-clean.js';
+import { objectiveTarget } from './objective-target.js';
+import { StoryMarker } from './story-marker.js';
 import { roomPoint } from './characters.js';
 const PARCEL_LEVEL=PARCEL.level;
 import { StoryProps, Drone } from './relics.js';
@@ -39,7 +41,7 @@ import { renderSideJournal } from './side-mission-journal.js';
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel'),terminalDialog=$('georgeTerminal');
 const dialogs=[welcome,directory,settings,about,characters,relic,conversation,satchel,terminalDialog],coarse=matchMedia('(pointer:coarse)').matches;
 installInterface();
-let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
+let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0,storyMarker;
 let cinemaUntil=0;
 let hudOpen=false,touchUntil=0,chapterUntil=0,lastInteractionLabel=null,lastOpeningState=null,talking=null,chapterEnteredAt=0,hintUntil=0;
 let terminal=new GeorgeTerminal(),workAction=null;
@@ -142,6 +144,12 @@ function askTopic(button){
 function startConversation(person,actor=null){
   if(person.id==='billings'&&story?.story){billingsConversation();return;}
   if(person.id===WITNESS.id&&story?.story&&story.chapter==='the-clean'&&!story.hasFlag('mara-spoke')){maraConversation();return;}
+  // Delen and Aron are ordinary residents in the world now, with bodies, so
+  // their scenes hang off talking to them rather than off a prompt floating
+  // where they were supposed to be standing. Outside the moment the story
+  // wants, they answer like anybody else behind a counter or beside a door.
+  if(person.id===CLERK.id&&story?.story&&story.chapter==='the-package'&&!story.has('package')){clerkConversation();return;}
+  if(person.id===DEPUTY.id&&story?.story&&story.hasFlag('parcel-taken')&&!story.hasFlag('deputy-met')){deputyConversation();return;}
   const visits=conversationMemory.visit(person.id);
   const text=person.topics?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name,visits});
   $('algorithmQuery').hidden=person.id!=='algorithm';conversation.classList.toggle('archive-conversation',person.id==='algorithm');
@@ -1094,6 +1102,15 @@ function frame(){
       }else endConversation();
     }
     cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;
+    // The one person the objective is waiting on gets a small mark over their
+    // head. Everybody in the silo is dressed the same on purpose, which is
+    // right for the place and useless for finding somebody, and "go and see
+    // Mara" does not help in a cafeteria with nine women in work clothes in
+    // it. objective-target.js picks them; nothing here decides.
+    if(storyMarker){
+      const mark=started&&!world.outside&&!world.special?objectiveTarget(story):null;
+      storyMarker.update(dt,mark?population.actorHead(mark):null,eye);
+    }
     if(talking?.actor){const at=population.actorPosition(talking.actor);if(at&&at.distanceTo(body.position)>5.5)endConversation();}
     props.update(dt,time,story,world.activeLevel,world.special);
     // The supplied hard-drive model is placed by the character cast, so taking
@@ -1103,20 +1120,6 @@ function frame(){
     // Chapter One and Two put three people in the way of the job. They are
     // pushed here, beside the relic prompts, because they come and go with the
     // state of the story rather than with the level being loaded.
-    if(story?.story&&!world.special&&!world.outside){
-      const here=(where,y,z)=>{const p=roomPoint(PARCEL.level,PARCEL.wing,where,z);p.y+=y;return p;};
-      if(world.activeLevel===PARCEL.level){
-        if(story.chapter==='the-package'&&!story.hasFlag('dispatch-delivered')&&story.has('dispatch'))
-          world.actorInteractions.push({position:here(COUNTER_AT[0],COUNTER_AT[1],COUNTER_AT[2]),
-            label:`Hand the dispatch to ${CLERK.name}`,hint:CLERK.role,action:'supply-clerk'});
-        else if(story.chapter==='the-package'&&story.hasFlag('dispatch-delivered')&&!story.has('package'))
-          world.actorInteractions.push({position:here(COUNTER_AT[0],COUNTER_AT[1],COUNTER_AT[2]),
-            label:`Ask ${CLERK.name} about the hold`,hint:CLERK.role,action:'supply-clerk'});
-        if(story.hasFlag('parcel-taken')&&!story.hasFlag('deputy-met'))
-          world.actorInteractions.push({position:here(STAIR_DOOR_AT[0],STAIR_DOOR_AT[1],STAIR_DOOR_AT[2]),
-            label:`${DEPUTY.name} is holding the stair door`,hint:DEPUTY.role,action:'deputy'});
-      }
-    }
     // world.storyInteractions belongs to the opening, which rebuilt it above.
     // A second writer here used to overwrite it every frame with a hardcoded
     // Billings prompt, so the directory book could never be picked up and the
@@ -1214,7 +1217,7 @@ async function boot(){
     await world.loadAssets(progress=>{$('enterButton').textContent=`Preparing the silo · ${Math.round(progress*45)}%`;});
     cast=new CharacterCast(scene,world);await cast.load(progress=>{$('enterButton').textContent=`Preparing characters · ${Math.round(45+progress*55)}%`;});const customProfile=loadProfile(conversationStorage);if(customProfile)cast.register(definitionFromProfile(customProfile));cast.select(saved.character||'juliette');cast.thirdPerson=saved.thirdPerson!==false;body.standHeight=body.height=cast.active.definition.height;cast.active.heading=yaw+Math.PI;renderCharacters();
     world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;world.update(0,body.position);cast.update(0,body,false);
-    population=new Population(scene,world);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);
+    population=new Population(scene,world);storyMarker=new StoryMarker(scene);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);
     story=Story.load(savedStory);sideMissions=story.story?SideMissions.load(savedStory?.sideMissions):loadExploreMissions();terminal=GeorgeTerminal.load(savedStory?.terminal);world.driveSeated=terminal.view.driveInserted;if(savedStory?.clock)siloClock=SiloClock.load(savedStory.clock);world.story=story;props=new StoryProps(scene,world.m);const relicFailures=await props.loadAssets();if(relicFailures)notify('Some relic models could not load. Refresh to retry.');drone=new Drone(scene,world.m);
     if(story.story&&story.chapter!=='cleaning'){opening.finish();const cp=savedStory?.checkpoint;if(cp&&Number.isInteger(cp.level)&&cp.level>=1&&cp.level<=144&&Array.isArray(cp.position)&&cp.position.length===3&&cp.position.every(Number.isFinite)&&[null,'generator','mines','excavator','tunnel','pipe-gallery','silo17'].includes(cp.special)){world.setLevel(cp.level,cp.special);const [x,y,z]=cp.position;const floor=world.colliders.floorAt(x,z,.3,y+1);if(Number.isFinite(floor)&&Math.abs(floor-y)<2)body.teleport(x,floor+.05,z);else{const dest=world.destination(cp.special||cp.level);body.teleport(...dest.position.toArray());}yaw=Number.isFinite(cp.yaw)?cp.yaw:0;}if(story.hasFlag('hideout-open'))world.openBreach();if(story.chapter==='drone'){story.killedByDrone();const back=world.destination('airlock');world.setLevel(1);body.teleport(...back.position.toArray());}world.update(0,body.position);}
     openingChanged(opening.state);syncStoryHud(true);
@@ -1238,5 +1241,6 @@ window.__silo={begin,fire,use,travel,takeRelic,stepOutside,firearms,takeWeapon,c
   // The crowd and the cast, so an offline capture can drive every animated
   // system on one fixed timestep instead of on whatever the frame rate
   // happened to be. Nothing in the game reads any of this.
-  get population(){return population;},get cast(){return cast;}};
+  get population(){return population;},get cast(){return cast;},
+  get marker(){return storyMarker;},get marked(){return objectiveTarget(story);}};
 boot();

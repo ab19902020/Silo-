@@ -157,9 +157,20 @@ export function populationRecords(level){
         stops:ends.map((z,j)=>({p:B(lane,z),pose:j===0||j===3?'idle':'idle',hold:j===0||j===3?3:1}))});
     }
   }
-  for(const def of RESIDENT_CAST.filter(d=>!d.story&&(d.level===level||level===1&&d.opening))){
-    const position=level===1?(def.top?topPoint(def.top[0],0,def.top[1]):topPoint(-15,0,35)):roomPoint(level,def.wing,def.id==='shirley'?-3.2:2.8,def.id==='cooper'?12:7);
-    add(position,{id:def.id,definition:def,kind:'named',activity:def.activity==='read'?'idle':def.activity||'idle',wing:def.wing,heading:level===1?Math.PI/2:Math.PI/2-def.wing*TAU/6});
+  // `absent` is the people who are genuinely not in the silo to be walked up
+  // to: Reeve and Hana are outside on the hill, George died before the game
+  // starts. It used to be spelled `story`, which quietly meant that being
+  // important to the plot was the same thing as not existing — and that is
+  // how the one person Chapter One sends you to talk to ended up with no body.
+  for(const def of RESIDENT_CAST.filter(d=>!d.absent&&(d.level===level||level===1&&d.opening))){
+    // `station` is a measured spot in the room, for the few people whose job
+    // is a place: the clerk belongs behind her counter, not in the middle of
+    // the floor where the generic placement would put her.
+    const position=level===1?(def.top?topPoint(def.top[0],0,def.top[1]):topPoint(-15,0,35))
+      :def.station?roomPoint(level,def.wing,def.station[0],def.station[1])
+      :roomPoint(level,def.wing,def.id==='shirley'?-3.2:2.8,def.id==='cooper'?12:7);
+    const facing=level===1?Math.PI/2:(def.facing??0)+Math.PI/2-def.wing*TAU/6;
+    add(position,{id:def.id,definition:def,kind:'named',activity:def.activity==='read'?'idle':def.activity||'idle',wing:def.wing,heading:facing});
   }
   return records;
 }
@@ -280,6 +291,14 @@ export class Population{
     }
   }
   actorPosition(id){const a=this.actors.get(id);return a?a.root.position.clone():this.porters.actorPosition(id);}
+  // The crown of somebody's head, for anything that has to sit above it. Their
+  // own height, not an average: Knox is 1.89 and Gloria is 1.61, and a mark
+  // pinned at a fixed height would be on his chin and a foot over hers.
+  actorHead(id){
+    const a=this.actors.get(id);
+    if(!a)return null;
+    const p=a.root.position.clone();p.y+=a.definition?.height||1.72;return p;
+  }
   separatePlayer(body){
     if(this.world.outside||['excavator','tunnel','silo17','pipe-gallery'].includes(this.world.special))return;
     for(const a of this.actors.values()){
