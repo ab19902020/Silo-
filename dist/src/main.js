@@ -158,6 +158,21 @@ function startConversation(person,actor=null){
     baseTopics.unshift({id:'the-hand',label:dismissal.ask,reply:dismissal.reply,
       follow:[{id:'the-hand-again',label:'You are sure that is all it was?',reply:dismissal.close}]});
   renderChoices([...baseTopics,...sideMissions.topics(sideOwner)]);
+  // The panel is shown, not modalled: the silo keeps running behind it, the
+  // person turns to face you and the camera settles on them while you talk.
+  //
+  // Everything below this line is what actually puts the conversation on the
+  // screen. Losing it is silent — renderChoices builds the whole panel either
+  // way, so the DOM looks perfect and nothing throws. It is only that the
+  // dialog is never shown and `talking` never gets set, which is also what
+  // tells the camera, the pause and the resident's own pose that a
+  // conversation is happening at all.
+  hudOpen=false;document.body.classList.remove('hud-open');
+  for(const d of pausingDialogs)if(d.open)d.close();
+  talking={actor,name:text.name,id:person.id,sideOwner,baseTopics};population.talkingTo=actor;
+  if(!conversation.open)conversation.show();
+  conversation.scrollTop=0;$('dialogueChoices').querySelector('button')?.focus({preventScroll:true});
+  document.body.classList.add('talking');audio.click();syncPause();
 }
 $('algorithmQuery').addEventListener('submit',event=>{event.preventDefault();const input=$('archiveQuestion');if(!input.value.trim())return;$('dialogueLine').textContent=algorithmAnswer(input.value,{freeRoam:!story?.story,blueprint:story?.hasFlag('blueprint-found')});input.value='';animateAlgorithm();audio.click();});
 function endConversation(){
