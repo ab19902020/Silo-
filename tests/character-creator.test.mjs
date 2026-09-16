@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import * as T from '../dist/vendor/three.module.js';
 import {PLAYABLE_CHARACTERS,CharacterCast,createPlayableActor} from '../dist/src/characters.js';
 import {RESIDENT_CAST} from '../dist/src/resident-data.js';
-import {DEFAULT_PROFILE,normalizeProfile,definitionFromProfile,loadProfile,saveProfile} from '../dist/src/character-profile.js';
+import {DEFAULT_PROFILE,SKIN_TONES,normalizeProfile,definitionFromProfile,loadProfile,saveProfile} from '../dist/src/character-profile.js';
 import {createResident,disposeResident} from '../dist/src/resident-model.js';
 
 test('registry covers every existing resident and named cast from all three television seasons',()=>{
@@ -22,7 +22,12 @@ test('custom profiles round-trip, reject invalid values and preserve the chosen 
  assert.ok(saveProfile(storage,input));assert.deepEqual(loadProfile(storage),normalizeProfile(input));
  const def=definitionFromProfile(loadProfile(storage));assert.equal(def.name,'Ada Briggs');assert.equal(def.height,1.63);assert.equal(def.level,62);assert.ok(def.appearance.glasses);assert.equal(def.appearance.female,true);
  const bad=normalizeProfile({name:'<resident>\u0000',height:Infinity,build:-9,skin:999,hairStyle:'../../fake',outfit:'script',department:'void'});
- assert.equal(bad.height,175);assert.equal(bad.build,.88);assert.equal(bad.skin,5);assert.equal(bad.hairStyle,'short');assert.equal(bad.outfit,'work');assert.equal(bad.department,'mechanical');assert.equal(bad.name,'resident');
+ assert.equal(bad.height,175);assert.equal(bad.build,.88);assert.equal(bad.hairStyle,'short');assert.equal(bad.outfit,'work');assert.equal(bad.department,'mechanical');assert.equal(bad.name,'resident');
+ // An out-of-range swatch clamps to the last real one. Asked against the
+ // palette rather than a number: this said 5 when there were six skin tones,
+ // so widening the range broke a test about rejecting junk input.
+ assert.equal(bad.skin,SKIN_TONES.length-1,'a silly skin index does not clamp to the last swatch');
+ assert.ok(SKIN_TONES[bad.skin]!==undefined,'the clamped index is not a colour');
  assert.equal(loadProfile({getItem(){throw Error('storage denied');}}),null);assert.equal(saveProfile({setItem(){throw Error('quota');}},input),false);
 });
 

@@ -1,7 +1,9 @@
 import {FACE_CONTROLS,FACE_PRESETS} from './face-shape.js';
 import {PLAYABLE_CHARACTERS} from './characters.js';
 import {CharacterPreview} from './character-preview.js';
-import {DEFAULT_PROFILE,DEPARTMENTS,SKIN_TONES,HAIR_TONES,CLOTH_TONES,EYE_TONES,HAIR_STYLES,OUTFITS,TROUSER_FITS,FOOTWEAR,FRAME_STYLES,SHOE_TONES,FRAME_TONES,normalizeProfile,definitionFromProfile,loadProfile,saveProfile,applyFacePreset,randomizeFace} from './character-profile.js';
+import {DEFAULT_PROFILE,DEPARTMENTS,SKIN_TONES,SKIN_NAMES,HAIR_TONES,HAIR_NAMES,CLOTH_TONES,CLOTH_NAMES,
+ EYE_TONES,EYE_NAMES,SHOE_TONES,SHOE_NAMES,FRAME_TONES,FRAME_NAMES,HAIR_STYLES,OUTFITS,TROUSER_FITS,FOOTWEAR,
+ FRAME_STYLES,FABRICS,COAT_LENGTHS,normalizeProfile,definitionFromProfile,loadProfile,saveProfile,applyFacePreset,randomizeFace} from './character-profile.js';
 const title=s=>s.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^./,v=>v.toUpperCase());
 
 export class CharacterStudio{
@@ -43,22 +45,24 @@ export class CharacterStudio{
   for(const [label,fn] of [['New variation',p=>randomizeFace(p)],['Reset face',p=>applyFacePreset(p,'balanced')]]){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=()=>{this.readForm();this.profile=fn(this.profile);this.writeForm();preset.value='balanced';this.showCustom();};actions.append(b);}box.append(actions);
   for(const [key,c] of Object.entries(FACE_CONTROLS))range(box,c.label,key,c.min,c.max,.01);
   box=group('hair','Hair, skin & age');range(box,'Age','age',0,1,.05);
-  palette(box,'Skin tone','skin',SKIN_TONES,['Light','Warm','Tan','Brown','Deep','Dark']);
+  palette(box,'Skin tone','skin',SKIN_TONES,SKIN_NAMES);
   select(box,'Hair style','hairStyle',HAIR_STYLES.map(v=>[v,title(v)]));
-  palette(box,'Hair colour','hair',HAIR_TONES,['Black','Brown','Chestnut','Blonde','Auburn','Grey','Silver']);
-  palette(box,'Eye colour','eyes',EYE_TONES,['Brown','Blue','Green','Grey']);range(box,'Facial hair','beard',0,1,.1);
+  palette(box,'Hair colour','hair',HAIR_TONES,HAIR_NAMES);
+  palette(box,'Eye colour','eyes',EYE_TONES,EYE_NAMES);range(box,'Facial hair','beard',0,1,.1);
   box=group('clothing','Clothing & accessories');select(box,'Outfit','outfit',OUTFITS.map(v=>[v,{work:'Utility coveralls',uniform:'Deputy uniform',coat:'Long coat',shirt:'Work shirt',knit:'Knitted top',cardigan:'Cardigan',robe:'Formal robe',medical:'Medical coat',vest:'Sleeveless waistcoat'}[v]]));
-  const clothNames=['Silo green','Khaki','Slate blue','Charcoal','Sand','Stone','Rust'];
-  select(box,'Fabric','fabric',[['plain','Plain woven'],['ribbed','Fine rib'],['striped','Muted stripes']]);
-  palette(box,'Top / outer layer','cloth',CLOTH_TONES,clothNames);
-  palette(box,'Shirt underneath','underlayer',CLOTH_TONES,clothNames);
+  select(box,'Fabric','fabric',FABRICS.map(v=>[v,{plain:'Plain woven',ribbed:'Fine rib',striped:'Muted stripes'}[v]]));
+  palette(box,'Top / outer layer','cloth',CLOTH_TONES,CLOTH_NAMES);
+  palette(box,'Shirt underneath','underlayer',CLOTH_TONES,CLOTH_NAMES);
   select(box,'Trouser cut','trouserFit',TROUSER_FITS.map(v=>[v,title(v)]));
-  palette(box,'Trousers','trousers',CLOTH_TONES,clothNames);
+  palette(box,'Trousers','trousers',CLOTH_TONES,CLOTH_NAMES);
   select(box,'Footwear','footwear',FOOTWEAR.map(v=>[v,{work:'Laced work shoes',boots:'Ankle boots',slipon:'Slip-on shoes'}[v]]));
-  palette(box,'Footwear colour','shoes',SHOE_TONES,['Black','Brown leather','Worn tan','Stone']);
+  palette(box,'Footwear colour','shoes',SHOE_TONES,SHOE_NAMES);
   select(box,'Glasses shape','frameStyle',FRAME_STYLES.map(v=>[v,title(v)]));
-  palette(box,'Glasses frame','frames',FRAME_TONES,['Dark metal','Brass','Pewter']);
-  for(const [key,label] of [['glasses','Glasses'],['shortSleeves','Short sleeves']]){const input=document.createElement('input');input.type='checkbox';field(box,label,key,input).parentElement.classList.add('resident-check');}
+  palette(box,'Glasses frame','frames',FRAME_TONES,FRAME_NAMES);
+  select(box,'Coat / robe length','coatLength',COAT_LENGTHS.map(c=>[c.id,c.label]));
+  for(const [key,label] of [['glasses','Glasses'],['shortSleeves','Short sleeves'],
+    ['quilted','Quilted jacket'],['tattoo','Forearm tattoo'],['chain','Chain of office']]){
+   const input=document.createElement('input');input.type='checkbox';field(box,label,key,input).parentElement.classList.add('resident-check');}
   this.writeForm();this.setSection('identity');
  }
  setSection(id){
