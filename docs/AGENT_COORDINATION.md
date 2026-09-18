@@ -46,3 +46,24 @@ before they were fixed, so please do not undo them:
 
 `tests/audio.test.mjs` fails if any of the three is broken, and again if the
 licence, the attribution or the record of changes goes missing.
+
+## Residents — a note for whoever touches the models next
+
+`dist/src/resident-model.js` no longer builds bodies out of lathes and spheres.
+There is one set of torso landmarks and everything — shirt, coat, trousers,
+belt, pockets, buttons — is cut from it through `bodyAt(y)` and `front(y)`. If
+you need to put something on a resident's chest, ask the body where its chest
+is; anything placed at a guessed z will float, which is what every pocket and
+harness strap in the silo used to do.
+
+Three things in there were each a reported defect, so please do not undo them:
+
+1. **The shoulder is one surface from the neck to the arm.** The sleeve sweep
+   starts beside the neck deliberately. Building the yoke, the shoulder cap and
+   the sleeve as three overlapping pieces gives a hard shelf with a corner on it.
+2. **Open garments have cloth thickness; closed ones have no shirt under them.**
+   A zero-thickness coat disappears edge-on, and a hidden shirt z-fights.
+3. **Hands hang edge-on**, palm to the thigh.
+
+`docs/wardrobe.md` has the whole of it. `tests/wardrobe.test.mjs` fails if any
+of it is broken.
