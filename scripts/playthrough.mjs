@@ -47,7 +47,7 @@ const {chromium}=await (async()=>{
 })();
 
 const PORT=process.env.PORT||4173;
-const URL=process.env.URL||`http://127.0.0.1:${PORT}/index.html`;
+const PAGE=process.env.URL||`http://127.0.0.1:${PORT}/index.html`;
 const HEADFUL=process.env.HEADFUL==='1';
 
 const browser=await chromium.launch({headless:!HEADFUL,
@@ -57,7 +57,7 @@ const errors=[];
 page.on('pageerror',e=>errors.push('pageerror: '+e.message));
 page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text().slice(0,180));});
 await page.addInitScript(()=>{try{localStorage.clear();}catch{}});
-await page.goto(URL,{waitUntil:'load'});
+await page.goto(PAGE,{waitUntil:'load'});
 await page.waitForFunction(()=>window.__silo?.ready,null,{timeout:900000});
 
 // Count real frames. Software rendering runs at about one a second, so every
@@ -178,8 +178,19 @@ async function reach(match,want){
   const spot=await approach(hit.position,want||hit.action||hit.label);
   if(!spot)return {stuck:`"${hit.label}" is in the room but the game never offers it — tried 60 approaches from 1.1 m to 3.2 m all the way round`,
     nearby:[...new Set(all.map(o=>o.label))].slice(0,14)};
-  await frames(3);
-  const prompt=(await state()).prompt;
+  // Wait for the prompt to actually appear on screen before pressing anything.
+  // use() reads the interaction the frame loop last armed, and the loop does
+  // not arm one while the game is paused — which it is for a moment after
+  // travelling. Pressing Use in that window does nothing at all, and the step
+  // then looks broken. A player waits for the prompt; so does this.
+  let prompt=null;
+  for(let i=0;i<8;i++){
+    prompt=(await state()).prompt;
+    if(prompt)break;
+    await frames(1);
+  }
+  if(!prompt)return {stuck:`reached "${hit.label}" but no prompt ever appeared on screen — the game never armed it`,
+    nearby:[...new Set(all.map(o=>o.label))].slice(0,14)};
   await pressUse();
   await frames(3);
   return {label:hit.label,from:`${spot.back} m at ${spot.deg}°`,prompt};
@@ -221,43 +232,43 @@ const chat=async (who,rx)=>{
 
 await step('Ch1 · talk to Mara',()=>chat('mara',/Mara/i));
 await step('Ch1 · take the shift dispatch',()=>reach(o=>o.action==='take-dispatch','take-dispatch'));
-await step('Ch2 · travel to Supply, 110',async()=>{await travel('110');await frames(5);return {};});
+await step('Ch2 · travel to Supply, 110',async()=>{await travel('110');await frames(8);return {};});
 await step('Ch2 · the Supply counter',()=>chat('delen',/Osgood|Delen/i));
 await step('Ch2 · take the parcel',()=>reach(o=>o.action==='relic:package','relic:package'));
 await step('Ch2 · the deputy at the stair door',()=>chat('kell',/Kell/i));
 
-await step('Ch3 · travel to the bar, 026',async()=>{await travel('26');await frames(5);return {};});
+await step('Ch3 · travel to the bar, 026',async()=>{await travel('26');await frames(8);return {};});
 await step('Ch3 · take the duck',()=>reach(o=>o.action==='relic:pez','relic:pez'));
-await step('Ch3 · travel to the market, 100',async()=>{await travel('100');await frames(5);return {};});
+await step('Ch3 · travel to the market, 100',async()=>{await travel('100');await frames(8);return {};});
 await step('Ch3 · take the watch',()=>reach(o=>o.action==='relic:watch','relic:watch'));
 
-await step('Ch4 · travel to Mechanical, 144',async()=>{await travel('144');await frames(5);return {};});
+await step('Ch4 · travel to Mechanical, 144',async()=>{await travel('144');await frames(8);return {};});
 await step('Ch4 · inspect the bulkhead',()=>reach(o=>/bulkhead/i.test(o.label||'')));
 await step('Ch5 · take the crowbar',()=>reach(o=>o.action==='relic:crowbar','relic:crowbar'));
 await step('Ch5 · lever the bulkhead open',()=>reach(o=>/bulkhead/i.test(o.label||'')));
-await step('Ch6 · into the hideout',async()=>{await travel('excavator');await frames(6);return {};});
+await step('Ch6 · into the hideout',async()=>{await travel('excavator');await frames(9);return {};});
 await step('Ch6 · take Hard Drive 18',()=>reach(o=>o.action==='hard-drive','hard-drive'));
 
-await step('Ch7 · travel to the Wilkins room, 068',async()=>{await travel('68');await frames(5);return {};});
+await step('Ch7 · travel to the Wilkins room, 068',async()=>{await travel('68');await frames(8);return {};});
 await step('Ch8 · George’s terminal',async()=>{
   const r=await reach(o=>o.action==='george-terminal','george-terminal');
   await page.evaluate(()=>{const d=document.getElementById('georgeTerminal');if(d?.open)d.close();});
   await frames(2);return r;});
 
-await step('Ch9 · travel to Water Filtration, 055',async()=>{await travel('55');await frames(5);return {};});
+await step('Ch9 · travel to Water Filtration, 055',async()=>{await travel('55');await frames(8);return {};});
 await step('Ch9 · take the capping kit',()=>reach(o=>o.action==='relic:pipekit','relic:pipekit'));
-await step('Ch10 · travel to the pressure gallery',async()=>{await travel('pipe-gallery');await frames(6);return {};});
+await step('Ch10 · travel to the pressure gallery',async()=>{await travel('pipe-gallery');await frames(9);return {};});
 for(const s of ['cover','isolate','collar','torque'])
   await step('Ch10 · pipe: '+s,async()=>{const r=await reach(o=>o.action==='pipe-'+s,'pipe-'+s);await frames(5);return r;});
 
-await step('Ch11 · travel to Medical, 062',async()=>{await travel('62');await frames(5);return {};});
+await step('Ch11 · travel to Medical, 062',async()=>{await travel('62');await frames(8);return {};});
 await step('Ch11 · take the Georgia book',()=>reach(o=>o.action==='relic:georgia','relic:georgia'));
-await step('Ch11 · travel to the station, 001',async()=>{await travel('1');await frames(5);return {};});
+await step('Ch11 · travel to the station, 001',async()=>{await travel('1');await frames(8);return {};});
 await step('Ch11 · give Billings the page',()=>chat('billings',/Billings/i));
 
-await step('Ch12 · travel to Supply, 144',async()=>{await travel('144');await frames(5);return {};});
+await step('Ch12 · travel to Supply, 144',async()=>{await travel('144');await frames(8);return {};});
 await step('Ch12 · take the sealed suit',()=>reach(o=>o.action==='relic:suit','relic:suit'));
-await step('Ch13 · travel to the airlock',async()=>{await travel('airlock');await frames(6);return {};});
+await step('Ch13 · travel to the airlock',async()=>{await travel('airlock');await frames(9);return {};});
 await step('Ch13 · cycle the inner door',()=>reach(o=>/airlock-/.test(o.action||'')));
 
 say('\n\n=== SUMMARY ===');
@@ -271,6 +282,6 @@ say(`\nfinished in chapter "${end.chapter}" holding [${end.held.join(', ')}]`);
 say(`${stuck} step${stuck===1?'':'s'} a player could not get past`);
 say('page errors: '+(errors.length?'\n  '+errors.slice(0,8).join('\n  '):'none'));
 const fs=await import('node:fs');
-fs.writeFileSync(new URL('../playthrough.log',import.meta.url),log.join('\n'));
+fs.writeFileSync(new globalThis.URL('../playthrough.log',import.meta.url),log.join('\n'));
 await browser.close();
 process.exit(stuck?1:0);
