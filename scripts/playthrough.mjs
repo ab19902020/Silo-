@@ -102,44 +102,42 @@ const offers=()=>page.evaluate(()=>{
   return pool;
 });
 
-// Stand somewhere the game will actually offer `want`, trying the ring of
-// approaches a player would naturally try. Returns the angle that worked.
+// Stand where the game puts the prompt on screen for `want`, and tell me where
+// that was. Everything here is deliberately slow and deliberately literal.
 //
-// The first stage is not optional: put the body beside the target and let a
-// frame run, so the world rebuilds what it thinks is within reach. The sweep
-// then stays inside 3.2 m, so whatever came into the pool on that frame is
-// still in it for every angle tried.
-const approach=async(pos,want)=>{
-  await page.evaluate(pos=>{
-    const b=window.__silo.body;
-    b.position.x=pos[0]+1.2;b.position.z=pos[2];
-  },pos);
-  await frames(2);
-  return sweep(pos,want);
-};
-const sweep=(pos,want)=>page.evaluate(({pos,want})=>{
-  const s=window.__silo,body=s.body,at={x:pos[0],y:pos[1],z:pos[2]};
-  const V=(x,y,z)=>({x,y,z,
-    length(){return Math.hypot(this.x,this.y,this.z);},
-    clone(){return V(this.x,this.y,this.z);},
-    normalize(){const l=this.length()||1;this.x/=l;this.y/=l;this.z/=l;return this;},
-    dot(v){return this.x*v.x+this.y*v.y+this.z*v.z;},
-    sub(v){this.x-=v.x;this.y-=v.y;this.z-=v.z;return this;},
-    distanceTo(v){return Math.hypot(this.x-v.x,this.y-v.y,this.z-v.z);}});
-  for(const back of [1.1,1.5,2.0,2.6,3.2])
-    for(let a=0;a<12;a++){
-      const ang=a*Math.PI/6;
-      body.position.x=at.x+Math.cos(ang)*back;
-      body.position.z=at.z+Math.sin(ang)*back;
-      s.look(Math.atan2(at.x-body.position.x,at.z-body.position.z)+Math.PI,
-             Math.atan2(at.y-(body.position.y+body.eyeHeight),back));
-      const eye=V(body.position.x,body.position.y+body.eyeHeight,body.position.z);
-      const dir=V(at.x-eye.x,at.y-eye.y,at.z-eye.z).normalize();
-      const got=s.world.nearestInteraction(eye,dir);
-      if(got&&(got.action===want||got.label===want))return {back,deg:Math.round(ang*180/Math.PI),got:got.action||got.label};
-    }
-  return null;
-},{pos,want});
+// The fast version — teleport, ask world.nearestInteraction, done — is wrong in
+// three ways that all look like game bugs:
+//   · residentInteractions is rebuilt per frame and only holds people within
+//     five metres, so querying in the same tick reads a list built for wherever
+//     the body was before;
+//   · the frame loop arms nothing while the game is paused, which it is for a
+//     moment after travelling, so use() silently does nothing;
+//   · the physics resolves the body out of whatever it was teleported into, so
+//     a spot that answers correctly this instant is not the spot the player is
+//     standing on a frame later.
+//
+// So: put the body somewhere, let a frame happen, and read the prompt off the
+// screen — the same words the player reads. Nothing is trusted that the player
+// cannot see. Eight positions, and if none of them puts the prompt up, that is
+// a real finding rather than an artefact.
+const RING=[[1.3,0],[1.3,90],[1.3,180],[1.3,270],[2.0,45],[2.0,135],[2.0,225],[2.0,315]];
+async function standWhereItOffers(pos,label){
+  const tried=[];
+  for(const [back,deg] of RING){
+    await page.evaluate(({pos,back,deg})=>{
+      const s=window.__silo,b=s.body,at={x:pos[0],y:pos[1],z:pos[2]},ang=deg*Math.PI/180;
+      b.position.x=at.x+Math.cos(ang)*back;
+      b.position.z=at.z+Math.sin(ang)*back;
+      s.look(Math.atan2(at.x-b.position.x,at.z-b.position.z)+Math.PI,
+             Math.atan2(at.y-(b.position.y+b.eyeHeight),back));
+    },{pos,back,deg});
+    await frames(1);
+    const shown=(await state()).prompt;
+    tried.push(`${back}m/${deg}°:${shown?shown.replace(/E ?Use$|E ?Talk$/,'').trim().slice(0,28):'—'}`);
+    if(shown&&shown.includes(label.slice(0,18)))return {back,deg,prompt:shown,tried};
+  }
+  return {failed:true,tried};
+}
 
 const pressUse=()=>page.evaluate(()=>window.__silo.use());
 const travel=id=>page.evaluate(id=>window.__silo.travel(id),id);
@@ -175,25 +173,14 @@ async function reach(match,want){
   const all=await offers();
   const hit=all.find(match);
   if(!hit)return {stuck:'nothing on this floor matches',nearby:[...new Set(all.map(o=>o.label))].slice(0,14)};
-  const spot=await approach(hit.position,want||hit.action||hit.label);
-  if(!spot)return {stuck:`"${hit.label}" is in the room but the game never offers it — tried 60 approaches from 1.1 m to 3.2 m all the way round`,
-    nearby:[...new Set(all.map(o=>o.label))].slice(0,14)};
-  // Wait for the prompt to actually appear on screen before pressing anything.
-  // use() reads the interaction the frame loop last armed, and the loop does
-  // not arm one while the game is paused — which it is for a moment after
-  // travelling. Pressing Use in that window does nothing at all, and the step
-  // then looks broken. A player waits for the prompt; so does this.
-  let prompt=null;
-  for(let i=0;i<8;i++){
-    prompt=(await state()).prompt;
-    if(prompt)break;
-    await frames(1);
-  }
-  if(!prompt)return {stuck:`reached "${hit.label}" but no prompt ever appeared on screen — the game never armed it`,
+  const spot=await standWhereItOffers(hit.position,hit.label);
+  if(spot.failed)return {
+    stuck:`stood at eight places around "${hit.label}" and the game never put its prompt on screen`,
+    saw:spot.tried,
     nearby:[...new Set(all.map(o=>o.label))].slice(0,14)};
   await pressUse();
   await frames(3);
-  return {label:hit.label,from:`${spot.back} m at ${spot.deg}°`,prompt};
+  return {label:hit.label,from:`${spot.back} m at ${spot.deg}°`,prompt:spot.prompt};
 }
 
 const step=async (name,fn)=>{
@@ -208,7 +195,7 @@ const step=async (name,fn)=>{
   say(`    card: ${after.cardUp?(after.cardCompact?'compact — '+(after.where||'(no destination)'):'full'):'HIDDEN'}   mark: ${after.mark?after.mark.kind+':'+after.mark.id:'-'}`);
   if(r?.from)say(`    reached "${r.label}" from ${r.from}`);
   if(r?.said?.length)say(`    said: ${r.said.join(' / ')}`);
-  if(r?.stuck)say(`    ✗ STUCK: ${r.stuck}`+(r.nearby?`\n      nearby: ${r.nearby.join(' | ')}`:''));
+  if(r?.stuck)say(`    ✗ STUCK: ${r.stuck}`+(r.saw?`\n      saw: ${r.saw.join('  ')}`:'')+(r.nearby?`\n      nearby: ${r.nearby.join(' | ')}`:''));
   return r;
 };
 
