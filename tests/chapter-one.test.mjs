@@ -201,6 +201,9 @@ test('Chapter One runs from the cleaning to the parcel, and the parcel hands off
   assert.equal(s.deliverDispatch(),true);
   assert.equal(s.visible('package'),true);
   assert.ok(s.take('package'));
+  // The deputy closes Chapter Two, not the parcel.
+  assert.equal(s.chapter,'the-package','the parcel ends the chapter before the deputy has been met');
+  assert.equal(s.metTheDeputy(false),true);
   assert.equal(s.chapter,'clues');
   // The parcel is what names the bar and George; the directory receipt used to.
   const parcel=COLLECTABLES.find(c=>c.id==='package');

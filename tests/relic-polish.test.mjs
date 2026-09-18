@@ -29,6 +29,10 @@ test('guidance follows the PEZ ticket and recovers the missing book before Billi
  // Chapter One first: the cleaning, Mara, the shift and the parcel are what put
  // the player on George's trail at all.
  playChapterOne(s);
+ // …and Chapter Two ends on the deputy at the stair door, not on the parcel.
+ // Without him the story is still at Supply and the trail has not opened.
+ assert.equal(s.metTheDeputy(false),true,'the deputy will not close Chapter Two');
+ assert.equal(s.chapter,'clues');
  s.revealHint();s.arriving(26);s.take('pez');assert.equal(s.destination.level,100);assert.equal(s.hintsShown,0);assert.equal(s.arriving(100),true);
  s.take('watch');s.inspectVoidDoor();s.take('crowbar');s.pryHideout();assert.match(s.objective,/Descend/);
  s.take('harddrive');s.reachGeorgeHome();s.terminalDiscovered();s.take('pipekit');s.openPipeCover();for(const a of ['isolate','collar','torque'])s.capPipe(a);

@@ -51,3 +51,60 @@ export function objectiveTarget(story){
 
 // Exported for the tests, so they check the real table rather than a copy.
 export const OBJECTIVE_RULES=RULES;
+
+// And the other half of "where do I go": most objectives are a thing, not a
+// person. The parcel on the counter, the crowbar on the tool board, the book
+// in Medical returns — each is one small object somewhere on a floor the size
+// of a town square, and the objective line can only ever name the floor.
+//
+// This is derived rather than listed. A collectable already says what it needs
+// before it exists (`needs`) and the story already knows whether it is showing
+// (`visible`), so the thing the chapter wants is simply: showing, not yet in
+// your satchel, and gated on where you are in the story. A hand-written table
+// would go stale the first time a chapter moved.
+//
+// `items` is passed in rather than imported: story.js reaches THREE through
+// mementos.js, and this file has to stay loadable without a renderer.
+// Three items carry the trail without being gated on a chapter, because they
+// are always in the world and it is the WRITING that sends you to them: the
+// duck on the bar counter, George's watch at the market, the Georgia book in
+// Medical returns. They have no `needs`, so the rule below cannot find them,
+// and they are named here rather than inferred — inferring "the item on the
+// floor the objective names" would mark the heat tape and the camcorder on
+// Level 144, which are scenery, not the trail.
+const TRAIL=Object.freeze([
+  {id:'pez',    when:s=>s.chapter==='clues'&&!s.has('pez')},
+  {id:'watch',  when:s=>s.chapter==='clues'&&s.has('pez')},
+  {id:'georgia',when:s=>s.chapter==='billings'&&!s.has('georgia')},
+]);
+
+export function objectiveItem(story,items){
+  if(!story||!story.story||!Array.isArray(items))return null;
+  const gettable=id=>{
+    try{return !story.has(id)&&story.visible(id);}catch{return false;}
+  };
+  // The trail first: these are the steps a chapter's own text walks you
+  // through, and they are more specific than the chapter's gate.
+  for(const row of TRAIL){
+    let hit=false;
+    try{hit=!!row.when(story);}catch{hit=false;}
+    if(hit&&gettable(row.id))return row.id;
+  }
+  // Then anything the chapter explicitly opens. `needs` is the gate the story
+  // lifts, so an item carrying this chapter's name is what it is waiting on.
+  for(const item of items){
+    if(!item||!item.id)continue;
+    if(item.needs===story.chapter&&gettable(item.id))return item.id;
+  }
+  return null;
+}
+
+// What the game should be pointing at right now: a person if the story is
+// waiting on a conversation, otherwise the thing it is waiting on you to find.
+// A person wins, because a conversation is always the more specific ask.
+export function objectiveMark(story,items){
+  const who=objectiveTarget(story);
+  if(who)return {kind:'person',id:who};
+  const what=objectiveItem(story,items);
+  return what?{kind:'thing',id:what}:null;
+}

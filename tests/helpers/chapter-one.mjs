@@ -17,6 +17,11 @@ export function playChapterOne(story,{ask=0}={}){
   assert.equal(story.reachedSupply(),true,'the shift does not reach Supply');
   assert.equal(story.deliverDispatch(),true,'the dispatch cannot be handed over');
   assert.ok(story.take('package'),'the parcel was not released');
-  assert.equal(story.chapter,'clues','the parcel does not hand off to George');
+  // This stops with the parcel in the satchel and the deputy still ahead: he
+  // is the last beat of Chapter Two, and the tests that are about him need to
+  // meet him themselves. The parcel used to end the chapter here, which sent
+  // the player off to Level 026 while the game was still waiting for them to
+  // walk past the man at the door.
+  assert.equal(story.chapter,'the-package','the parcel ends the chapter before the deputy has been met');
   return story;
 }

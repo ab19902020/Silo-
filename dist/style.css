@@ -405,3 +405,16 @@ body:not(.cinema-awake) #cinemaControls{opacity:0;visibility:hidden;pointer-even
 .side-stories details[open]>summary::before{content:'−'}
 .side-stories summary:focus-visible{outline:2px solid #d5ba79;outline-offset:3px;border-radius:3px}
 .side-stories details p{font-size:14px;line-height:1.55;margin:.65rem 0;overflow-wrap:anywhere}
+
+/* The objective card, collapsed. After a chapter's opening flourish it keeps
+   one line — where you are going — and lets go of everything else. The player
+   should never have to remember what the game told them nine seconds ago, and
+   should never have a paragraph parked over the silo either. */
+#chapterHud.compact{padding:9px 14px;width:max-content;max-width:min(360px,calc(100vw - 56px))}
+#chapterHud.compact>.eyebrow,#chapterHud.compact>strong,
+#chapterHud.compact>#chapterObjective,#chapterHud.compact>#chapterHint{display:none}
+#chapterHud.compact>#chapterWhere{font-size:14px;color:#cdd3c4;letter-spacing:.01em}
+#chapterHud.compact>#chapterWhere.here{color:#b9d3a8}
+#chapterHud.compact .chapter-actions{margin-top:8px}
+@media(max-width:650px){#chapterHud.compact{max-width:calc(100vw - 32px);padding:8px 12px}}
+@media(max-height:550px){#chapterHud.compact{padding:6px 10px}#chapterHud.compact>#chapterWhere{font-size:13px}}

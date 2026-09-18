@@ -25,7 +25,7 @@ import {RelicInspector} from './relic-inspector.js';
 import { GeorgeTerminal } from './george-terminal.js';
 import { WITNESS, AFTER_THE_CLEAN, WITNESS_OPENER, WITNESS_CLOSE, PACKAGE as PARCEL,
   CLERK, DEPUTY, DISMISSALS, DISMISSALS_TO_FEEL_IT, CLOSED_RANKS } from './the-clean.js';
-import { objectiveTarget } from './objective-target.js';
+import { objectiveTarget, objectiveMark } from './objective-target.js';
 import { StoryMarker } from './story-marker.js';
 import { roomPoint } from './characters.js';
 const PARCEL_LEVEL=PARCEL.level;
@@ -77,7 +77,19 @@ function updateInterface(time){
   const cinemaVisible=!!opening?.watching&&!paused()&&(hudOpen||time*1000<cinemaUntil);
   document.body.classList.toggle('cinema-awake',cinemaVisible);$('cinemaControls').inert=!cinemaVisible;$('cinemaControls').setAttribute('aria-hidden',String(!cinemaVisible));
   const card=$('chapterHud'),wasShown=!card.hidden;
-  card.hidden=paused()||opening?.watching||time*1000>chapterUntil;
+  // The card used to disappear nine seconds after a chapter began and never
+  // come back. On a game with a hundred and forty-four floors that is the
+  // whole objective — where to go and what for — shown once, briefly, and then
+  // the player is on their own with a silo.
+  //
+  // It collapses now instead of going: after the linger it keeps one line, the
+  // destination, and drops the title, the objective paragraph, the hint and
+  // the eyebrow. That is the answer to "where was I going" available at a
+  // glance, for about the height of a line of text. In free roam there is no
+  // objective, so it still goes entirely.
+  const lingering=time*1000<=chapterUntil;
+  card.hidden=paused()||opening?.watching||(!lingering&&!(story?.story&&story.destination));
+  card.classList.toggle('compact',!card.hidden&&!lingering);
   if(wasShown&&card.hidden)document.body.style.setProperty('--card-h','0px');
   $('controlsButton').hidden=!started||paused();
   document.body.classList.toggle('screen-focused',!!opening?.focus);
@@ -1107,16 +1119,36 @@ function frame(){
     // right for the place and useless for finding somebody, and "go and see
     // Mara" does not help in a cafeteria with nine women in work clothes in
     // it. objective-target.js picks them; nothing here decides.
-    if(storyMarker){
-      const mark=started&&!world.outside&&!world.special?objectiveTarget(story):null;
-      storyMarker.update(dt,mark?population.actorHead(mark):null,eye);
-    }
     if(talking?.actor){const at=population.actorPosition(talking.actor);if(at&&at.distanceTo(body.position)>5.5)endConversation();}
     props.update(dt,time,story,world.activeLevel,world.special);
     // The supplied hard-drive model is placed by the character cast, so taking
     // it in story mode has to clear it from the bench there.
     if(cast?.relic&&story.story&&story.has('harddrive'))cast.relic.visible=false;
     world.actorInteractions.push(...props.interactions(story,world.activeLevel,world.special));
+    // Where to go next. Everybody in the silo is dressed the same on purpose and
+    // a floor is the size of a town square, so "Supply, Level 110" gets you off
+    // the stairs and no further. This marks the one person or the one object
+    // the chapter is actually waiting on — read from the same interaction pool
+    // the player walks up to, so it can never point at something that is not
+    // really there.
+    //
+    // It runs here rather than earlier in the frame because the relic prompts
+    // are pushed on the line above; before that, a marked object has no
+    // position yet.
+    if(storyMarker){
+      let at=null;
+      const mark=started&&!world.outside&&!world.special?objectiveMark(story,COLLECTABLES):null;
+      if(mark?.kind==='person')at=population.actorHead(mark.id);
+      else if(mark?.kind==='thing'){
+        const prompt=world.actorInteractions.find(i=>i.action==='relic:'+mark.id)
+          ||world.actorInteractions.find(i=>i.action==='take-dispatch'&&mark.id==='dispatch');
+        if(prompt)at=prompt.position.clone().add(new THREE.Vector3(0,.22,0));
+      }
+      // Whether anything stands between the eye and it, which decides the near
+      // form from the far one. The world owns the walls, so the world answers.
+      const blocked=at?world.blockedFromView(eye,at,at.distanceTo(eye)):false;
+      storyMarker.update(dt,at,eye,blocked);
+    }
     // Chapter One and Two put three people in the way of the job. They are
     // pushed here, beside the relic prompts, because they come and go with the
     // state of the story rather than with the level being loaded.
@@ -1242,5 +1274,6 @@ window.__silo={begin,fire,use,travel,takeRelic,stepOutside,firearms,takeWeapon,c
   // system on one fixed timestep instead of on whatever the frame rate
   // happened to be. Nothing in the game reads any of this.
   get population(){return population;},get cast(){return cast;},
-  get marker(){return storyMarker;},get marked(){return objectiveTarget(story);}};
+  get marker(){return storyMarker;},get marked(){return objectiveTarget(story);},
+  get mark(){return objectiveMark(story,COLLECTABLES);}};
 boot();

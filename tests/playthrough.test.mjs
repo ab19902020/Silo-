@@ -166,8 +166,9 @@ test('the whole run walks: every relic collected, every chapter entered, out ont
   assert.equal(story.visible('package'),false,'the parcel is released before the dispatch is handed over');
   assert.equal(story.deliverDispatch(),true);
   h.collect('package');
-  assert.equal(story.chapter,'clues','the parcel does not hand off to George');
+  assert.equal(story.chapter,'the-package','the parcel ends Chapter Two before the deputy has been met');
   assert.equal(story.metTheDeputy(true),true,'nobody notices a dead man’s parcel leaving Supply');
+  assert.equal(story.chapter,'clues','the deputy does not hand off to George');
 
   // 3 · the duck on the bar, and the watch on the trader's counter.
   h.collect('pez');

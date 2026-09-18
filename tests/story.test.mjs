@@ -61,7 +61,9 @@ test('story mode follows George from relic clue to pipe and Billings',()=>{
   assert.equal(s.deliverDispatch(),true);
   assert.ok(s.visible('package'));
   s.take('package');
-  assert.equal(s.chapter,'clues','the parcel is what starts the hunt for George');
+  assert.equal(s.chapter,'the-package','the parcel ends the chapter before the deputy has been met');
+  assert.equal(s.metTheDeputy(false),true);
+  assert.equal(s.chapter,'clues','the deputy is what starts the hunt for George');
   s.take('georgia');s.take('watch');
   assert.equal(s.chapter,'void-lead');
   assert.equal(s.inspectVoidDoor().needs,'crowbar');
