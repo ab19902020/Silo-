@@ -169,6 +169,54 @@ Relic pickups stay in play; choose **Inspect in 3D** from the satchel. Exterior
 rocks no longer have torn triangular seams, and the cleaners settle on the hill.
 See [movement changes and validation limits](docs/movement-polish.md).
 
+## Playing the whole game, not just testing it
+
+`tests/playthrough.test.mjs` drives the story through the world model. That is
+not the same as playing it, and the difference is where the bugs were: a unit
+test that calls `story.take('package')` cannot notice that the chapter then
+sends you to another floor while the game is still waiting for you to meet the
+deputy at the door you came in by.
+
+So there is a second harness that plays the real thing:
+
+```sh
+node scripts/dev.mjs --port 4173 &
+node scripts/playthrough.mjs          # HEADFUL=1 to watch it
+```
+
+It boots the actual page, starts a real story, and then only does what a player
+can do — travel with the directory, walk up to something, press Use, click a
+line of dialogue. It never calls a story method to move itself along. At each
+step it prints the chapter, the floor, what is in the satchel, what the
+objective card is showing and what the game is pointing at, and it exits
+non-zero naming every step a player could not get past.
+
+Two things it deliberately does not do. It does not path across the floor — it
+places the body beside what it is reaching for, because route-finding is
+already covered above and mixing the two makes a navigation failure look like a
+story failure. And it does not press Use blind: it asks the game what it is
+being offered first, and tries sixty approaches from 1.1 m to 3.2 m all the way
+round before reporting anything as stuck. That second rule exists because the
+first version of the harness reported the Level 100 watch unreachable and half
+the game stuck behind it — the watch is reachable from five angles out of six,
+and it had picked the sixth.
+
+What the first honest run found, all four now fixed:
+
+- **Chapter Two skipped its own ending.** Picking the parcel up jumped straight
+  to Chapter Three, so the objective read "the bar, Level 026" while the game
+  was still waiting for the player to walk past the deputy. He closes the
+  chapter now.
+- **The objective disappeared after nine seconds** and never came back. It
+  collapses to one line instead — where you are going, and "you are here" when
+  you are on the right floor.
+- **The mark could not carry a floor.** Travel drops you at the stair landing
+  forty-five metres from the Supply counter; the mark was depth-tested and dead
+  at nineteen. It has a far form now, drawn through the geometry and dimmed,
+  that reaches the width of a floor.
+- **Only people were marked, never objects** — and most objectives are a thing
+  on a shelf somewhere.
+
 ## The whole run, walked
 
 - **The playthrough completes.** `tests/playthrough.test.mjs` drives the real
