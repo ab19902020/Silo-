@@ -253,10 +253,38 @@ await step('Ch6 · into the hideout',async()=>{await travel('excavator');await f
 await step('Ch6 · take Hard Drive 18',()=>reach(o=>o.action==='hard-drive','hard-drive'));
 
 await step('Ch7 · travel to the Wilkins room, 068',async()=>{await travel('68');await frames(8);return {};});
-await step('Ch8 · George’s terminal',async()=>{
-  const r=await reach(o=>o.action==='george-terminal','george-terminal');
+await step('Ch8 · George’s terminal',()=>reach(o=>o.action==='george-terminal','george-terminal'));
+// The terminal is a screen, not a prompt, and the chapter is explicit about
+// what to do with it: put the drive in, and an empty file list is not an
+// answer — search for the word a Flamekeeper would use for where things are
+// kept. So this presses the buttons the panel actually has.
+await step('Ch8 · insert the drive and find the library',async()=>{
+  const put=await page.evaluate(()=>{
+    const d=document.getElementById('georgeTerminal');
+    if(!d?.open)return {stuck:'the terminal never opened'};
+    const insert=document.getElementById('terminalInsert');
+    if(insert&&!insert.disabled)insert.click();
+    document.getElementById('terminalBoot')?.click();
+    return {};
+  });
+  if(put.stuck)return put;
+  await frames(2);
+  const searched=await page.evaluate(()=>{
+    const form=document.getElementById('terminalSearch');
+    if(!form)return {stuck:'no search form on the terminal'};
+    if(form.hidden)return {stuck:'the drive is in but the terminal offers no search'};
+    const q=document.getElementById('terminalQuery');
+    if(!q)return {stuck:'no search box on the terminal'};
+    q.value='library';
+    form.dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));
+    return {};
+  });
+  await frames(3);
+  if(searched.stuck)return searched;
   await page.evaluate(()=>{const d=document.getElementById('georgeTerminal');if(d?.open)d.close();});
-  await frames(2);return r;});
+  await frames(2);
+  return {};
+});
 
 await step('Ch9 · travel to Water Filtration, 055',async()=>{await travel('55');await frames(8);return {};});
 await step('Ch9 · take the capping kit',()=>reach(o=>o.action==='relic:pipekit','relic:pipekit'));
