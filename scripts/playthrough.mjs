@@ -241,9 +241,14 @@ await step('Ch3 · travel to the market, 100',async()=>{await travel('100');awai
 await step('Ch3 · take the watch',()=>reach(o=>o.action==='relic:watch','relic:watch'));
 
 await step('Ch4 · travel to Mechanical, 144',async()=>{await travel('144');await frames(8);return {};});
-await step('Ch4 · inspect the bulkhead',()=>reach(o=>/bulkhead/i.test(o.label||'')));
+// The chapter calls it a bulkhead; the game calls it "Move the warning sign
+// aside" and the action is `breach`. Steps are matched on the action wherever
+// there is one, because the words in the writing and the words on the prompt
+// are allowed to differ — that is not a bug, it is a story telling you about a
+// thing rather than naming a button.
+await step('Ch4 · move the warning sign',()=>reach(o=>o.action==='breach'));
 await step('Ch5 · take the crowbar',()=>reach(o=>o.action==='relic:crowbar','relic:crowbar'));
-await step('Ch5 · lever the bulkhead open',()=>reach(o=>/bulkhead/i.test(o.label||'')));
+await step('Ch5 · lever the way open',()=>reach(o=>o.action==='breach'));
 await step('Ch6 · into the hideout',async()=>{await travel('excavator');await frames(9);return {};});
 await step('Ch6 · take Hard Drive 18',()=>reach(o=>o.action==='hard-drive','hard-drive'));
 
