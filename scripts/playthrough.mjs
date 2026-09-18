@@ -281,9 +281,31 @@ await step('Ch8 · insert the drive and find the library',async()=>{
   });
   await frames(3);
   if(searched.stuck)return searched;
+  // Searching only admits that the folder exists — "1 MATCH. NOT INDEXED." The
+  // schematic is a file inside it, and the chapter is right that an empty list
+  // is not an answer: you still have to open LIBRARY and then SCHEMATIC.GAS.
+  // These are rows in the panel, so this clicks them the way a player does.
+  const opened=[];
+  for(let depth=0;depth<4;depth++){
+    const clicked=await page.evaluate(()=>{
+      const rows=[...document.getElementById('terminalRows').children]
+        .filter(b=>b.tagName==='BUTTON');
+      const wanted=rows.find(b=>/LIBRARY|SCHEMATIC/i.test(b.textContent))||rows[0];
+      if(!wanted)return null;
+      wanted.click();
+      return wanted.textContent.replace(/\s+/g,' ').trim();
+    });
+    if(!clicked)break;
+    opened.push(clicked);
+    await frames(2);
+    const done=await page.evaluate(()=>!document.getElementById('terminalBlueprint')?.hidden);
+    if(done)break;
+  }
+  const got=await page.evaluate(()=>!document.getElementById('terminalBlueprint')?.hidden);
   await page.evaluate(()=>{const d=document.getElementById('georgeTerminal');if(d?.open)d.close();});
   await frames(2);
-  return {};
+  if(!got)return {stuck:`the schematic never came up — opened: ${opened.join(' > ')||'nothing'}`};
+  return {said:opened};
 });
 
 await step('Ch9 · travel to Water Filtration, 055',async()=>{await travel('55');await frames(8);return {};});
