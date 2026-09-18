@@ -121,7 +121,18 @@ const offers=()=>page.evaluate(()=>{
 // cannot see. Eight positions, and if none of them puts the prompt up, that is
 // a real finding rather than an artefact.
 const RING=[[1.3,0],[1.3,90],[1.3,180],[1.3,270],[2.0,45],[2.0,135],[2.0,225],[2.0,315]];
+// The words on screen are not the words in the interaction. A person's prompt
+// is their name and their job — "Mara Teague · Runner · dispatch" — while the
+// interaction that produced it is labelled "Talk to Mara Teague". Matching the
+// label against the screen therefore failed on every human being in the game,
+// at all eight positions, while the game was offering them perfectly. So the
+// needle is the part that actually appears: the name.
+const needleFor=label=>{
+  const m=/^Talk to (.+)$/.exec(label||'');
+  return (m?m[1]:label||'').slice(0,18);
+};
 async function standWhereItOffers(pos,label){
+  const needle=needleFor(label);
   const tried=[];
   for(const [back,deg] of RING){
     await page.evaluate(({pos,back,deg})=>{
@@ -134,7 +145,7 @@ async function standWhereItOffers(pos,label){
     await frames(1);
     const shown=(await state()).prompt;
     tried.push(`${back}m/${deg}°:${shown?shown.replace(/E ?Use$|E ?Talk$/,'').trim().slice(0,28):'—'}`);
-    if(shown&&shown.includes(label.slice(0,18)))return {back,deg,prompt:shown,tried};
+    if(shown&&shown.includes(needle))return {back,deg,prompt:shown,tried};
   }
   return {failed:true,tried};
 }
