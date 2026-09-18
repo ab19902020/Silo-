@@ -15,14 +15,26 @@
 // route-finding is already covered by tests/playthrough.test.mjs and mixing
 // the two makes a navigation failure look like a story failure.
 //
-// Why it works the way it does: the first version pressed Use from wherever
-// the player happened to be standing and reported a stuck chapter when nothing
-// happened. That was the harness, not the game — the watch on Level 100 is
-// reachable from five angles out of six, and it had picked the sixth. So now
-// it asks the game what it is being offered BEFORE pressing anything, tries
-// other angles until the game offers the thing it came for, and only reports
-// stuck when no angle works. That is a real finding: a player cannot get at it
-// either.
+// Why it works the way it does. Twice now this harness has accused the game of
+// a bug that was its own, and both times for the same reason: reading state the
+// frame loop had not refreshed yet.
+//
+//  1. It pressed Use from wherever the player happened to be standing and
+//     called the chapter stuck when nothing happened. The watch on Level 100 is
+//     reachable from five approach angles out of six and it had picked the
+//     sixth. So it asks the game what it is being offered BEFORE pressing
+//     anything, and tries the ring of approaches a player would.
+//  2. It then reported the Supply clerk "in the room but never offered", from
+//     sixty approaches. She was offered fine. `residentInteractions` is rebuilt
+//     every frame and only carries people within five metres of the body, so
+//     teleporting next to her and querying in the same tick reads a list built
+//     for where the player was standing before — forty-five metres away, across
+//     the floor. A real player walks, and the list keeps up with them.
+//
+// Hence the two stages in approach(): move, let a frame rebuild the world's idea
+// of what is nearby, and only then sweep the angles. Stuck now means no angle
+// works against a current pool, which is a real finding: a player cannot get at
+// it either.
 // Playwright is a dev tool, not a dependency of the game — dist/ ships with no
 // package manager at all — so it is imported from wherever it happens to live
 // rather than from node_modules next to this file.
@@ -92,7 +104,20 @@ const offers=()=>page.evaluate(()=>{
 
 // Stand somewhere the game will actually offer `want`, trying the ring of
 // approaches a player would naturally try. Returns the angle that worked.
-const approach=(pos,want)=>page.evaluate(({pos,want})=>{
+//
+// The first stage is not optional: put the body beside the target and let a
+// frame run, so the world rebuilds what it thinks is within reach. The sweep
+// then stays inside 3.2 m, so whatever came into the pool on that frame is
+// still in it for every angle tried.
+const approach=async(pos,want)=>{
+  await page.evaluate(pos=>{
+    const b=window.__silo.body;
+    b.position.x=pos[0]+1.2;b.position.z=pos[2];
+  },pos);
+  await frames(2);
+  return sweep(pos,want);
+};
+const sweep=(pos,want)=>page.evaluate(({pos,want})=>{
   const s=window.__silo,body=s.body,at={x:pos[0],y:pos[1],z:pos[2]};
   const V=(x,y,z)=>({x,y,z,
     length(){return Math.hypot(this.x,this.y,this.z);},
