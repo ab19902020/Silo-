@@ -154,7 +154,7 @@ function askTopic(button){
   conversation.scrollTop=0;
 }
 function startConversation(person,actor=null){
-  if(person.id==='billings'&&story?.story){billingsConversation();return;}
+  if(person.id==='billings'&&story?.story&&(story.chapter==='billings'||story.hasFlag('billings-helped'))){billingsConversation();return;}
   if(person.id===WITNESS.id&&story?.story&&story.chapter==='the-clean'&&!story.hasFlag('mara-spoke')){maraConversation();return;}
   // Delen and Aron are ordinary residents in the world now, with bodies, so
   // their scenes hang off talking to them rather than off a prompt floating
@@ -773,12 +773,6 @@ function use(){
   if(interaction.action==='billings'){billingsConversation();return;}
   if(interaction.action==='supply-clerk'){clerkConversation();return;}
   if(interaction.action==='deputy'){deputyConversation();return;}
-  if(interaction.action==='take-dispatch'){
-    if(!story?.story){notify('The rack is empty. The day’s dispatches went out hours ago.');return;}
-    if(story.has('dispatch')){notify('Your dispatch is in your satchel. 001 to 110, same day.');return;}
-    if(!story.visible('dispatch')){notify('The rack is not yours to take from yet.');return;}
-    takeRelic('dispatch');return;
-  }
   if(interaction.action?.startsWith('floor-memory:')){inspectFloorMemory(Number(interaction.action.split(':')[1]));return;}
   if(interaction.action==='drive-bay'){audio.click();notify(terminal.view.driveInserted?'Hard Drive 18 is seated in the bay and the lamp is green. The note folded under it reads: “The directory is not the collection. Ask for the whole library.”':inspectionText['drive-bay']);return;}
   if(interaction.action==='george-terminal'){story.reachGeorgeHome();renderTerminal();openDialog(terminalDialog);syncStoryHud();return;}
@@ -1140,8 +1134,7 @@ function frame(){
       const mark=started&&!world.outside&&!world.special?objectiveMark(story,COLLECTABLES):null;
       if(mark?.kind==='person')at=population.actorHead(mark.id);
       else if(mark?.kind==='thing'){
-        const prompt=world.actorInteractions.find(i=>i.action==='relic:'+mark.id)
-          ||world.actorInteractions.find(i=>i.action==='take-dispatch'&&mark.id==='dispatch');
+        const prompt=world.actorInteractions.find(i=>i.action==='relic:'+mark.id);
         if(prompt)at=prompt.position.clone().add(new THREE.Vector3(0,.22,0));
       }
       // Whether anything stands between the eye and it, which decides the near

@@ -1,5 +1,34 @@
 # Chapter One, and the hand in the last second of the clean
 
+## Dispatch pickup correction · 19 September
+
+The shipped version accidentally had two racks: decorative furniture near the
+Wing A entrance and a separate interactive rack inside the sheriff’s station.
+The dispatch was marked `handed`, so no collectable card existed, and its
+objective marker searched a different interaction list from the static rack.
+The directions sent the player to the decorative one.
+
+There is now one physical rack just inside the cafeteria entrance. The card
+uses the same StoryProps lifecycle as other relics: one visible item, one
+pickup action and one marker; taking it clears all three and saves the item.
+The old station rack, duplicate fixture and separate pickup handler are gone.
+A close pickup directly under the aim point wins over a nearby talk prompt,
+while walls and closed doors still block interaction.
+
+At Supply, finishing the clerk’s scene marks the parcel instead of continuing
+to mark the clerk. Taking it moves the marker to the deputy. Billings’s early
+conversation now stays in the opening chapter; his weapon conversation starts
+when the story reaches him later.
+
+`tests/dispatch-pickup.test.mjs` exercises resumed Chapter One, the Wing A door,
+walking around active residents, competing conversation prompts, visibility
+obstructions, single pickup, save/reload, the Supply door, clerk, parcel and
+deputy. The existing full world-route test and browser harness use the real
+`relic:dispatch` action. No save migration or restart is required.
+
+The design notes below describe the earlier chapter work.
+
+
 The brief was to redirect the story, not rebuild the game: keep the cleaning
 that is already here, make the cleaner ours, and let what he does in front of
 the lens be the thing the whole game hangs off.

@@ -1,5 +1,13 @@
 # Silo 18
 
+## Opening dispatch pickup repaired
+
+The sealed dispatch is now on the single runners’ rack just inside the
+cafeteria entrance, Wing A, Level 001. Its visible card, pickup and marker
+share one position. Nearby conversations cannot steal a directly aimed pickup.
+After the Supply conversation on 110, the marker moves to the released parcel,
+then to the deputy. Existing saves continue without restarting.
+
 ## Resident motion and story reliability
 
 Seated residents now plant their feet at their own leg length, with a fixed

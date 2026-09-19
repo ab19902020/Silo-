@@ -27,7 +27,7 @@ export const EQUIPMENT=Object.freeze([
   // Chapter One. The job. A runner carries, and the whole of the chapter is
   // the walk: you cannot start the shift without this in your hand, and the
   // parcel is what you are given for finishing it.
-  {id:'dispatch',sound:'paper',name:'A sealed shift dispatch',eyebrow:'DISPATCH · LEVEL 001 → 110',level:1,wing:0,at:[0,.96,6],handed:true,rackAt:[-9.4,.96,12.4],needs:'the-clean',
+  {id:'dispatch',sound:'paper',name:'A sealed shift dispatch',eyebrow:'DISPATCH · LEVEL 001 → 110',level:1,wing:0,at:[-6.1,.94,4.38],needs:'the-clean',
    blurb:'Grey card, folded twice and sealed with a dab of wax the colour of the landing paint. The routing line reads 001 → 110, SUPPLY, SAME DAY. Your own name is on the runner’s line, in the dispatcher’s hand. It is not heavy. It is the reason you are allowed on the stairs.',
    source:'Original game writing. The runner’s dispatch and the Level 001 rack are this game’s invention.'},
   // Chapter One. Lodged at Supply eleven days before the cleaning, against the
@@ -72,7 +72,7 @@ const CHAPTERS=Object.freeze([
    where:{level:1,wing:0,place:'Cafeteria · Level 001'},
    hints:['Mara Teague is the runner standing beside you at the screen wall.',
           'Ask the others about it while you are up here — Marnes, Billings, the Mayor. You will not like how reasonable they are.',
-          'The runners’ rack is outside wing A on Level 001. You cannot work a shift without the dispatch.',
+          'The runners’ rack is just inside the cafeteria entrance in wing A on Level 001. You cannot work a shift without the dispatch.',
           'With the dispatch in your satchel, open the directory and travel to 110.']},
   {id:'the-package',title:'Chapter Two · The Parcel',objective:'Hand the dispatch to the Supply counter on Level 110, and find out why they will not let you leave straight away.',
    where:{level:110,wing:0,place:'Supply · Level 110 · wing A'},
@@ -154,7 +154,7 @@ export class Story{
     const c=CHAPTERS.find(c=>c.id===this.chapter)||CHAPTERS.at(-1);
     if(c.id==='the-clean'&&this.has('dispatch'))return {...c,objective:(this.flags.has('closed-ranks')?'Nobody in that room saw a thing. ':'')+'You have the dispatch. Work the shift: Supply, Level 110, same day.',where:{level:110,wing:0,place:'Supply · Level 110 · wing A'},
       hints:['Open the directory and travel to 110.','Wing A. The counter is in front of you as you come in.','Hand her the dispatch before you ask her anything.']};
-    if(c.id==='the-clean'&&this.flags.has('mara-spoke'))return {...c,objective:'Mara has no more idea than you do, and the room has gone back to its trays. Take the dispatch off the runners’ rack outside wing A and work your shift.',where:{level:1,wing:0,place:'Runners’ rack · Level 001 · wing A'}};
+    if(c.id==='the-clean'&&this.flags.has('mara-spoke'))return {...c,objective:'Mara has no more idea than you do, and the room has gone back to its trays. Take the dispatch off the runners’ rack just inside the cafeteria entrance in wing A and work your shift.',where:{level:1,wing:0,place:'Runners’ rack · Level 001 · wing A'}};
     if(c.id==='the-package'&&this.flags.has('parcel-taken'))return {...c,title:'Chapter Two · The Parcel',objective:'The parcel is in your satchel. There is a deputy holding the stair door on the way out, and he has noticed you.',where:{level:110,wing:0,place:'Stair door · Level 110 · wing A'},
       hints:['He is standing at the wing door you came in by.','He is not stopping you. Talk to him.','Tell him who lodged it or do not — neither answer is safe, and he writes your name down either way.']};
     if(c.id==='the-package'&&this.flags.has('dispatch-delivered'))return {...c,objective:'She has a hold against your name, lodged eleven days ago by a man who was sent outside this morning. Take the parcel.'};

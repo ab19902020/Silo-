@@ -229,7 +229,7 @@ const chat=async (who,rx)=>{
 };
 
 await step('Ch1 · talk to Mara',()=>chat('mara',/Mara/i));
-await step('Ch1 · take the shift dispatch',()=>reach(o=>o.action==='take-dispatch','take-dispatch'));
+await step('Ch1 · take the shift dispatch',()=>reach(o=>o.action==='relic:dispatch','relic:dispatch'));
 await step('Ch2 · travel to Supply, 110',async()=>{await travel('110');await frames(8);return {};});
 await step('Ch2 · the Supply counter',()=>chat('delen',/Osgood|Delen/i));
 await step('Ch2 · take the parcel',()=>reach(o=>o.action==='relic:package','relic:package'));

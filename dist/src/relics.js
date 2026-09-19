@@ -107,23 +107,6 @@ const build={
 // after the item is taken, so the empty outline reads as somebody having been
 // here before you.
 const FIXTURES=[
-  // The runners' rack on Level 001. Chapter One puts the player to work, and a
-  // job you are told you have is not a job: this is where you take it from.
-  // Pigeonholes by destination band, a chalked shift list, and a shelf at
-  // writing height with the day's dispatches on it.
-  {id:'runners-rack',level:1,wing:0,at:[-6.1,0,4.3],build:(k)=>{
-    for(const x of [-.72,.72])k.box('darkMetal',x,.47,0,.06,.94,.30);
-    k.bevel('wood',0,.93,0,1.56,.055,.34);                 // the writing shelf
-    k.box('darkMetal',0,.055,0,1.56,.11,.34);
-    // Pigeonholes above it, one band of the silo each.
-    k.box('wood',0,1.37,-.09,1.56,.03,.26);
-    for(const y of [1.10,1.23,1.36])k.box('wood',0,y,-.09,1.50,.016,.24);
-    for(let i=0;i<5;i++)k.box('wood',-.60+i*.30,1.23,-.09,.016,.30,.24);
-    for(const [i,y] of [[0,1.30],[1,1.17],[2,1.04]])
-      for(let c=0;c<5;c++)if((i+c)%3)k.box('paper',-.60+c*.30,y-.055,-.05,.10,.004,.14);
-    k.box('black',0,1.50,-.09,1.50,.11,.02);               // the chalked shift list
-    for(let r=0;r<3;r++)for(let c=0;c<4;c++)k.box('pale',-.55+c*.36,1.52-r*.032,-.078,.22,.004,.002);
-  }},
   {id:'tool-board',level:144,wing:0,at:[6.5,0,13.62],build:(k)=>{
     for(const x of [-1.5,1.5])k.beam('darkMetal',[x,.88,0],[x,2.02,0],.035);
     k.box('wood',0,1.5,.06,3.2,1.16,.05);
@@ -219,7 +202,7 @@ export class StoryProps{
     if(special)return out;
     for(const [id,entry] of this.items){
       if(!story.visible(id)||entry.item.level!==level)continue;
-      out.push({position:entry.group.position.clone(),label:`Take ${entry.item.name.replace(/^A /,'the ').replace(/^An /,'the ')}`,action:`relic:${id}`});
+      out.push({position:entry.group.position.clone(),label:`Take ${entry.item.name.replace(/^A /,'the ').replace(/^An /,'the ')}`,action:`relic:${id}`,pickup:true});
     }
     return out;
   }

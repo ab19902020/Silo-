@@ -334,17 +334,19 @@ test('Chapter Two ends with somebody having noticed',()=>{
 
 test('the runners’ rack is a real thing in the cafeteria you can walk up to',{timeout:120000},()=>{
   const world=new SiloWorld(new T.Scene());
-  world.story=new Story('explore');
+  world.story=new Story('story');world.story.beginSearch();
   world.setLevel(1);
-  const rack=world.interactions.find(i=>i.action==='take-dispatch');
+  const props=new StoryProps(world.scene,world.m);props.update(0,0,world.story,1,null);
+  const rack=props.interactions(world.story,1,null).find(i=>i.action==='relic:dispatch');
   assert.ok(rack,'there is no runners’ rack on Level 001');
   // It stands on its own feet rather than floating, and you cannot walk
   // through it — the Supply counter had that bug and this is the same shape.
   const room=world.loaded.get(1).rooms[0];
   const solid=(room.userData.solids||[]).find(s=>
-    Math.hypot(s.x-33.2,s.z-26.6)<1&&s.y1>.8&&s.y1<1.1);
+    Math.hypot(s.x+6.1,s.z-4.3)<1&&s.y1>.8&&s.y1<1.1);
   assert.ok(solid,'the rack has no collider, so you can walk through it');
-  assert.ok(rack.position.y-solid.y1>.1,'the prompt is inside the shelf');
+  assert.ok(Math.abs(topLocal(rack.position).y-solid.y1)<.02,'the dispatch is not on the writing shelf');
+  assert.equal(props.fixtures.some(f=>f.fixture.id==='runners-rack'),false,'a second uncollectable rack still exists');
 });
 
 test('the clerk and the deputy are people standing in the room',{timeout:300000},()=>{
@@ -398,7 +400,7 @@ test('the objective marks one person, and only while it is waiting on them',()=>
  s.take('dispatch');s.reachedSupply();
  assert.equal(objectiveTarget(s),'delen','the counter you were sent to is not marked');
  s.deliverDispatch();
- assert.equal(objectiveTarget(s),'delen','she is not marked for the half where she stops you leaving');
+ assert.equal(objectiveTarget(s),null,'the clerk hides the released parcel marker');
  s.take('package');
  assert.equal(objectiveTarget(s),'kell','the man on the door is not marked once you have the parcel');
  s.metTheDeputy(true);

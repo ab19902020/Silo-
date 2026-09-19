@@ -25,10 +25,8 @@
 const RULES=Object.freeze([
   // Chapter One. She is the only other person who was watching his hands.
   {id:'mara', when:s=>s.chapter==='the-clean'&&!s.hasFlag('mara-spoke')},
-  // Chapter Two. The counter, both halves of it: handing the dispatch over,
-  // and then the hold she will not let you leave without.
+  // Chapter Two. Once the clerk releases the hold, mark the parcel itself.
   {id:'delen', when:s=>s.chapter==='the-package'&&!s.hasFlag('dispatch-delivered')&&s.has('dispatch')},
-  {id:'delen', when:s=>s.chapter==='the-package'&&s.hasFlag('dispatch-delivered')&&!s.has('package')},
   // And the door out, once the parcel is in your satchel.
   {id:'kell',  when:s=>s.hasFlag('parcel-taken')&&!s.hasFlag('deputy-met')},
   // Later: the one conversation the middle of the game turns on.

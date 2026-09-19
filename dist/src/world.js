@@ -398,12 +398,16 @@ export class SiloWorld {
       // reach something well off to the side, and at five metres you have to
       // be looking at it.
       if(delta.normalize().dot(direction)<REACH_CONE(dist))continue;
-      seen.push({i,dist});}
+      // A paper on a counter must remain selectable when its clerk is
+      // nearby. Only favour a close pickup directly under the crosshair;
+      // the usual visibility check still forbids reaching through a door.
+      const pickup=i.pickup===true&&dist<3.25&&delta.dot(direction)>.97;
+      seen.push({i,dist,pickup});}
     // Range and direction are not enough on their own: the gun room's racks sit
     // less than two metres behind the cafeteria's east wall, so walking up to
-    // blank blockwork offered you a rifle through it. Nearest first, and the
-    // first one you can actually see wins.
-    seen.sort((a,b)=>a.dist-b.dist);
+    // blank blockwork offered you a rifle through it. Prefer a centred pickup,
+    // then distance, and require an unobstructed view in either case.
+    seen.sort((a,b)=>Number(b.pickup)-Number(a.pickup)||a.dist-b.dist);
     for(const {i,dist} of seen)if(!this.blockedFromView(position,i.position,dist))return i;
     return null;
   }

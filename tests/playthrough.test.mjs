@@ -152,12 +152,11 @@ test('the whole run walks: every relic collected, every chapter entered, out ont
   // The room closes ranks. Optional, and the whole texture of the chapter.
   for(const who of ['marnes','billings','jahns'])story.askedAbout(who);
   assert.equal(story.hasFlag('closed-ranks'),true,'asking three people changes nothing');
-  // A runner carries. The rack is in the cafeteria, beside the station door.
+  // A runner carries. The rack is just inside the Wing A cafeteria entrance.
   assert.equal(story.reachedSupply(),false,'the shift can be worked without the job');
   h.go(1);
-  const rack=world.interactions.find(i=>i.action==='take-dispatch');
-  assert.ok(rack,'there is no runners’ rack on Level 001');
-  h.reach(rack.position.clone(),'take-dispatch');
+  const dispatch=COLLECTABLES.find(i=>i.id==='dispatch');
+  h.reach(h.relicPoint(dispatch),'relic:dispatch');
   assert.ok(story.take('dispatch'));
   assert.equal(story.destination.level,110,'with the job in hand the shift does not send you to Supply');
   h.go(110);
