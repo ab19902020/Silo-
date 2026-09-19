@@ -1,5 +1,15 @@
 # Silo 18
 
+## Resident motion and story reliability
+
+Seated residents now plant their feet at their own leg length, with a fixed
+chair height. Shared movement reuses pose buffers and joint rotations, and
+conservative animated bounds let the renderer skip off-screen residents.
+Required story contacts survive the lowest crowd budget and remain available
+when their likeness is selected as the player avatar.
+
+See [validation and performance limits](docs/resident-motion-polish.md).
+
 ## Layered wardrobes and fitted eyewear
 
 Create character now separates outer clothing, the shirt underneath, trouser cut

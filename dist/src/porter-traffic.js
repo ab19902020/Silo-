@@ -54,7 +54,7 @@ export class PorterTraffic{
     this.ensureCounters();
     const allowed=!this.world.outside&&!this.world.special&&!watch,near=[];
     for(const r of this.records){
-      const duty=workAt(r.roster,schedule?.hour??8.4),previous=sampleDelivery(r.route,r.seconds),actor=this.actors.get(r.id);
+      const duty=workAt(r.roster,schedule?.hour??8.4),previous=r.sampleSeconds===r.seconds?r.sample:sampleDelivery(r.route,r.seconds),actor=this.actors.get(r.id);
       const yielding=actor&&actor.root.position.distanceTo(body.position)<.85;
       // Finish a flight before taking a break; never vanish halfway upstairs.
       const moving=duty.onDuty||previous.event===null;
@@ -63,7 +63,7 @@ export class PorterTraffic{
       r.state={...duty,onRoute:sample.event===null,task:sample.event==='collect'?`Collecting ${r.roster.cargo} on Level ${r.route.upper}`:sample.event==='deliver'?`Handing over ${r.roster.cargo} on Level ${r.route.lower}`:sample.loaded?`Delivering ${r.roster.cargo} to Level ${r.route.lower}`:`Returning signed receipts to Level ${r.route.upper}`};
       if(!duty.onDuty&&sample.event)r.state.task=duty.task;
       if(sample.event!=='deliver'&&r.lastEvent==='deliver'){r.delivered++;this.receipts.set(r.route.lower,this.time);if(actor)this.events.push({id:'gate',position:r.position.clone()});}
-      r.lastEvent=sample.event;r.sample=sample;r.moving=moving&&!yielding&&talkingTo!==r.id;
+      r.lastEvent=sample.event;r.sample=sample;r.sampleSeconds=r.seconds;r.moving=moving&&!yielding&&talkingTo!==r.id;
       const distance=r.position.distanceTo(body.position);
       if(allowed&&distance<48&&(duty.onDuty||sample.event===null||actor))near.push({r,distance});
     }

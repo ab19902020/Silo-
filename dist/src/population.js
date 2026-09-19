@@ -9,6 +9,7 @@ import { createResident, poseResident } from './resident-model.js';
 import { assignWorkday, workAt, JOBS } from './workday.js';
 import { attachWorkProps, showWorkProps, updateWorkGrip } from './work-props.js';
 import { PorterTraffic } from './porter-traffic.js';
+import { objectiveTarget } from './objective-target.js';
 
 export const CROWD_LIMITS=Object.freeze({low:28,balanced:48,high:72});
 const unit=new THREE.Vector3(),desired=new THREE.Vector3();
@@ -206,6 +207,10 @@ export class Population{
     // How many people are out is the hour's business, not the renderer's. The
     // named residents sort first and survive any limit, so no part of the story
     // can be locked out by the night cycle emptying the galleries.
+    // Cast selection is an avatar choice, not permission to remove a required
+    // story role. Free roam still hides the selected resident's duplicate.
+    const required=objectiveTarget(this.world.story);
+    if(required!==this.requiredContact){this.requiredContact=required;this.rebalance=0;}
     const records=this.records.get(this.level),crowd=this.schedule?.crowd;
     const limit=Math.max(6,Math.round((CROWD_LIMITS[this.world.quality]||48)*(Number.isFinite(crowd)?.25+.75*crowd:1)))-this.porters.count;
     for(const r of records){
@@ -239,15 +244,16 @@ export class Population{
       // There are never more than a handful of named people on a floor, so
       // there is no budget argument for ranking them against the crowd at all.
       const rank=r=>r.definition?0:1;
-      const order=records.filter(r=>r.id!==selected).sort((a,b)=>
+      const order=records.filter(r=>r.id!==selected||r.id===required).sort((a,b)=>
         rank(a)-rank(b)||a.position.distanceToSquared(body.position)-b.position.distanceToSquared(body.position));
-      const keep=new Set(order.slice(0,limit).map(r=>r.id));
+      const capacity=Math.max(limit,order.filter(r=>r.definition).length);
+      const keep=new Set(order.slice(0,capacity).map(r=>r.id));
       for(const [id,a] of this.actors)if(!keep.has(id)){this.remove(a);this.actors.delete(id);}
-      for(const r of order.slice(0,limit))if(!this.actors.has(r.id))this.spawn(r);
+      for(const r of order.slice(0,capacity))if(!this.actors.has(r.id))this.spawn(r);
     }
     this.count=this.actors.size+this.porters.count;
     for(const a of this.actors.values()){
-      const r=a.record,dist=a.root.position.distanceTo(body.position);a.root.visible=r.id!==selected;if(!a.root.visible)continue;
+      const r=a.record,dist=a.root.position.distanceTo(body.position);a.root.visible=r.id!==selected||r.id===required;if(!a.root.visible)continue;
       const cafeteria=this.level===1&&r.position.x>SILO.deckOuter&&-r.position.z<18&&r.position.x<SILO.deckOuter+40;
       const watching=watch&&cafeteria;a.tick+=dt;
       if(dist<5)this.world.residentInteractions.push({position:a.root.position.clone().add(new THREE.Vector3(0,1.25,0)),label:`Talk to ${a.definition.name}`,hint:r.currentWork?.task||a.definition.role||'Silo resident',action:`resident-${r.id}`,actor:r.id,resident:{...a.definition,id:r.definition?.id||r.id,level:r.level,kind:r.kind,workday:r.workday,currentWork:r.currentWork}});

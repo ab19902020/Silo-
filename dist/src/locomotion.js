@@ -36,6 +36,9 @@ export class SkeletalMotion{
     this.model=model;this.height=height;this.bones={};this.rest={};
     model.updateWorldMatrix(true,true);const inverse=model.matrixWorld.clone().invert(),mq=model.getWorldQuaternion(new THREE.Quaternion()).invert();
     model.traverse(b=>{if(b.isBone){this.bones[b.name]=b;this.rest[b.name]={p:b.position.clone(),q:b.quaternion.clone(),worldQ:mq.clone().multiply(b.getWorldQuaternion(new THREE.Quaternion())),point:b.getWorldPosition(new THREE.Vector3()).applyMatrix4(inverse)};}});
+    this.restEntries=Object.entries(this.bones).map(([name,bone])=>[bone,this.rest[name]]);
+    for(const [,r] of this.restEntries)r.inverseQ=r.worldQ.clone().invert();
+    this.rotationQ=new THREE.Quaternion();this.axisQ=new THREE.Quaternion();this.performance=null;this.armPerformance={};
     this.legs=['L','R'].map(s=>{const hip=this.rest['Thigh'+s].point,knee=this.rest['Shin'+s].point,ankle=this.rest['Foot'+s].point;return {side:s,hip:hip.clone(),ankle:ankle.clone(),a:hip.distanceTo(knee),b:knee.distanceTo(ankle),anchor:null,stance:false,target:new THREE.Vector3(),error:0};});
     // What the gait is actually built on: how far this rig's leg reaches, not
     // how tall it happens to be.
@@ -46,10 +49,10 @@ export class SkeletalMotion{
     this.pelvisDrop=0;this.phase=0;this.time=0;this.weight=0;this.run=0;this.pace=1;this.slope=0;this.air=0;this.unsupported=0;this.lastPosition=null;this.state='Idle';this.lastHeading=0;this.footContacts=[];this.stepCount=0;this.rise=0;this.landing=0;
   }
   reset(){this.pelvisDrop=0;this.lastPosition=null;this.weight=0;this.run=0;this.pace=1;this.phase=0;this.slope=0;this.air=0;this.unsupported=0;this.stepCount=0;this.rise=0;this.landing=0;for(const leg of this.legs){leg.anchor=null;leg.stance=false;}}
-  neutral(){for(const [name,b] of Object.entries(this.bones)){b.position.copy(this.rest[name].p);b.quaternion.copy(this.rest[name].q);}}
+  neutral(){for(const [b,r] of this.restEntries){b.position.copy(r.p);b.quaternion.copy(r.q);}}
   rotate(name,angle,axis=sideways){
     const b=this.bones[name],r=this.rest[name];if(!b)return;
-    const local=r.worldQ.clone().invert().multiply(new THREE.Quaternion().setFromAxisAngle(axis,angle)).multiply(r.worldQ);b.quaternion.multiply(local);
+    const local=this.rotationQ.copy(r.inverseQ).multiply(this.axisQ.setFromAxisAngle(axis,angle)).multiply(r.worldQ);b.quaternion.multiply(local);
   }
   relaxHand(side,phase=0,amount=1,run=0){
     const frame=this.model.userData.handFrames?.[side];if(!frame)return;
@@ -80,8 +83,8 @@ export class SkeletalMotion{
   }
   pose({phase=this.phase,weight=this.weight,run=this.run,slope=this.slope,pace=this.pace,turn=0,air=0,impact=0,rise=0,ground=null,dt=0,lock=false}={}){
     this.neutral();const h=this.height,L=this.legLength,p=phase*Math.PI*2,stance=STANCE(run),reach=REACH(run)*SHORTEN(slope)*L*weight*pace*(1-air);
-    const performance=capturedPose(this.model.userData.gaitStyle,phase,run);
-    const arms=this.model.userData.armRetargeted?leadArmPose(this.model.userData.gaitStyle,phase,run):performance.joints;
+    const performance=this.performance=capturedPose(this.model.userData.gaitStyle,phase,run,this.performance);
+    const arms=this.model.userData.armRetargeted?leadArmPose(this.model.userData.gaitStyle,phase,run,this.armPerformance):performance.joints;
     // Residual knee flex at mid-stance. This is not cosmetic: a walker whose
     // stance leg is straight has to drop the pelvis the full geometric depth
     // at double support, which is a 10 cm bounce a step. A real mid-stance

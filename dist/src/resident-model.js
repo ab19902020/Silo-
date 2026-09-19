@@ -131,7 +131,9 @@ export function buildResidentModel(definition,{suit=false}={}){
   let finishes=material;
   if(helmetRange){geometry.addGroup(0,helmetRange[0],0);geometry.addGroup(helmetRange[0],visorRange[0]-helmetRange[0],1);geometry.addGroup(visorRange[0],visorRange[1],2);geometry.addGroup(visorRange[0]+visorRange[1],helmetRange[0]+helmetRange[1]-visorRange[0]-visorRange[1],1);geometry.addGroup(helmetRange[0]+helmetRange[1],indices.length-helmetRange[0]-helmetRange[1],0);
     finishes=[material,residentMaterial(),new THREE.MeshPhysicalMaterial({vertexColors:true,roughness:.22,metalness:.66,clearcoat:1,clearcoatRoughness:.12,envMapIntensity:1.1,side:THREE.DoubleSide})];}
-  const mesh=new THREE.SkinnedMesh(geometry,finishes);mesh.name=definition.id+(suit?'-cleaning-suit':'-resident');mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=false;model.add(mesh);model.updateMatrixWorld(true);mesh.bind(new THREE.Skeleton(bones));geometry.computeBoundingSphere();
+  const mesh=new THREE.SkinnedMesh(geometry,finishes);mesh.name=definition.id+(suit?'-cleaning-suit':'-resident');mesh.castShadow=true;mesh.receiveShadow=true;// Static conservative bounds cover the animated body without skinning every
+  // vertex on the CPU each frame. Cleaner choreography keeps its own exemption.
+  mesh.frustumCulled=!suit;mesh.boundingSphere=new THREE.Sphere(V(0,definition.height*.48,0),definition.height*.92);model.add(mesh);model.updateMatrixWorld(true);mesh.bind(new THREE.Skeleton(bones));geometry.computeBoundingSphere();
   // Every resident gets the same relaxed wrist alignment as the playable cast.
   model.userData.handFrames={};model.userData.armRetargeted=true;
   for(const side of ['L','R']){
@@ -162,6 +164,15 @@ export function poseResident(actor,pose,time,dt=0,speed=0){
     m.bones.Hips.position.y=.525;
     for(const s of ['L','R']){m.rotate('Thigh'+s,-Math.PI*.48);m.rotate('Shin'+s,Math.PI*.49);m.rotate('Foot'+s,-.03);m.rotate('UpperArm'+s,-.19);m.rotate('Forearm'+s,-1.28);m.rotate('Hand'+s,1.12);}
     m.rotate('Spine',.055);m.rotate('Head',.07);
+    // Chair height is fixed; shin length is not. Solve the ankles onto the
+    // floor so a short resident's feet do not hover and a tall one does not sink.
+    actor.model.updateWorldMatrix(true,true);
+    const worldQ=actor.model.getWorldQuaternion(new THREE.Quaternion());
+    for(const leg of m.legs){
+      const goal=leg.ankle.clone();goal.z+=leg.a*.90;goal.applyMatrix4(actor.model.matrixWorld);
+      const floor=actor.ground?.(goal.x,goal.z);if(Number.isFinite(floor))goal.y=floor+leg.ankle.y;
+      m.solve(leg,goal,worldQ.clone().multiply(m.rest['Foot'+leg.side].worldQ));
+    }
   }else if(pose==='work'){workGesture(m,actor.record?.workday?.tool||actor.workTool||'spanner',time);}
   else if(pose==='talk'){conversationGesture(m,time);}
   else if(pose==='watch'){m.rotate('Head',-.04);}

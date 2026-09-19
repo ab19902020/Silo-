@@ -19,8 +19,8 @@ function sample(track,phase){
  const a=track[(i+n-1)%n],b=track[i],c=track[(i+1)%n],d=track[(i+2)%n];
  return .5*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t);
 }
-export function leadArmPose(style,phase,run){
- const walk=tracks[style]||tracks.engineer,fast=tracks.run,result={},amplitude=style==='measured'?.19:style==='security'?.25:.29;
+export function leadArmPose(style,phase,run,result={}){
+ const walk=tracks[style]||tracks.engineer,fast=tracks.run,amplitude=style==='measured'?.19:style==='security'?.25:.29;
  for(const [side,sign] of [['L',1],['R',-1]]){
   const swing=sample(walk[side].swing,phase),running=sample(fast[side].swing,phase);
   const pitch=(swing*amplitude-.015)*(1-run)+(running*.43-.23)*run;
@@ -29,8 +29,8 @@ export function leadArmPose(style,phase,run){
   // The two long coats need room between the wrist and the garment side.
   const coat=style==='security'||style==='measured';
   const ux=sign*((coat?.205:.090)*(1-run)+.115*run),fx=sign*((coat?.195:.035)*(1-run)-.095*run);
-  result['upper'+side]=[ux,-Math.cos(pitch)*Math.sqrt(1-ux*ux),Math.sin(pitch)*Math.sqrt(1-ux*ux)];
-  result['fore'+side]=[fx,-Math.cos(pitch+flex)*Math.sqrt(1-fx*fx),Math.sin(pitch+flex)*Math.sqrt(1-fx*fx)];
+  const upper=result['upper'+side]||(result['upper'+side]=[]);upper[0]=ux;upper[1]=-Math.cos(pitch)*Math.sqrt(1-ux*ux);upper[2]=Math.sin(pitch)*Math.sqrt(1-ux*ux);
+  const fore=result['fore'+side]||(result['fore'+side]=[]);fore[0]=fx;fore[1]=-Math.cos(pitch+flex)*Math.sqrt(1-fx*fx);fore[2]=Math.sin(pitch+flex)*Math.sqrt(1-fx*fx);
  }
  return result;
 }
