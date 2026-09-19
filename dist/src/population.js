@@ -224,7 +224,24 @@ export class Population{
     this.rebalance-=dt;
     if(this.rebalance<=0){
       this.rebalance=.8;
-      const order=records.filter(r=>r.id!==selected).sort((a,b)=>(a.position.distanceToSquared(body.position)-(a.definition?900:0))-(b.position.distanceToSquared(body.position)-(b.definition?900:0))),keep=new Set(order.slice(0,limit).map(r=>r.id));
+      // Named residents are kept unconditionally; everybody else competes on
+      // distance. This used to be a -900 bonus applied to the sort key — but
+      // the key is distance SQUARED, so the bonus was worth thirty metres and
+      // nothing more. On Level 001, the biggest floor in the silo, travel puts
+      // you on the stair landing and the cafeteria is the far side of it:
+      // Billings stands 50.7 m away and sorted as 1672, against 1172 for the
+      // forty-eighth crowd member. So he was culled, along with Mara, Jahns
+      // and Marnes — and the moment you left Level 001 and came back, the
+      // entire named cast of the floor was gone and did not return. Chapter
+      // Eleven asks you to bring the Georgia book to Billings, and by then
+      // every player has left and come back.
+      //
+      // There are never more than a handful of named people on a floor, so
+      // there is no budget argument for ranking them against the crowd at all.
+      const rank=r=>r.definition?0:1;
+      const order=records.filter(r=>r.id!==selected).sort((a,b)=>
+        rank(a)-rank(b)||a.position.distanceToSquared(body.position)-b.position.distanceToSquared(body.position));
+      const keep=new Set(order.slice(0,limit).map(r=>r.id));
       for(const [id,a] of this.actors)if(!keep.has(id)){this.remove(a);this.actors.delete(id);}
       for(const r of order.slice(0,limit))if(!this.actors.has(r.id))this.spawn(r);
     }
