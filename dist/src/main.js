@@ -10,6 +10,7 @@ import {CharacterStudio} from './character-studio.js';
 import {loadProfile,definitionFromProfile} from './character-profile.js';
 import { LadderClimb } from './climbing.js';
 import { Population } from './population.js';
+import { warmResident } from './resident-model.js';
 import { CafeteriaOpening, CAFETERIA_START, OPENING_DURATION } from './opening.js';
 import { conversationFor, ALGORITHM, algorithmAnswer } from './conversations.js';
 import { LORE } from './environment-lore.js';
@@ -315,7 +316,7 @@ function updateSettings(){
   if(renderer)renderer.toneMappingExposure=Number($('brightness').value)/100;
   $('brightnessValue').textContent=`${$('brightness').value}%`;$('sensitivityValue').textContent=`${$('sensitivity').value}%`;lookSensitivity=Number($('sensitivity').value)/100;
   $('musicValue').textContent=`${$('music').value}%`;audio.setEnabled($('sound').checked);audio.setMusicVolume(Number($('music').value)/100);quality=$('quality').value;if(world)world.surface.setTimeOfDay($('timeOfDay').value);
-  if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?2:quality==='low'?1:1.5));renderer.setSize(innerWidth,innerHeight,false);renderer.shadowMap.enabled=quality!=='low';if(world){world.quality=quality;world.keyLight.castShadow=quality!=='low';world.underground.waterSurface.setQuality(quality);world.silo17.waterSurface.setQuality(quality);world.surface.setQuality(quality);}if(rendering){rendering.enabled=true;rendering.setQuality(quality);rendering.resize();}}
+  if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?2:quality==='low'?1:1.5));renderer.setSize(innerWidth,innerHeight,false);renderer.shadowMap.enabled=quality!=='low';if(world){const reshape=world.quality!==quality;world.quality=quality;if(reshape&&world.updateStructure)world.updateStructure(world.lastStructureLevel??1);world.keyLight.castShadow=quality!=='low';world.underground.waterSurface.setQuality(quality);world.silo17.waterSurface.setQuality(quality);world.surface.setQuality(quality);}if(rendering){rendering.enabled=true;rendering.setQuality(quality);rendering.resize();}}
   haptics.set($('vibration').checked);
   saveSettings();
 }
@@ -880,6 +881,10 @@ for(const event of ['fullscreenchange','webkitfullscreenchange'])addEventListene
 $('resetPosition').addEventListener('click',()=>travel(world.special||world.activeLevel));
 for(const id of ['brightness','sensitivity','quality','timeOfDay','sound','music','reduceMotion','vibration']){if(saved[id]!==undefined){if(typeof saved[id]==='boolean')$(id).checked=saved[id];else $(id).value=saved[id];}$(id).addEventListener('input',updateSettings);}
 if(saved.reduceMotion===undefined)$('reduceMotion').checked=matchMedia('(prefers-reduced-motion:reduce)').matches;
+// A phone is a touch screen with a desktop's pixel count and a fraction of the
+// GPU. Until somebody picks a setting, start them on the preset that holds its
+// frame rate there; the sharper ones are a tap away in Settings.
+if(saved.quality===undefined&&coarse)$('quality').value='low';
 // Somebody who has asked their system for less motion has not asked for less
 // vibration, so this defaults on and is its own switch.
 if(saved.vibration===undefined)$('vibration').checked=true;
@@ -1242,7 +1247,7 @@ async function boot(){
     await world.loadAssets(progress=>{$('enterButton').textContent=`Preparing the silo · ${Math.round(progress*45)}%`;});
     cast=new CharacterCast(scene,world);await cast.load(progress=>{$('enterButton').textContent=`Preparing characters · ${Math.round(45+progress*55)}%`;});const customProfile=loadProfile(conversationStorage);if(customProfile)cast.register(definitionFromProfile(customProfile));cast.select(saved.character||'juliette');cast.thirdPerson=saved.thirdPerson!==false;body.standHeight=body.height=cast.active.definition.height;cast.active.heading=yaw+Math.PI;renderCharacters();
     world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;world.update(0,body.position);cast.update(0,body,false);
-    population=new Population(scene,world);storyMarker=new StoryMarker(scene);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);
+    population=new Population(scene,world);population.camera=camera;storyMarker=new StoryMarker(scene);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);
     story=Story.load(savedStory);sideMissions=story.story?SideMissions.load(savedStory?.sideMissions):loadExploreMissions();terminal=GeorgeTerminal.load(savedStory?.terminal);world.driveSeated=terminal.view.driveInserted;if(savedStory?.clock)siloClock=SiloClock.load(savedStory.clock);world.story=story;props=new StoryProps(scene,world.m);const relicFailures=await props.loadAssets();if(relicFailures)notify('Some relic models could not load. Refresh to retry.');drone=new Drone(scene,world.m);
     if(story.story&&story.chapter!=='cleaning'){opening.finish();const cp=savedStory?.checkpoint;if(cp&&Number.isInteger(cp.level)&&cp.level>=1&&cp.level<=144&&Array.isArray(cp.position)&&cp.position.length===3&&cp.position.every(Number.isFinite)&&[null,'generator','mines','excavator','tunnel','pipe-gallery','silo17'].includes(cp.special)){world.setLevel(cp.level,cp.special);const [x,y,z]=cp.position;const floor=world.colliders.floorAt(x,z,.3,y+1);if(Number.isFinite(floor)&&Math.abs(floor-y)<2)body.teleport(x,floor+.05,z);else{const dest=world.destination(cp.special||cp.level);body.teleport(...dest.position.toArray());}yaw=Number.isFinite(cp.yaw)?cp.yaw:0;}if(story.hasFlag('hideout-open'))world.openBreach();if(story.chapter==='drone'){story.killedByDrone();const back=world.destination('airlock');world.setLevel(1);body.teleport(...back.position.toArray());}world.update(0,body.position);}
     openingChanged(opening.state);syncStoryHud(true);
@@ -1251,6 +1256,11 @@ async function boot(){
     if(world.materialFailures)notify('Some surface materials could not load. Refresh to retry.');
     if(world.assetFailures)notify('Some Lost Signal props could not load. The complete architectural reconstruction is still available.');
     frame();
+    // Tailor the rest of the silo's residents while the title screen is up,
+    // one at a time between frames. Whoever is not done by the time play
+    // starts is built when first met, as before.
+    const tailoring=population.tailoringQueue();
+    (function tailorNext(){if(started||!tailoring.length)return;try{warmResident(tailoring.shift());}catch(error){console.warn(error);}setTimeout(tailorNext,40);})();
   }catch(error){fatal(error);}
 }
 // One handle on the running game, for the headless smoke test that drives the

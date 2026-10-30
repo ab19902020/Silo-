@@ -6,6 +6,7 @@ import { CharacterBody } from './physics.js';
 import { RESIDENT_CAST, CROWD_APPEARANCES, crowdAppearanceIndex } from './resident-data.js';
 import { residentName } from './resident-stories.js';
 import { createResident, poseResident } from './resident-model.js';
+import { updateResidentDetail } from './resident-lod.js';
 import { assignWorkday, workAt, JOBS } from './workday.js';
 import { attachWorkProps, showWorkProps, updateWorkGrip } from './work-props.js';
 import { PorterTraffic } from './porter-traffic.js';
@@ -13,6 +14,7 @@ import { objectiveTarget } from './objective-target.js';
 
 export const CROWD_LIMITS=Object.freeze({low:28,balanced:48,high:72});
 const unit=new THREE.Vector3(),desired=new THREE.Vector3();
+const SEEN=new THREE.Frustum(),VIEW=new THREE.Matrix4(),BOUNDS=new THREE.Sphere(),CENTRE=new THREE.Vector3();
 export function clearResidentSpot(world,p,r=.28){
   return !world.colliders.contains(p.x,p.z,r,p.y+.06,p.y+1.87)&&Math.abs(world.colliders.floorAt(p.x,p.z,r,p.y+.25)-p.y)<.06;
 }
@@ -193,11 +195,19 @@ export class Population{
     }
     this.rebalance=0;
   }
+  // Everybody who can turn up on a floor without being asked for: the crowd
+  // and the stair porters, then the named cast. Built while the title screen is
+  // up so that none of them is tailored in the middle of play.
+  tailoringQueue(){
+    const crowd=CROWD_APPEARANCES.map((appearance,index)=>({id:`crowd-${index}`,height:1.63+(index%5)*.045,appearance}));
+    const porters=CROWD_APPEARANCES.map((appearance,index)=>({id:`delivery-body-${index}`,height:1.72,appearance}));
+    return [...crowd,...porters,...RESIDENT_CAST.filter(d=>!d.absent)];
+  }
   remove(actor){actor.root.removeFromParent();actor.model.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.dispose();if(o.isInstancedMesh)o.dispose();});}
   spawn(r){
     const index=crowdAppearanceIndex(r.seed);
     const definition=r.definition||{id:`crowd-${index}`,name:residentName(r.seed),role:r.workday.title,height:1.63+(index%5)*.045,appearance:CROWD_APPEARANCES[index]};
-    const actor=createResident(definition);actor.record=r;actor.root.position.copy(r.position);actor.root.rotation.y=r.heading??(r.seed%628)/100;actor.heading=actor.root.rotation.y;actor.body=new CharacterBody({radius:.26,standHeight:definition.height,stepHeight:.3});actor.body.teleport(r.position.x,r.position.y,r.position.z);actor.tick=0;attachWorkProps(actor,this.world.m,r.workday);this.scene.add(actor.root);this.actors.set(r.id,actor);return actor;
+    const actor=createResident(definition);actor.record=r;actor.root.position.copy(r.position);actor.root.rotation.y=r.heading??(r.seed%628)/100;actor.heading=actor.root.rotation.y;actor.body=new CharacterBody({radius:.26,standHeight:definition.height,stepHeight:.3});actor.body.teleport(r.position.x,r.position.y,r.position.z);actor.tick=0;actor.skins=[];actor.model.traverse(o=>{if(o.isSkinnedMesh)actor.skins.push(o);});attachWorkProps(actor,this.world.m,r.workday);this.scene.add(actor.root);this.actors.set(r.id,actor);return actor;
   }
   update(dt,body,watch=false,selected=null){
     this.time+=dt;this.watch=watch;this.events=[];
@@ -252,12 +262,25 @@ export class Population{
       for(const r of order.slice(0,capacity))if(!this.actors.has(r.id))this.spawn(r);
     }
     this.count=this.actors.size+this.porters.count;
+    // Most of the crowd is behind you or round a corner at any moment, and a
+    // resident nobody can see does not need a fresh pose sixty times a second.
+    // They still walk their routes — only less often, in bigger steps — and the
+    // moment they come into view they are back on the full rate.
+    const view=this.camera?SEEN.setFromProjectionMatrix(VIEW.multiplyMatrices(this.camera.projectionMatrix,this.camera.matrixWorldInverse)):null;
+    // Each resident is some thirty thousand triangles, and every one of them
+    // was drawn a second time into the lamp's shadow map wherever they stood.
+    // Past a few metres a resident's shadow is a smudge under their feet that
+    // the fixture overhead would not resolve anyway.
+    const shadowReach=this.world.quality==='high'?28:this.world.quality==='low'?8:15;
     for(const a of this.actors.values()){
       const r=a.record,dist=a.root.position.distanceTo(body.position);a.root.visible=r.id!==selected||r.id===required;if(!a.root.visible)continue;
       const cafeteria=this.level===1&&r.position.x>SILO.deckOuter&&-r.position.z<18&&r.position.x<SILO.deckOuter+40;
       const watching=watch&&cafeteria;a.tick+=dt;
       if(dist<5)this.world.residentInteractions.push({position:a.root.position.clone().add(new THREE.Vector3(0,1.25,0)),label:`Talk to ${a.definition.name}`,hint:r.currentWork?.task||a.definition.role||'Silo resident',action:`resident-${r.id}`,actor:r.id,resident:{...a.definition,id:r.definition?.id||r.id,level:r.level,kind:r.kind,workday:r.workday,currentWork:r.currentWork}});
-      const interval=r.id===this.talkingTo?0:dist<16?0:dist<40?1/30:1/15;if(a.tick<interval)continue;const step=Math.min(a.tick,.15);a.tick=0;
+      const shadow=dist<shadowReach;if(a.skins)for(const mesh of a.skins)mesh.castShadow=shadow;
+      updateResidentDetail(a,r.id===this.talkingTo?0:dist,this.world.quality);
+      const seen=!view||dist<4||view.intersectsSphere(BOUNDS.set(CENTRE.copy(a.root.position).setY(a.root.position.y+.9),1.3));
+      const interval=r.id===this.talkingTo?0:!seen?.2:dist<16?0:dist<40?1/30:1/15;if(a.tick<interval)continue;const step=Math.min(a.tick,seen?.15:.3);a.tick=0;
       let pose=r.activity,speed=0;desired.set(0,0,0);
       // Whoever you are talking to stops what they were doing and turns to
       // face you, and stays turned until you walk away. Being addressed by

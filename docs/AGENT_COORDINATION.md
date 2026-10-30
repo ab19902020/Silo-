@@ -77,3 +77,26 @@ The figure and its clothes, as of the pass after that:
   inside the torso.
 - "Forearm" for rolled sleeves is decided by skin weight, not by width; the old
   width test painted bare skin on the hips.
+
+## Frame budget — what was cut and where it lives
+
+Level 001 on Balanced was drawing about 6.1 million triangles a frame. It is
+now about 3.1 million, and Low is lower again. If something starts dragging,
+check these first before adding more detail:
+
+- The shaft (`world.js`, `updateStructure`): the full-detail band is ±4/±2/±1
+  storeys by quality instead of fifteen. Only the storey you stand on casts
+  shadows (±1 on High). It does that through a small copy of the detailed kit on
+  layer 1 (`SHADOW_ONLY`), which only the lamp's shadow camera renders. The band
+  and the far shaft never cast shadows.
+- The surface (`world.update`) is drawn only outside or past the inner airlock
+  door (top-local z > 52). The two doors never open together, so it cannot be
+  seen from anywhere else.
+- Residents: past 13 m (9 Low, 18 High) a resident swaps to a merged copy of
+  their own mesh, about a third of the triangles (`resident-lod.js`). Only
+  residents within 15 m (8/28) cast shadows. Off-screen residents update five
+  times a second.
+- Every crowd, porter and cast model is tailored while the title screen is up
+  (`warmResident`), so walking into a crowd does not stall a frame on building
+  someone.
+- Touch devices start on Low until the player picks a setting.
