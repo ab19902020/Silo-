@@ -100,3 +100,15 @@ check these first before adding more detail:
   (`warmResident`), so walking into a crowd does not stall a frame on building
   someone.
 - Touch devices start on Low until the player picks a setting.
+
+## Android app
+
+`android/` builds the game into an APK (`android/build.sh`, see
+`android/README.md`). It packs `dist/` exactly as it is, so anything that works
+on GitHub Pages works in the app — but two things are worth knowing:
+
+- The app serves files from `https://appassets.androidplatform.net/`. Keep asset
+  URLs relative (as they are now); an absolute URL to another host will not load
+  offline. New file types need a MIME entry in `MainActivity.TYPES`.
+- Back runs the page's Escape behaviour: it fires `cancel` on the open
+  `<dialog>`, or a keydown `Escape` when none is open.
