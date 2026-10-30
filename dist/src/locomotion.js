@@ -3,6 +3,12 @@ import {capturedPose} from './captured-motion.js';
 import {leadArmPose} from './arm-motion.js';
 
 const up=new THREE.Vector3(0,1,0),forward=new THREE.Vector3(0,0,1),sideways=new THREE.Vector3(1,0,0);
+// Where the upper arm hangs at rest, as a rotation in towards the body. It was
+// tucked 3 degrees in, to cure a spread-armed look on a body that was as wide at
+// the waist as at the chest. The trunk has a waist now, so a lighter tuck is
+// enough to bring the hands to the thighs while leaving a gap open at the waist.
+// Hanging the arms clear of vertical instead flared the hands out past the hips.
+const ARM_REST=.018;
 const clamp=THREE.MathUtils.clamp,lerp=THREE.MathUtils.lerp;
 const ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
 const cycle=t=>((t%1)+1)%1;
@@ -238,7 +244,7 @@ export class SkeletalMotion{
       if(weight>.001&&air<.05){
         // Retarget from the same relaxed arm pose used at rest so starting
         // and stopping do not snap the elbows back to the bind pose.
-        this.rotate('UpperArm'+leg.side,-Math.sign(leg.hip.x)*.055,forward);
+        this.rotate('UpperArm'+leg.side,-Math.sign(leg.hip.x)*ARM_REST,forward);
         this.rotate('Forearm'+leg.side,-.18);
         const worldQ=this.model.getWorldQuaternion(new THREE.Quaternion());
         for(const [prefix,boneName,childName] of [['upper','UpperArm','Forearm'],['fore','Forearm','Hand']]){
@@ -261,7 +267,7 @@ export class SkeletalMotion{
       this.rotate('UpperArm'+leg.side,(.30+.34*run)*arm*weight-(.24+.44*Math.max(0,rise))*air-.24*impact);
       // Tuck the upper arms in as the pace rises. Left wide with the elbows
       // closed for a run, the hands end up parked in front of the chest.
-      this.rotate('UpperArm'+leg.side,-Math.sign(leg.hip.x)*(.055+.035*run+.14*air),forward);
+      this.rotate('UpperArm'+leg.side,-Math.sign(leg.hip.x)*(ARM_REST+.125*run+.14*air),forward);
       this.rotate('UpperArm'+leg.side,-.10*run*weight,up);
       // The elbow closes as the arm comes through and opens as it goes back;
       // at a run it never straightens.

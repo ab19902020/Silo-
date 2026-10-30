@@ -58,3 +58,22 @@ baked anatomical mesh (`resident-body-data.js`) and a garment surface that
 projects cloth onto the bind pose (`garment-surface.js`), which is the better
 system and the one that survives. The loft is dropped; what follows is written
 against the mesh that is actually there.
+
+The figure and its clothes, as of the pass after that:
+
+- `resident-body.js` reshapes the baked trunk before anything is fitted to it:
+  shoulders slope about 3.5 cm from neck to tip (they were a flat shelf), the
+  waist comes in, the trunk is about 12% shallower, legs taper at the knee and
+  ankle, and build makes limbs thicker all round instead of stretching them
+  sideways into ovals. `tests/resident-figure.test.mjs` and the updated
+  shoulder assertion in `resident-tailoring.test.mjs` hold this.
+- `resident-cloth.js` gives the shirt and trousers real thickness by inflating
+  the covered body along its normals, flattening the front of the pelvis, and
+  relaxing the result. Without it the clothing is a colour on bare anatomy.
+- Open garments (coat, cardigan, lab coat, waistcoat) are one shell sampled
+  round the body, sharing `JACKET_STAND`/`JACKET_OPEN` with the coat skirts so
+  they meet at the waist. Radial samples are rejected if they land on the far
+  side of the body — high on the chest they used to, and built the jacket
+  inside the torso.
+- "Forearm" for rolled sleeves is decided by skin weight, not by width; the old
+  width test painted bare skin on the hips.
