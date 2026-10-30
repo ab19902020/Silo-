@@ -1,25 +1,406 @@
 # Silo 18
 
-## Mystery expansion — review branch
+## Opening dispatch pickup repaired
 
-George’s hidden-file terminal, crowbar access, pipe-capping sequence, Billings’
-shotgun handoff, escape/drone encounter, exterior Silos 0–50 and a flooded
-Silo 17 are integrated on `codex/mystery-expansion`. Interior atmosphere and
-reactive water have also been extended.
+The sealed dispatch is now on the single runners’ rack just inside the
+cafeteria entrance, Wing A, Level 001. Its visible card, pickup and marker
+share one position. Nearby conversations cannot steal a directly aimed pickup.
+After the Supply conversation on 110, the marker moves to the released parcel,
+then to the deputy. Existing saves continue without restarting.
 
-Claude’s fourteen-area mine network and hidden-library terminal are integrated.
-The current browser has WebGL disabled, so a full visual playthrough and device performance
-validation remain release gates. These changes have not been published. See
-[implementation, route, research and validation](docs/mystery-expansion.md) and
-[external agent integration](docs/AGENT_COORDINATION.md).
+## Resident motion and story reliability
 
-A browser-based, first- and third-person reconstruction of the television silo, built in Adam’s **Silo-** repository using the circular collision system and selected interior assets from **Lost Signal**.
+Seated residents now plant their feet at their own leg length, with a fixed
+chair height. Shared movement reuses pose buffers and joint rotations, and
+conservative animated bounds let the renderer skip off-screen residents.
+Required story contacts survive the lowest crowd budget and remain available
+when their likeness is selected as the player avatar.
+
+See [validation and performance limits](docs/resident-motion-polish.md).
+
+## Layered wardrobes and fitted eyewear
+
+Create character now separates outer clothing, the shirt underneath, trouser cut
+and colour, footwear, fabric and glasses. Coats open over a shirt, cardigans end
+at the hip, medical coats have their own hem and lapels, and a sleeveless waistcoat
+joins the wardrobe. Glasses flare outside the brow before following the temples;
+the scanned neck edge is tucked into the existing skin bridge.
+
+The shared NPC pipeline uses these clothes and accessories too. Generic residents
+use a stable, approximately 70% light-complexion art-direction balance, with named
+cast appearances preserved. See [wardrobe changes and checks](docs/layered-wardrobes.md).
+
+## Expressive residents and face sculpting
+
+**Create character → Face** now offers 12 feature controls, six starting faces,
+new variations and reset. Shape the jaw, chin, cheeks, nose, eyes and mouth in a
+close-up preview, then check the full outfit standing, walking or running.
+Identity, Face, Hair & skin and Clothing have separate editing sections; existing
+saved residents remain compatible.
+
+Residents have stable facial differences, fitted glasses, cleaner skin blending
+and independently timed blinking. Porters carry parcels by a handle below the
+palm with a supported arm, closing fingers and an upright load, including while
+walking. See [character and carrying update](docs/expressive-residents.md).
+
+## Character finish and start-menu creation
+
+**Create character** is now a dedicated start-menu button. Choose your name,
+appearance and clothing, select **Save & play as your resident**, then start
+New Game or Free Roam. **Choose character** retains the latest 114-resident cast.
+
+NPCs and playable residents share rounded shoe soles, a continuous neckline,
+and a clean shirt hem. The latest fitted coats, pockets and movement work are
+preserved. See [character repairs and verification](docs/character-finish.md).
+
+## Chapter One · The Clean
+
+The story now begins with the cleaning that was already here, and with one
+thing the cleaner does in the last second of it.
+
+- **The existing opening is untouched.** The walk out, the crater, the dead
+  tree, the lens, the climb, the helmet, the long rest — all of it still runs
+  frame for frame, cut against the same audio. The twelve phase beats and their
+  seconds are now pinned by a test so the story cannot quietly move them.
+- **The two people on the hill are ours.** Sheriff **Nathan Reeve**, sent out
+  today, and **Hana Reeve**, sent out before him and lying at the foot of the
+  tree. Both are original Silo 18 characters; the scene and the relationship
+  are exactly as they were. A test reads every shipped file and fails if the
+  names they replaced appear anywhere.
+- **The gesture.** Just before he turns away he raises his free hand to the
+  lens, opens it, and holds it. It sits in the tail of the *existing* clean
+  window — 28.74 s to 30 s — because the wiping arm is already back at rest by
+  then, so **no downstream beat moves**. Measured on the rig: the hand rises
+  from 0.78 m to **1.31 m** and reaches **0.49 m** out from the shoulder, held
+  about three quarters of a second, and is down before he turns.
+- **Mara saw it.** The room goes back to its trays; one runner does not. The
+  exchange after the cleaning explains nothing, and a test enforces that.
+- **The room closes ranks.** Four people who were in that cafeteria, each with
+  a reasonable answer ready and **none of them lying**: he was steadying
+  himself, everyone waves, his arm cramped, it is a lens and not a window. You
+  are not being silenced, you are being agreed with. Ask three and the
+  objective changes to *"Nobody in that room saw a thing."* Entirely optional.
+- **You are a runner, and the job is a job.** The dispatch is a real object on
+  a real rack beside the station door — pigeonholes, a chalked shift list — and
+  without it there is no shift and Supply has no reason to look anybody up.
+- **The parcel has to be earned.** Delen Osgood breaks the seal, reads the
+  dispatch in four seconds, writes in a ledger the size of a paving slab, and
+  then does not dismiss you. There is a hold against your name, eleven days
+  old, holding fee paid up front — *which people do not do*. She checks the
+  signature, and something goes out of her face.
+- **Chapter Two ends on a turn.** Deputy Aron Kell is holding the stair door.
+  You can tell him who lodged it or not; neither is punished and neither is
+  safe. Either way he writes your name and the level in a notebook, and you
+  watch him do it.
+- **Everything after that is the game that was already built.** The duck, the
+  watch, the void, the hideout, the hard drive, George's machine, the gas line,
+  Billings, the airlock and the drone all run exactly as before.
+
+See [the Chapter One notes](docs/chapter-one.md).
+
+## Steady artificial lighting
+
+Stair and room lights now overlap smoothly across floor boundaries, with working
+stair-spine lamps, consistent fixture colour and less over-lighting in rooms.
+The eight-light budget stays fixed during movement, and fast travel starts with
+the destination already lit. Sunlight remains outside the silo.
+See [lighting changes and validation limits](docs/steady-lighting.md).
+
+## Play the latest build
+
+[Play Silo 18](https://ab19902020.github.io/Silo-/)
+
+Choose **Story · New game** for the mystery, or **Free Roam · All areas** to
+explore immediately. The integrated build includes Claude's mine, terminal,
+story guidance and audio work; Silos 0–50 outside; explorable flooded Silo 17;
+Blender-authored small relics with 3D inspection; earthen bowl terrain; and
+consistent artificial interior lighting.
+
+See [this release's changes and validation limits](docs/relic-world-polish.md),
+[the mystery route and research](docs/mystery-expansion.md), and
+[agent integration history](docs/AGENT_COORDINATION.md).
+
+## Light through the stairs
+
+- **The staircase had a 20 mm slot in every step.** Not a lighting bug: a tread
+  slab was a flat 180 mm and the rise is 200 mm, so between the top of one step
+  and the underside of the next there was a gap running the full depth of the
+  tread, from the column at r 3.1 out to the well at 7.3 — fifty of them per
+  flight, a hundred and forty-three flights. Standing on the stairs you were
+  looking through those slits at the far side of the shaft, and what reads
+  through a 20 mm gap at that range is whatever is brightest: the strip lights
+  over the wing doors. The far flights draw with half the steps, so their rise
+  is 400 mm and the same slab left a **220 mm** gap. The slab depth is derived
+  from the rise now, with 20 mm of overlap, so the two cannot drift apart
+  again. Measured in a browser over five viewpoints with the lamp material
+  painted a litmus colour: **108 pixels of lamp seen through the flight closed,
+  none revealed.**
+
+## Optional resident stories
+
+Ask Walker (144 B) about a failed landing light, Carla (126 C) about an unclaimed
+parcel, or Lukas (19 C) about his observations. Each has an optional story with
+physical clues, saved progress and an outcome visible in the silo. Their gallery
+correspondence stands let every playable character participate. Use the journal
+to reread clues and see what you are carrying for residents.
+
+These are original stories inspired by the setting, available in Story and Free
+Roam. See [routes, source notes and validation](docs/side-stories.md).
+
+## Residents at work
+
+Every resident now has an assigned responsibility and a daily routine: work,
+water breaks, meals, personal errands and quiet time. Ask **What are you doing
+today?** to hear their current task and shift. Fifty job specializations include
+lamp maintenance, seed keeping, garment mending, clinic registration and stores
+dispatch; named characters have duties fitted to their existing roles.
+
+Loaded porters use the spiral stairs, collect parcels at relay counters and
+return with signed receipts. Work props and quiet activity sounds follow what
+nearby residents are doing. These additions use the latest character upgrade.
+See [workdays, source references and validation limits](docs/living-workdays.md).
+
+## TV world and relic polish
+
+Every level now has a distinct resident note to discover and keep in the
+satchel. Five optional finds add heat tape, a magnifier, an old video camera,
+a numbered IT key and a retired sheriff’s badge. Close examination has named
+detail views, an open Georgia book and a camera that fits portrait screens.
+Wide signs clear the curved gallery walls; cafeteria and market signs have
+physical supports, with several floating furnishings corrected.
+
+The latest movement and cinema update is included. Pickups keep you in play;
+open the satchel and choose **Inspect in 3D** when you want a closer look.
+See [the changes, TV references and testing limits](docs/tv-world-polish.md).
+
+## Walking, running and quieter screen controls
+
+The latest repository upgrades are retained, including resident conversations,
+controller support, floor streaming, the market and the complete mystery route.
+The shared gait now has shorter reaches, smoother weight release, independent
+arm swings and earlier heel recovery while running. Generated residents have
+relaxed walking hands and a loose running grip. Idle, conversation and teleport
+transitions release stale foot anchors and running state.
+
+The cleaning controls fade automatically and can be recalled with **H / ☰**.
+Relic pickups stay in play; choose **Inspect in 3D** from the satchel. Exterior
+rocks no longer have torn triangular seams, and the cleaners settle on the hill.
+See [movement changes and validation limits](docs/movement-polish.md).
+
+## Playing the whole game, not just testing it
+
+`tests/playthrough.test.mjs` drives the story through the world model. That is
+not the same as playing it, and the difference is where the bugs were: a unit
+test that calls `story.take('package')` cannot notice that the chapter then
+sends you to another floor while the game is still waiting for you to meet the
+deputy at the door you came in by.
+
+So there is a second harness that plays the real thing:
+
+```sh
+node scripts/dev.mjs --port 4173 &
+node scripts/playthrough.mjs          # HEADFUL=1 to watch it
+```
+
+It boots the actual page, starts a real story, and then only does what a player
+can do — travel with the directory, walk up to something, press Use, click a
+line of dialogue. It never calls a story method to move itself along. At each
+step it prints the chapter, the floor, what is in the satchel, what the
+objective card is showing and what the game is pointing at, and it exits
+non-zero naming every step a player could not get past.
+
+Two things it deliberately does not do. It does not path across the floor — it
+places the body beside what it is reaching for, because route-finding is
+already covered above and mixing the two makes a navigation failure look like a
+story failure. And it does not press Use blind: it asks the game what it is
+being offered first, and tries sixty approaches from 1.1 m to 3.2 m all the way
+round before reporting anything as stuck. That second rule exists because the
+first version of the harness reported the Level 100 watch unreachable and half
+the game stuck behind it — the watch is reachable from five angles out of six,
+and it had picked the sixth.
+
+What the first honest run found, all four now fixed:
+
+- **Chapter Two skipped its own ending.** Picking the parcel up jumped straight
+  to Chapter Three, so the objective read "the bar, Level 026" while the game
+  was still waiting for the player to walk past the deputy. He closes the
+  chapter now.
+- **The objective disappeared after nine seconds** and never came back. It
+  collapses to one line instead — where you are going, and "you are here" when
+  you are on the right floor.
+- **The mark could not carry a floor.** Travel drops you at the stair landing
+  forty-five metres from the Supply counter; the mark was depth-tested and dead
+  at nineteen. It has a far form now, drawn through the geometry and dimmed,
+  that reaches the width of a floor.
+- **Only people were marked, never objects** — and most objectives are a thing
+  on a shelf somewhere.
+
+## The whole run, walked
+
+- **The playthrough completes.** `tests/playthrough.test.mjs` drives the real
+  story through the real world with a real body: it plans a route over the
+  floor the colliders report, walks it, looks at the thing and requires the
+  game to offer exactly that. Fourteen chapters, eight collectables, four pipe
+  fittings, both airlock doors, the drone. All of it works.
+- **You can see where the hard drive plugs in.** What was there was a black
+  block and a 30 mm tube ending in mid-air, and — measured against the table it
+  stands on — the tower floated 85 mm above the top, the keyboard hung 275 mm
+  off the front edge over the chair, and 70% of the paper was off the left.
+  There is now a cartridge bay with a **148 × 79 mm mouth** behind a brass rim,
+  a placard reading EXTERNAL STORE 18, and a lamp that is red while the slot is
+  empty. Put the drive in and it appears in the slot, the lamp goes green and
+  the screen stops saying MISSING.
+- **You can read the schematic.** The terminal panel is capped at 90dvh and
+  nothing inside it scrolled, so the recovered sheet was laid out past the
+  bottom of the box and lost: 475 px below the panel on a desktop, 691 in
+  portrait, **808 in phone landscape**, where all you could read was the words
+  SCHEMATIC RECOVERED. The head stays put and the content scrolls now, and in
+  landscape it opens into two pages the way the directory book does.
+- **It tells you the floor.** Reading the sheet used to leave you with "follow
+  the red line past the mine drill" — an 82 m walk through a mine network, and
+  no floor number. The chapter now names Level 144 and the pressure gallery,
+  the directory marks that entry, and *Take me there* travels straight to it.
+  A test requires every chapter that sends you somewhere to name the floor in
+  the objective itself.
+- **The gas line reads.** The inspection cover has fasteners, the sheet no
+  longer says the isolation wheel is on your left when it is on your right, and
+  the telltale has a needle that sits in the red while the line is charged and
+  falls to zero as you cap it.
+
+See [the playthrough notes](docs/the-playthrough.md).
+
+## Smooth stairs and a market with people in it
+
+- **Changing floors no longer drops frames.** A level is six rooms, a set of
+  doors and a dozen canvas-drawn signs — 23 ms of work — and it was all being
+  done in the single frame you crossed the floor in, against a 16.7 ms budget.
+  That is why the lights seemed to stutter on. A level is now built a wing at a
+  time from a queue the frame loop feeds with whatever time it can spare, and
+  the floor you are walking towards is finished before the one behind you.
+  Descending ten floors, seven runs of 900 frames each, medians: frames over
+  the 16.7 ms budget **7 → 0**, and the 99th-percentile frame **15.8 ms →
+  6.5 ms**.
+- Everything else on the frame was measured and cleared: the world update costs
+  0.03–0.05 ms, the whole light rig 0.02 ms, and 48 residents about 1 ms. Two
+  small allocation leaks in the per-frame path were tidied up anyway, because
+  the litter they left is the kind a browser stops to sweep at an awkward
+  moment.
+- **The bazaar is a market now.** It had sixteen people arranged in a
+  four-by-four grid with nowhere to go — over two and a half minutes, seventeen
+  of the eighteen people on that level moved zero metres. There are now six
+  traders, one keeping each shop, eight shoppers who each visit three stalls in
+  a different order and stand at the counter to be served, and four people
+  walking through on their way somewhere else. Every position was checked
+  against the level's own colliders, so nobody stands inside a counter.
+
+See [the floor and market notes](docs/floors-and-the-market.md).
+
+## The watch, the prompts and the controller
+
+- **The watch is findable.** It was never a missing model — the game was
+  already offering *Take George Wilkins' wristwatch* at the bazaar counter. It
+  was hanging 10.5 cm above that counter, and the spot it hung over was inside
+  a bolt of cloth with a wooden tray on top, because two separate dressing
+  passes lay goods on those counters and neither knew the relic was there. The
+  counter now keeps a space clear in both passes, with a felt mat, a repair
+  ticket and a loupe in it, and the watch lying on the mat. Relics also carry a
+  trace of their own texture as light now — the "faint glint" the code has
+  promised in a comment for months and never actually built.
+- **Fewer prompts over the view.** Measured first: everything permanently on
+  screen adds up to 0.2% of a desktop display and 0.6% of a phone — the ☰
+  button and nothing else. What covers the silo is the contextual prompt, and
+  it was offered for anything within five metres inside a cone 71° wide. The
+  cone now closes with distance — 56° at arm's length, 21° at five metres — so
+  you have to be looking at a thing before it offers itself. Across 34,176
+  sampled views, a prompt was on screen 3.5% of the time before and 2.1% after.
+- **A proper controller map.** R2 used to be sprint *and* fire, so holding the
+  trigger to run meant you could not stop running to shoot; L1 was sprint and
+  reload; L2 and the D-pad did nothing. It is now the map a console player
+  knows: left stick moves, L3 sprints, ✕ jumps, △ or R1 interacts, □ reloads,
+  ○ backs out, L1 is the torch, L2 aims and R2 fires, Options opens the
+  directory, and the D-pad covers the torch, the satchel, a hint and the cast.
+  The full map is printed in Settings, and a test keeps the panel and the code
+  in step. On a keyboard, aim moved to the right mouse button so Shift is only
+  sprint again.
+- **It vibrates.** A DualSense gets both motors; a phone gets `navigator.vibrate`
+  with the strength converted to length. Ten short effects — picking something
+  up, a door, a shot scaled by the weapon, a landing scaled by the impact, a
+  refusal, the shift bell — rate-limited so nothing buzzes once a frame, with
+  its own switch in Settings.
+
+See [the controls and watch notes](docs/controls-and-the-watch.md).
+
+## Solid bodies and a better walk
+
+- **Bernard and Sims are solid now.** Both rendered partly see-through, and it
+  was never the materials — all three bodies are one opaque mesh with correct
+  indices and clean skin weights. The meshes are not watertight: 52% of
+  Bernard's edges and 47% of Sims' have only one triangle on them, against 18%
+  of Juliette's, and 7.1% of Bernard's figure was missing its front surface
+  entirely. What you were
+  seeing through those gaps was the inside of his own back, which is why he
+  read as translucent all over rather than as a body with holes in it. The
+  same skinned geometry is now drawn a second time six millimetres inside the
+  surface, reading the body's own texture, so a gap shows cloth instead of the
+  room. Bernard's torso goes from 0.64% see-through to 0.05%, Sims' from 0.23%
+  to 0.03%.
+- **The foot no longer lands while it is still moving forwards.** The swing
+  arrived with zero speed, so the foot touched down travelling forward with
+  the body and had to stop dead — a 1.6 m/s jump at a walk and 3.9 at a run,
+  on every step. It now leaves and arrives at the ground's own speed.
+- **The hips carry across onto the leg that is standing**, about 4.5 cm at a
+  walk and 2 cm at a run, as a person does. There was no lateral movement at
+  all before, and that is most of what made the walk read as mechanical.
+- **Less of the kneeling walk.** The foot is planted nearer the body than it
+  is left behind, and a foot in the air no longer drags the pelvis down to
+  meet it. All of this is in the one procedural gait, so it reaches the player,
+  the named cast and every resident in the silo at once.
+
+See [the body and gait notes](docs/bodies-and-gait.md).
+
+## Talking to people, and the book in your hand
+
+- **Everyone named has their own questions.** The dialogue was one list of five
+  questions handed to all twenty residents, so you learned the questionnaire in
+  your first conversation and there was nothing after it. Walker is asked about
+  his bench and about teaching Juliette; Knox is asked whether the upper levels
+  listen; Lukas is asked what he is counting. The list itself now tells you who
+  you are standing in front of.
+- **Questions open into follow-ups.** Ask Juliette about George and you can
+  then ask what happened to him and what he showed her. Two levels deep, with a
+  way back up. The named cast also have opinions of each other, and the unnamed
+  are composed from a trade, a home level, someone they know and a thing they
+  keep, so the hundredth resident is a different person from the first.
+- **The panel is a typeset card** rather than a box of boxes: the name is the
+  loudest thing on it, what they said is set in a serif with a rule of its own,
+  and the questions are quiet rows you can scan. Asked rows dim so you can see
+  your way through a long conversation.
+- **The directory book works sideways.** Turn a phone to landscape and the book
+  had no directory in it — its fixed furniture came to more than the panel's
+  own height, so the level list and the footer were laid out past the bottom
+  edge and clipped away, with nothing to scroll. The book now opens into two
+  pages on a short screen: the search and shortcuts down the left, the levels
+  down the right at full height. A landscape phone gets more of the list than a
+  1024×768 tablet does.
+- Searching the directory also takes you back to the top of the results, rather
+  than leaving you scrolled a thousand pixels below the four matches.
+
+See [the conversation notes](docs/conversations.md) and
+[the directory book notes](docs/directory-book.md).
+
+## Atmosphere
+
+- **The silo keeps time.** One clock, one schedule, and it is the only thing that knows what hour it is — lighting, crowd, ambience and the view out of the great screen all read it, so no part of the silo can be at a different hour from another. Fixtures dim and run down towards a warm filament on the night cycle, the galleries empty and fill again, the cafeteria fills three times, and three shift bells ring at 0600, 1400 and 2200.
+- **Something to listen to.** The silo's own noises are chosen by where you are, what hour it is and whether anyone is awake to make them, instead of a blind timer picking one of four sounds. On the stairs — the one place the silo is really audible — you hear runs of feet on steel one to four floors off, quieter and duller the further away they are. Nothing in it speaks: the public address is a chime, a carrier, a cadence with no words in it and a click.
+- **The look.** Halation off the practicals, cold concrete shadows against tungsten highlights, contrast that lets the dark actually go dark, vignette and shadow grain — and an eye that adapts by about half a stop when you step off a lit gallery into the shaft.
+
+See [the atmosphere notes](docs/atmosphere.md).
 
 ## Latest residents, conversation and cleaning work
 
 - Rebuilt the head as one continuous sculpted surface. The face was two dozen ellipsoids and boxes laid over a sphere: the hair cap crossed the skull and cut torn bands across the forehead and cheeks, and the brows and age lines floated a centimetre off it. Brows, lashes, lips and stubble are painted onto the skin now, so nothing on a face can cross it.
 - Every resident on every floor walks a routine — a ring of stops with something to do at each one — instead of standing on one spot while twelve porters orbit the gallery.
-- Talking keeps you in the silo. The panel no longer pauses the world; the person stops, turns to face you and stays turned, the camera settles on them, and **1**–**4** ask while **E** or **Esc** steps away.
+- Talking keeps you in the silo. The panel no longer pauses the world; the person stops, turns to face you and stays turned, the camera settles on them, and **1**–**9** ask, **0** goes back a level, **E** or **Esc** steps away.
 - Restaged the cleaning so the cafeteria screen can actually see it: Holston is framed at the lens, steps in to wipe, and the rag blanks the picture on each pass. The helmet is a helmet rather than a pale sphere the size of a skull, and it comes off in his hands.
 - The directory book is on a front table and picking it up no longer snaps the camera into the screen.
 - Fixed the book itself: the frame loop was overwriting the pickup prompt every tick, so a new game could not be started at all. The book is also findable now — a tan, brass-cornered volume with a lit title plate, on a table laid with nothing else, off the line the player character stands on.

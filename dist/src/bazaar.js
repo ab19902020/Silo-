@@ -1,6 +1,26 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit, addSign, fixture, table, shelf, pipe, random } from './kit.js';
-import { dressBazaar } from './environment-details.js';
+import {hangingSign,wallSign} from './sign-mounts.js';
+import {dressBazaar, REPAIR_COUNTER} from './environment-details.js';
+
+// Where the trader keeps what has been left with her. The numbers live in
+// environment-details.js, because that file dresses this counter too and both
+// passes have to leave the same space alone.
+function repairDrop(k){
+  const {x,z,surface,top}=REPAIR_COUNTER;
+  // A pale mat, because you do not lay a customer's wristwatch face down on
+  // bare steel — and because a small dark object on a dark counter in a dim
+  // market is exactly the thing nobody can find. The mat is what makes it
+  // read from the doorway.
+  k.bevel('linen',x,(surface+top)/2,z,.52,top-surface,.34);
+  k.box('ochre',x+.185,top+.006,z-.085,.075,.012,.05);              // the repair ticket
+  k.cylinder('brass',x-.205,top+.017,z+.055,.019,.034);             // a loupe, stood on end
+  k.torus('brass',x-.205,top+.035,z+.055,.018,.004,0);
+  for(let i=0;i<4;i++)k.cylinder('darkMetal',x-.115+i*.032,top+.005,z+.105,.005,.01);   // spare pins
+  // A cloth roll pushed to the back of the counter to make the room, so the
+  // mat reads as space somebody cleared rather than dressing nobody finished.
+  k.cylinder('fabric',x+.02,top+.04,z+.30,.038,.34,Math.PI/2);
+}
 
 // Shopfront proportions and dressing follow Sally Crees's Silo set photographs.
 // The street arrangement and level assignment remain a reconstruction.
@@ -38,7 +58,7 @@ export function buildBazaar(m){
       k.cylinder('metal',front-side*.4,3.7,z+dz,.045,7.4);
       for(const y of [1.5,3.1,5.2])k.torus('rust',front-side*.4,y,z+dz,.068,.018,Math.PI/2);
     }
-    label(name,front-side*.42,3.12,z,2.3,ry);fixture(k,front-side*.6,3.38,z,1.7,false,true);
+    wallSign(root,m,name,[front-side*.277,3.32,z],2.3,.34,ry,.07);fixture(k,front-side*.6,3.38,z,1.7,false,true);
     lightPoints.push({position:[side*2.2,2.8,z],color:n===0||n===4?0xffab68:0xb7d2c9,intensity:70});
     // Keep the center of each portal open; side counters admit the player.
     const counterZ=z+1.85;
@@ -54,17 +74,22 @@ export function buildBazaar(m){
       for(let i=0;i<7;i++){const x=cx-1.7+i*.53;k.bevel(i%2?'green':'metal',x,1.01,counterZ,.43,.25,.42);for(let j=0;j<3;j++)k.cylinder('brass',x-.13+j*.13,1.16,counterZ,.022,.07);}
       for(let i=0;i<5;i++)k.torus('rust',cx-1.1+i*.52,1.1,counterZ-.3,.14,.024,Math.PI/2);
     }else if(n===3){
-      for(let i=0;i<7;i++){const x=cx-1.55+i*.49;k.bevel(i%3===0?'blue':i%3===1?'fabric':'linen',x,.96,counterZ,.44,.27,.85);}
+      // The middle bolt is left out. A relic on a counter is only findable if
+      // there is a space around it, which is the same thing the directory book
+      // needed: it is not the object that hides it, it is the dressing.
+      for(let i=0;i<7;i++){if(i===3&&side===1&&row===0)continue;const x=cx-1.55+i*.49;k.bevel(i%3===0?'blue':i%3===1?'fabric':'linen',x,.96,counterZ,.44,.27,.85);}
+      if(side===1&&row===0)repairDrop(k);
       k.beam('metal',[side*8.3,2.45,z-2.3],[side*8.3,2.45,z+1.1],.025);
       for(let i=0;i<7;i++)k.bevel(i%2?'linen':'fabric',side*8.3,1.85,z-2+i*.42,.6,1.1,.11);
     }else{
       for(let i=0;i<8;i++){const x=cx-1.65+i*.47;k.cylinder('metal',x,1.08,counterZ,.15,.38);k.torus('metal',x,1.29,counterZ,.17,.025,Math.PI/2);k.beam('brass',[x,1.32,counterZ],[x,1.6,counterZ],.019);}
     }
-    const banner=addSign(root,'FOUNDERS\nDAY',[front-side*.47,5.5,z+2.2],.6,2.2,ry,{color:'#c3ab7c',background:n%2?'#254b4b':'#6b3427',font:'bold 70px Georgia',border:true});
+    const banner=wallSign(root,m,'FOUNDERS\nDAY',[front-side*.277,5.5,z+2.2],.6,2.2,ry,.027,{color:'#c3ab7c',background:n%2?'#254b4b':'#6b3427',font:'bold 70px Georgia',border:true});
     void banner;
   }
   // Crossing lane at the rear and a physically open link to the service ring.
-  label('BAZAAR',0,4.1,.3,4.7,0);label('SERVICE GALLERY  ↔',0,3.2,24,2.85);
+  hangingSign(root,m,'BAZAAR',[0,4.1,.3],4.7,.5,0,8.95);
+  hangingSign(root,m,'SERVICE GALLERY  ↔',[0,3.7,23.88],2.85,.34,Math.PI,4.0);
   for(const z of [3,9.5,16,22]){
     k.beam('darkMetal',[-3,6.7,z],[3,6.7,z+.7],.018);
     for(let j=0;j<9;j++){

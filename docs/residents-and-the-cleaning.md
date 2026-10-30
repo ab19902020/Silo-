@@ -1,5 +1,11 @@
 # Residents, conversations, the cleaning and the crater — 9 September 2026
 
+> **Renamed since this was written.** The cleaner and the woman at the foot
+> of the tree are now Sheriff **Nathan Reeve** and **Hana Reeve**, original
+> Silo 18 characters. The sequence itself is unchanged — see
+> [the Chapter One notes](chapter-one.md). The names below are the ones the
+> code used at the time.
+
 Six things Adam reported, with a screenshot of the first one: an NPC whose face
 had torn brown patches across it. This note records what each of them actually
 was, because in most cases the visible symptom was not the bug.

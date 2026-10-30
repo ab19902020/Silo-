@@ -25,7 +25,10 @@ point. The terminal retains Claude's mundane files and concealed library, with
 its blueprint route and tools reconciled to the implemented pressure sequence.
 
 See `mystery-expansion.md` for validation and the remaining hardware playtest.
-Do not change the existing hosting identity or publish main as part of a handoff.
+The user subsequently authorized merging all work to main and publishing a playable
+link. The release preserves the existing GitHub Pages workflow and hosting identity.
+Claude’s subsequent story, pickup-visibility and consistent footstep fixes are
+included; see `relic-world-polish.md` for the final polish pass.
 
 ## Footsteps — a note for whoever touches the audio next
 
@@ -49,21 +52,9 @@ licence, the attribution or the record of changes goes missing.
 
 ## Residents — a note for whoever touches the models next
 
-`dist/src/resident-model.js` no longer builds bodies out of lathes and spheres.
-There is one set of torso landmarks and everything — shirt, coat, trousers,
-belt, pockets, buttons — is cut from it through `bodyAt(y)` and `front(y)`. If
-you need to put something on a resident's chest, ask the body where its chest
-is; anything placed at a guessed z will float, which is what every pocket and
-harness strap in the silo used to do.
-
-Three things in there were each a reported defect, so please do not undo them:
-
-1. **The shoulder is one surface from the neck to the arm.** The sleeve sweep
-   starts beside the neck deliberately. Building the yoke, the shoulder cap and
-   the sleeve as three overlapping pieces gives a hard shelf with a corner on it.
-2. **Open garments have cloth thickness; closed ones have no shirt under them.**
-   A zero-thickness coat disappears edge-on, and a hidden shirt z-fights.
-3. **Hands hang edge-on**, palm to the thigh.
-
-`docs/wardrobe.md` has the whole of it. `tests/wardrobe.test.mjs` fails if any
-of it is broken.
+An earlier pass on this branch rebuilt the resident body as a parametric loft
+with its own wardrobe table. `main` has since replaced the whole thing with a
+baked anatomical mesh (`resident-body-data.js`) and a garment surface that
+projects cloth onto the bind pose (`garment-surface.js`), which is the better
+system and the one that survives. The loft is dropped; what follows is written
+against the mesh that is actually there.

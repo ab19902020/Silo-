@@ -6,79 +6,279 @@ import { SiloAudio } from './audio.js';
 import { Rendering, makeEnvironment } from './rendering.js';
 import { topLocal, topPoint, groundY } from './surface.js';
 import { CharacterCast, PLAYABLE_CHARACTERS } from './characters.js';
+import {CharacterStudio} from './character-studio.js';
+import {loadProfile,definitionFromProfile} from './character-profile.js';
 import { LadderClimb } from './climbing.js';
 import { Population } from './population.js';
-import { CafeteriaOpening, CAFETERIA_START } from './opening.js';
-import { conversationFor, ALGORITHM } from './conversations.js';
+import { CafeteriaOpening, CAFETERIA_START, OPENING_DURATION } from './opening.js';
+import { conversationFor, ALGORITHM, algorithmAnswer } from './conversations.js';
+import { LORE } from './environment-lore.js';
+import { ConversationMemory } from './resident-stories.js';
 import { RESIDENT_CAST } from './resident-data.js';
+import {memoryFor,FLOOR_MEMORIES} from './floor-memories.js';
+import {RELIC_DETAILS,openGeorgiaBook} from './relic-details.js';
 import { Story, COLLECTABLES, RELICS, CHAPTERS } from './story.js';
 import { Firearms } from './firearms.js';
 import { WEAPONS } from './weapons.js';
 import { updateRangeTargets } from './gun-range.js';
+import {RelicInspector} from './relic-inspector.js';
 import { GeorgeTerminal } from './george-terminal.js';
-import { GEORGE_TERMINAL_POINT } from './mystery-spaces.js';
+import { WITNESS, AFTER_THE_CLEAN, WITNESS_OPENER, WITNESS_CLOSE, PACKAGE as PARCEL,
+  CLERK, DEPUTY, DISMISSALS, DISMISSALS_TO_FEEL_IT, CLOSED_RANKS } from './the-clean.js';
+import { objectiveTarget, objectiveMark } from './objective-target.js';
+import { StoryMarker } from './story-marker.js';
+import { roomPoint } from './characters.js';
+const PARCEL_LEVEL=PARCEL.level;
 import { StoryProps, Drone } from './relics.js';
+import { SiloClock } from './silo-time.js';
+import { shiftBell } from './ambient-events.js';
+import { Haptics } from './haptics.js';
+import { installInterface,buttonLabel,paintInteraction,paintCinema,paintNotice } from './interface.js';
+import { SideMissions, SIDE_MISSIONS } from './side-missions.js';
+import { SideMissionWorld, workDuration } from './side-mission-world.js';
+import { renderSideJournal } from './side-mission-journal.js';
 
 const $=id=>document.getElementById(id),canvas=$('world'),welcome=$('welcome'),directory=$('directory'),settings=$('settings'),about=$('about'),characters=$('characters'),relic=$('relic'),conversation=$('conversation'),satchel=$('satchel'),terminalDialog=$('georgeTerminal');
 const dialogs=[welcome,directory,settings,about,characters,relic,conversation,satchel,terminalDialog],coarse=matchMedia('(pointer:coarse)').matches;
-let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0;
-let hudOpen=false,touchUntil=0,chapterUntil=0,lastOpeningState=null,talking=null,chapterEnteredAt=0,hintUntil=0;
+installInterface();
+let ready=false,started=false,renderer,world,outsideTarget,interaction=null,traveling=false,showAll=true,lastHUD=0,lastScreen=null,toastTimer,rendering,cleanWasRunning=false,cast,population,opening,crowdSoundTime=0,storyMarker;
+let cinemaUntil=0;
+let hudOpen=false,touchUntil=0,chapterUntil=0,lastInteractionLabel=null,lastOpeningState=null,talking=null,chapterEnteredAt=0,hintUntil=0;
 let terminal=new GeorgeTerminal(),workAction=null;
+let sideMissions=new SideMissions();const sideWorld=new SideMissionWorld();
+function loadExploreMissions(){try{return SideMissions.load(JSON.parse(localStorage.getItem('silo18-side-explore')||'null'));}catch{return new SideMissions();}}
+let conversationStorage=null;try{conversationStorage=localStorage;}catch{}
+const conversationMemory=new ConversationMemory(conversationStorage);
+function animateAlgorithm(){for(const a of world.animated)if(a.object.name==='algorithm-interface')a.object.userData.respond?.();}
+const inspector=new RelicInspector($('relicCanvas'),$('relicControlsHint'));
 const pausingDialogs=dialogs.filter(d=>d!==conversation);
 let story=null,props=null,drone=null,wasOutside=false,lastChapter=null;
 let yaw=Math.PI/2,pitch=0,lookSensitivity=1,running=false,torchOn=false,quality='balanced';
-const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3}),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,2300),audio=new SiloAudio();
+const body=new CharacterBody({radius:.3,standHeight:1.78,stepHeight:.3}),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,2300),audio=new SiloAudio(),haptics=new Haptics();
 const firearms=new Firearms(scene,audio);
 const keys=new Set(),stick={x:0,y:0},desired=new THREE.Vector3(),direction=new THREE.Vector3(),clock=new THREE.Clock();
 camera.rotation.order='YXZ';
 const torch=new THREE.SpotLight(0xffe7b4,65,40,.5,.7,1.6);torch.visible=false;scene.add(torch,torch.target);
 const saved=(()=>{try{return JSON.parse(localStorage.getItem('silo18-settings')||'{}');}catch{return {};}})();
+const characterStudio=new CharacterStudio(characters,{storage:conversationStorage,onChoose:chooseCharacter,onCustom:definition=>cast?.register(definition),onClose:notify});
 const openingComplete=(()=>{try{return localStorage.getItem('silo18-opening-complete')==='1';}catch{return false;}})();
 const savedStory=(()=>{try{return JSON.parse(localStorage.getItem('silo18-story')||'null');}catch{return null;}})();
-function saveStory(){if(!story?.story)return;try{localStorage.setItem('silo18-story',JSON.stringify({...story.save(),terminal:terminal.save(),checkpoint:{level:world.activeLevel,special:world.special,position:body.position.toArray(),yaw}}));}catch{}}
+// The silo's own clock. It starts mid-morning — the lamps at full, the place
+// awake, and enough light outside for the cleaning — and runs from there.
+let siloClock=new SiloClock({hour:8.4});
+function saveStory(){if(!story)return;if(!story.story){try{localStorage.setItem('silo18-side-explore',JSON.stringify(sideMissions.save()));}catch{}return;}try{localStorage.setItem('silo18-story',JSON.stringify({...story.save(),sideMissions:sideMissions.save(),terminal:terminal.save(),clock:siloClock.save(),checkpoint:{level:world.activeLevel,special:world.special,position:body.position.toArray(),yaw}}));}catch{}}
 const paused=()=>pausingDialogs.some(d=>d.open)||(conversation.open&&!talking)||!started||traveling;
-function notify(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4600);}
+function notify(message,kind='UPDATE'){paintNotice(document,message,kind);$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4600);}
 function revealControls(){touchUntil=performance.now()+3500;}
 function toggleControls(){hudOpen=!hudOpen;document.body.classList.toggle('hud-open',hudOpen);$('controlsButton').setAttribute('aria-expanded',String(hudOpen));revealControls();}
 function updateInterface(time){
-  if(hudOpen&&(body.horizontalSpeed>.12||opening?.focus&&time*1000>touchUntil)){hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');}
+  if(hudOpen&&(body.horizontalSpeed>.12||time*1000>touchUntil)){hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');}
   document.body.classList.toggle('playing',started&&!paused());document.body.classList.toggle('touch-awake',time*1000<touchUntil||body.horizontalSpeed>.12);
+  const cinemaVisible=!!opening?.watching&&!paused()&&(hudOpen||time*1000<cinemaUntil);
+  document.body.classList.toggle('cinema-awake',cinemaVisible);$('cinemaControls').inert=!cinemaVisible;$('cinemaControls').setAttribute('aria-hidden',String(!cinemaVisible));
   const card=$('chapterHud'),wasShown=!card.hidden;
-  card.hidden=paused()||opening?.watching||time*1000>chapterUntil;
+  // The card used to disappear nine seconds after a chapter began and never
+  // come back. On a game with a hundred and forty-four floors that is the
+  // whole objective — where to go and what for — shown once, briefly, and then
+  // the player is on their own with a silo.
+  //
+  // It collapses now instead of going: after the linger it keeps one line, the
+  // destination, and drops the title, the objective paragraph, the hint and
+  // the eyebrow. That is the answer to "where was I going" available at a
+  // glance, for about the height of a line of text. In free roam there is no
+  // objective, so it still goes entirely.
+  const lingering=time*1000<=chapterUntil;
+  card.hidden=paused()||opening?.watching||(!lingering&&!(story?.story&&story.destination));
+  card.classList.toggle('compact',!card.hidden&&!lingering);
   if(wasShown&&card.hidden)document.body.style.setProperty('--card-h','0px');
   $('controlsButton').hidden=!started||paused();
   document.body.classList.toggle('screen-focused',!!opening?.focus);
 }
+// The question list the panel is currently showing, and what to go back to.
+// A topic with follow-ups swaps the list for them rather than ending the
+// conversation, which is the whole difference between talking to somebody and
+// reading five answers off them.
+let topicLevel={topics:[],back:null};
+function renderChoices(topics,back=null){
+  const box=$('dialogueChoices'),restoreFocus=box.contains(document.activeElement);box.replaceChildren();
+  topicLevel={topics,back};
+  topics.forEach((topic,i)=>{
+    const b=document.createElement('button');
+    b._topic=topic;b.dataset.reply=topic.reply;b.setAttribute('aria-pressed','false');
+    if(topic.follow?.length)b.classList.add('has-more');
+    if(conversationMemory.record(conversation.dataset.resident).topics[topic.id])b.classList.add('asked');
+    const key=document.createElement('kbd');key.textContent=String(i+1);
+    const label=document.createElement('span');label.textContent=topic.label;
+    b.append(key,label);
+    b.addEventListener('click',()=>askTopic(b));
+    box.append(b);
+  });
+  if(back){
+    const b=document.createElement('button');b.className='dialogue-back';b._back=back;
+    const key=document.createElement('kbd');key.textContent='0';
+    const label=document.createElement('span');label.textContent='Ask something else';
+    b.append(key,label);
+    b.addEventListener('click',()=>{audio.click();renderChoices(back.topics,back.back);});
+    box.append(b);
+  }
+  if(restoreFocus)box.querySelector('button')?.focus({preventScroll:true});
+  $('dialogueHint').innerHTML=`<kbd>1</kbd>–<kbd>${topics.length}</kbd> ask`
+    +(back?' <span>·</span> <kbd>0</kbd> back':'')+' <span>·</span> <kbd>E</kbd> or <kbd>Esc</kbd> step away';
+}
 function askTopic(button){
   if(!button)return;
-  $('dialogueLine').textContent=button.dataset.reply;
+  if(button._back){button.click();return;}
+  if(!button._topic&&!button.dataset.reply){button.click();return;}
+  const topic=button._topic;
+  $('dialogueQuestion').hidden=false;$('dialogueQuestion').textContent=topic?.label||button.textContent;
+  // Asking about the hand is counted here, on the topic's own id, rather than
+  // by matching the button's text: renderChoices puts a numbered <kbd> inside
+  // every button, so the label never read back as the written question and the
+  // count never moved at all.
+  if(topic?.id==='the-hand'&&story?.story&&talking?.id&&!story.hasFlag('asked:'+talking.id)){
+    const heard=story.askedAbout(talking.id);
+    if(heard===DISMISSALS_TO_FEEL_IT)notify(CLOSED_RANKS);
+    syncStoryHud();saveStory();
+  }
+  if(topic?.sideAction){
+    const result=sideMissions.perform(topic.sideAction);$('dialogueLine').textContent=result.message;
+    renderChoices(sideMissions.topics(talking?.sideOwner||talking?.id),{topics:talking?.baseTopics||[],back:null});
+    saveStory();sideWorld.update(world,sideMissions,body);conversation.scrollTop=0;audio.click();return;
+  }
+  $('dialogueLine').textContent=topic?conversationMemory.reply(talking?.id,topic):button.dataset.reply;
+  if(talking?.id==='algorithm')animateAlgorithm();
   for(const other of $('dialogueChoices').children)other.setAttribute('aria-pressed',String(other===button));
+  button.classList.add('asked');
   audio.click();
+  if(topic?.follow?.length)renderChoices(topic.follow,{topics:topicLevel.topics,back:topicLevel.back});
+  conversation.scrollTop=0;
 }
 function startConversation(person,actor=null){
-  if(person.id==='billings'&&story?.story){billingsConversation();return;}
-  const text=person===ALGORITHM?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name});
-  $('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;$('dialogueChoices').replaceChildren();
-  text.topics.forEach((topic,i)=>{
-    const b=document.createElement('button');b.dataset.reply=topic.reply;b.setAttribute('aria-pressed','false');
-    const key=document.createElement('kbd');key.textContent=String(i+1);
-    b.append(key,document.createTextNode(topic.label));
-    b.addEventListener('click',()=>askTopic(b));$('dialogueChoices').append(b);
-  });
+  if(person.id==='billings'&&story?.story&&(story.chapter==='billings'||story.hasFlag('billings-helped'))){billingsConversation();return;}
+  if(person.id===WITNESS.id&&story?.story&&story.chapter==='the-clean'&&!story.hasFlag('mara-spoke')){maraConversation();return;}
+  // Delen and Aron are ordinary residents in the world now, with bodies, so
+  // their scenes hang off talking to them rather than off a prompt floating
+  // where they were supposed to be standing. Outside the moment the story
+  // wants, they answer like anybody else behind a counter or beside a door.
+  if(person.id===CLERK.id&&story?.story&&story.chapter==='the-package'&&!story.has('package')){clerkConversation();return;}
+  if(person.id===DEPUTY.id&&story?.story&&story.hasFlag('parcel-taken')&&!story.hasFlag('deputy-met')){deputyConversation();return;}
+  const visits=conversationMemory.visit(person.id);
+  const text=person.topics?person:conversationFor(person,{cleaned:opening.directoryReady,playerName:cast.active.definition.name,visits});
+  $('algorithmQuery').hidden=person.id!=='algorithm';conversation.classList.toggle('archive-conversation',person.id==='algorithm');
+  $('speakerName').textContent=text.name;$('speakerRole').textContent=text.role;$('dialogueLine').textContent=text.greeting;
+  conversation.dataset.resident=person.id;$('dialogueQuestion').hidden=true;
+  $('speakerActivity').hidden=!person.currentWork;$('speakerActivity').textContent=person.currentWork?.task||'';
+  const sideOwner=person.sideOwner||person.id,baseTopics=[...text.topics];
+  // The hand. Four people who were in that room, each with a reasonable answer
+  // ready, and none of them lying. Asking around is optional and it is the
+  // whole texture of Chapter One: you are not being silenced, you are being
+  // agreed with.
+  const dismissal=story?.story&&story.chapterIndex<=2?DISMISSALS.find(d=>d.who===person.id):null;
+  if(dismissal&&!(dismissal.who===WITNESS.id&&!story.hasFlag('mara-spoke')))
+    baseTopics.unshift({id:'the-hand',label:dismissal.ask,reply:dismissal.reply,
+      follow:[{id:'the-hand-again',label:'You are sure that is all it was?',reply:dismissal.close}]});
+  renderChoices([...baseTopics,...sideMissions.topics(sideOwner)]);
   // The panel is shown, not modalled: the silo keeps running behind it, the
   // person turns to face you and the camera settles on them while you talk.
+  //
+  // Everything below this line is what actually puts the conversation on the
+  // screen. Losing it is silent — renderChoices builds the whole panel either
+  // way, so the DOM looks perfect and nothing throws. It is only that the
+  // dialog is never shown and `talking` never gets set, which is also what
+  // tells the camera, the pause and the resident's own pose that a
+  // conversation is happening at all.
   hudOpen=false;document.body.classList.remove('hud-open');
   for(const d of pausingDialogs)if(d.open)d.close();
-  talking={actor,name:text.name};population.talkingTo=actor;
+  talking={actor,name:text.name,id:person.id,sideOwner,baseTopics};population.talkingTo=actor;
   if(!conversation.open)conversation.show();
+  conversation.scrollTop=0;$('dialogueChoices').querySelector('button')?.focus({preventScroll:true});
   document.body.classList.add('talking');audio.click();syncPause();
 }
+$('algorithmQuery').addEventListener('submit',event=>{event.preventDefault();const input=$('archiveQuestion');if(!input.value.trim())return;$('dialogueLine').textContent=algorithmAnswer(input.value,{freeRoam:!story?.story,blueprint:story?.hasFlag('blueprint-found')});input.value='';animateAlgorithm();audio.click();});
 function endConversation(){
   if(!talking)return;
   talking=null;population.talkingTo=null;conversation.close();
   document.body.classList.remove('talking');syncPause();if(started)canvas.focus();
 }
+// Chapter One opens on this. The cleaning has just ended, the room has gone
+// back to its trays, and the one other person who was watching his hands turns
+// round. The lines are in the-clean.js; nothing here decides what is said.
+//
+// It explains nothing on purpose: the gesture is the hook for the whole story,
+// and the only thing this scene establishes is that two people saw it.
+// Three scripted scenes now run on the same shape: a named speaker, a list of
+// beats, a player line on each, and a pause that leaves the last thing said on
+// the screen while it waits. Written once rather than three times.
+//
+// `beats` entries are {say, reply, stage?, beat?}. A `beat` entry has no `say`:
+// it holds, then speaks, and nothing is clickable while it does.
+function playScene({name,role,opener,beats,close='Leave it',onEnd,pick}){
+  $('speakerActivity').hidden=true;$('dialogueQuestion').hidden=true;
+  $('algorithmQuery').hidden=true;conversation.classList.remove('archive-conversation');
+  $('speakerName').textContent=name;$('speakerRole').textContent=role;
+  $('dialogueLine').textContent=opener;
+  const choices=$('dialogueChoices');choices.replaceChildren();
+  const add=(label,run)=>{const b=document.createElement('button');b.textContent=label;b.onclick=run;choices.append(b);};
+  let ended=false;const finish=chosen=>{if(ended)return;ended=true;onEnd?.(chosen);};
+  const show=(beat,chosen)=>{
+    $('dialogueLine').textContent=(beat.stage?beat.stage+'\n\n':'')+beat.reply;audio.click();
+    return chosen;
+  };
+  const play=(i,chosen)=>{
+    choices.replaceChildren();
+    const beat=beats[i];
+    if(!beat){finish(chosen);add(close,()=>closeDialog(conversation));return;}
+    if(beat.beat){
+      // The pause leaves what was just said on the screen. An earlier version
+      // cleared the line to an ellipsis the instant the player clicked, so a
+      // reply was replaced in the same tick it appeared and never read.
+      setTimeout(()=>{if(!conversation.open)return;show(beat,chosen);finish(chosen);
+        choices.replaceChildren();add(close,()=>closeDialog(conversation));},beat.beat);
+      return;
+    }
+    // A branch: several beats offered at once, and the story remembers which.
+    if(pick&&pick(beat)!==undefined){
+      const branch=beats.filter(b=>pick(b)!==undefined);
+      for(const option of branch)add(option.say,()=>{show(option,pick(option));play(beats.length,pick(option));});
+      return;
+    }
+    add(beat.say,()=>{show(beat,chosen);play(i+1,chosen);});
+  };
+  play(0,undefined);
+  openDialog(conversation);
+}
+
+function maraConversation(){
+  playScene({name:WITNESS.name,role:WITNESS.role,opener:WITNESS_OPENER,beats:AFTER_THE_CLEAN,
+    close:WITNESS_CLOSE,
+    onEnd:()=>{if(story?.chapter==='the-clean'&&!story.hasFlag('mara-spoke')){story.spokeToMara();syncStoryHud(true);saveStory();}}});
+}
+// The Supply counter. She is not an obstacle and she is not a puzzle: she is a
+// woman doing her job correctly, which is worse.
+function clerkConversation(){
+  const delivered=story.hasFlag('dispatch-delivered');
+  playScene({name:CLERK.name,role:CLERK.role,
+    opener:delivered?CLERK.release:CLERK.greet,
+    beats:delivered?[]:[CLERK.hand,...CLERK.hold],
+    close:delivered?'Take it':'Take the parcel',
+    onEnd:()=>{
+      if(story?.chapter==='the-package'&&!story.hasFlag('dispatch-delivered')&&story.has('dispatch')){
+        story.deliverDispatch();syncStoryHud(true);saveStory();
+        notify('She sets the parcel on the counter between you and steps back from it.');
+      }
+    }});
+}
+// Leaving. Somebody whose job is noticing has noticed. Either answer is
+// allowed; neither is punished and neither is safe.
+function deputyConversation(){
+  playScene({name:DEPUTY.name,role:DEPUTY.role,opener:DEPUTY.greet,beats:DEPUTY.beats,
+    close:'Take the stairs',pick:b=>b.tell,
+    onEnd:told=>{story?.metTheDeputy(!!told);syncStoryHud(true);saveStory();
+      notify(DEPUTY.close);}});
+}
 function billingsConversation(){
+  $('speakerActivity').hidden=true;$('dialogueQuestion').hidden=true;
+  $('algorithmQuery').hidden=true;conversation.classList.remove('archive-conversation');
   $('speakerName').textContent='Officer Paul Billings';$('speakerRole').textContent='SHERIFF’S STATION';
   $('dialogueLine').textContent=story.hasFlag('billings-helped')?'I have put my name against that weapon. Get your suit, and come back with something we can believe.':'There are rules about the things you have been carrying. Tell me why I should hear you out.';
   const choices=$('dialogueChoices');choices.replaceChildren();
@@ -99,7 +299,10 @@ function renderTerminal(){
   const v=terminal.view;$('terminalStatus').textContent=v.status;$('terminalPath').textContent=`DEVICE 18 : ${v.breadcrumb.join('/').replace(/^\/\//,'/')}`;
   $('terminalInsert').disabled=v.driveInserted;$('terminalBoot').disabled=false;$('terminalEject').disabled=!v.driveInserted;$('terminalBack').disabled=!terminal.mounted||(!terminal.file&&terminal.path==='/');
   $('terminalSearch').hidden=!v.canSearch;const body=$('terminalRows');body.replaceChildren();
-  for(const row of v.rows){const b=document.createElement('button');b.type='button';b.textContent=`${row.kind==='dir'?'DIR':'FILE'}   ${row.name}`;b.onclick=()=>{terminal.open(row.id);if(terminal.view.blueprint)story.terminalDiscovered();renderTerminal();syncStoryHud(true);saveStory();};body.append(b);}
+  for(const row of v.rows){const b=document.createElement('button');b.type='button';b.textContent=`${row.kind==='dir'?'DIR':'FILE'}   ${row.name}`;b.onclick=()=>{terminal.open(row.id);
+    if(terminal.view.blueprint&&story.terminalDiscovered())
+      notify('The line runs below Mechanical, Level 144 — the abandoned pressure gallery. Water Filtration on 055 keeps the capping kit.');
+    renderTerminal();syncStoryHud(true);saveStory();};body.append(b);}
   if(!v.rows.length){const p=document.createElement('p');p.textContent=v.blueprint?'SCHEMATIC RECOVERED':v.body||v.status;body.append(p);}
   const paper=$('terminalBlueprint');paper.hidden=!v.blueprint;
   if(v.blueprint){$('blueprintTitle').textContent=v.blueprint.title;$('blueprintProvenance').textContent=v.blueprint.sourceStatus;$('blueprintRoute').replaceChildren();for(const text of [...v.blueprint.route.map(r=>r.clue),...v.blueprint.tools,...v.blueprint.warnings]){const li=document.createElement('li');li.textContent=text;$('blueprintRoute').append(li);}}
@@ -107,23 +310,23 @@ function renderTerminal(){
 function syncPause(){document.body.classList.toggle('paused',paused());$('hud').classList.toggle('hidden',welcome.open);keys.clear();stick.x=stick.y=0;$('joystick').firstElementChild.style.transform='';if(paused()&&document.pointerLockElement)document.exitPointerLock();}
 function openDialog(d){if(talking)endConversation();hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');for(const x of dialogs)if(x.open)x.close();d.showModal();syncPause();}
 function closeDialog(d){d.close();if(!started&&d!==welcome)welcome.showModal();syncPause();if(started)canvas.focus();}
-function saveSettings(){try{localStorage.setItem('silo18-settings',JSON.stringify({brightness:$('brightness').value,sensitivity:$('sensitivity').value,quality,timeOfDay:$('timeOfDay').value,sound:$('sound').checked,music:$('music').value,reduceMotion:$('reduceMotion').checked,character:cast?.selected||saved.character||'juliette',thirdPerson:cast?.thirdPerson??saved.thirdPerson??true}));}catch{}}
+function saveSettings(){try{localStorage.setItem('silo18-settings',JSON.stringify({brightness:$('brightness').value,sensitivity:$('sensitivity').value,quality,timeOfDay:$('timeOfDay').value,sound:$('sound').checked,music:$('music').value,reduceMotion:$('reduceMotion').checked,vibration:$('vibration').checked,character:cast?.selected||saved.character||'juliette',thirdPerson:cast?.thirdPerson??saved.thirdPerson??true}));}catch{}}
 function updateSettings(){
   if(renderer)renderer.toneMappingExposure=Number($('brightness').value)/100;
   $('brightnessValue').textContent=`${$('brightness').value}%`;$('sensitivityValue').textContent=`${$('sensitivity').value}%`;lookSensitivity=Number($('sensitivity').value)/100;
   $('musicValue').textContent=`${$('music').value}%`;audio.setEnabled($('sound').checked);audio.setMusicVolume(Number($('music').value)/100);quality=$('quality').value;if(world)world.surface.setTimeOfDay($('timeOfDay').value);
   if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?2:quality==='low'?1:1.5));renderer.setSize(innerWidth,innerHeight,false);renderer.shadowMap.enabled=quality!=='low';if(world){world.quality=quality;world.keyLight.castShadow=quality!=='low';world.underground.waterSurface.setQuality(quality);world.silo17.waterSurface.setQuality(quality);world.surface.setQuality(quality);}if(rendering){rendering.enabled=true;rendering.setQuality(quality);rendering.resize();}}
+  haptics.set($('vibration').checked);
   saveSettings();
 }
 function syncCharacterUI(){
   if(!cast)return;const active=cast.active.definition;$('characterStatus').textContent=`Playing as ${active.name}`;$('viewButton').textContent=cast.thirdPerson?'View: third person':'View: first person';
-  for(const b of $('characterList').children){const chosen=b.dataset.character===cast.selected;b.setAttribute('aria-pressed',String(chosen));b.querySelector('.selection-label').textContent=chosen?'SELECTED':'PLAY AS THIS CHARACTER';}
+  const button=$('welcomeCharacters');button.dataset.subtitle=`Playing as ${active.name}`;
 }
 function chooseCharacter(id){if(!cast?.select(id))return;const height=cast.active.definition.height;body.standHeight=height;body.height=height;cast.active.heading=yaw+Math.PI;if(population)population.rebalance=0;syncCharacterUI();saveSettings();closeDialog(characters);notify(`Playing as ${cast.active.definition.name}`);}
 function toggleView(){if(!cast)return;cast.thirdPerson=!cast.thirdPerson;syncCharacterUI();saveSettings();}
-function renderCharacters(){
-  $('characterList').replaceChildren();for(const c of PLAYABLE_CHARACTERS){const b=document.createElement('button');b.className='character-card'+(c.generated?' resident-card':'');b.dataset.character=c.id;b.setAttribute('aria-pressed','false');if(!c.generated){const im=document.createElement('img');im.src=`./assets/characters/${c.id}.jpg`;im.alt=c.name;b.append(im);}const copy=document.createElement('span');copy.className='character-copy';const name=document.createElement('strong');name.textContent=c.name;const role=document.createElement('small');role.textContent=c.role;const place=document.createElement('small');place.textContent=`Level ${String(c.level).padStart(3,'0')} · ${c.place}`;const label=document.createElement('span');label.className='selection-label';copy.append(name,role,place,label);b.append(copy);b.addEventListener('click',()=>chooseCharacter(c.id));$('characterList').append(b);}syncCharacterUI();
-}
+function renderCharacters(){characterStudio.selected=cast?.selected||'juliette';characterStudio.renderList();syncCharacterUI();}
+function openCharacters(tab='cast'){if(!ready)return;openDialog(characters);characterStudio.open(cast.selected,typeof tab==='string'?tab:'cast');}
 // The soundtrack belongs to the story. Nothing plays while you are looking for
 // the book: the cafeteria is quiet, the way the room is quiet in the show. The
 // opening piece — the cleaning speech, turning into the score — starts on the
@@ -164,7 +367,7 @@ function syncGuidance(){
   if(fresh)hintLine.textContent=hint;
   const left=story?.story?story.hintsLeft:0;
   button.hidden=!story?.story||!story.hintsTotal;
-  button.textContent=left?'Think about it':'Nothing more to work out';
+  buttonLabel(button,left?'Think about it':'No more hints');
   button.disabled=!left;
   button.dataset.exhausted=String(!left);
   // The card grew a destination line, a hint and a third button, and on a short
@@ -190,15 +393,17 @@ function nudge(now){
 }
 function syncStoryHud(force=false){
   if(!story)return;
-  $('satchelButton').hidden=!story.story;
+  $('satchelButton').hidden=false;
   document.body.classList.toggle('armed',!!firearms.held);
   $('fireButton').hidden=!(firearms.held&&coarse);
   $('crosshair').hidden=!firearms.held;
   if(!story.story)return;
   if(force||lastChapter!==story.chapter){
+    const newLead=lastChapter!==null&&lastChapter!==story.chapter&&opening?.directoryReady;
     if(lastChapter!==story.chapter)chapterEnteredAt=performance.now();
     lastChapter=story.chapter;
     showObjective(story.chapterInfo.title,story.objective,force?7000:9000);
+    if(newLead)notify(story.destination?.place||story.objective,'NEW LEAD');
     saveStory();
   }else syncGuidance();
 }
@@ -224,7 +429,7 @@ function renderSatchel(){
   // objective, which is not what a player means by "where am I up to".
   const progress=document.createElement('div');progress.className='journal-chapters';
   const heading=document.createElement('h3');heading.textContent='The story so far';progress.append(heading);
-  for(const chapter of CHAPTERS){
+  for(const chapter of story.story?CHAPTERS:[]){
     if(chapter.id==='free')continue;
     const index=CHAPTERS.findIndex(c=>c.id===chapter.id);
     const state=index<story.chapterIndex?'done':index===story.chapterIndex?'now':'later';
@@ -235,14 +440,15 @@ function renderSatchel(){
     const title=document.createElement('strong');title.textContent=chapter.title;
     copy.append(title);
     if(state==='now'){
-      const line=document.createElement('p');line.textContent=chapter.objective;copy.append(line);
+      const line=document.createElement('p');line.textContent=story.objective;copy.append(line);
       for(const hint of story.shownHints){
         const h=document.createElement('p');h.className='journal-hint';h.textContent=hint;copy.append(h);
       }
     }
     row.append(mark,copy);progress.append(row);
   }
-  list.append(progress);
+  if(story.story)list.append(progress);
+  renderSideJournal(list,sideMissions);
   for(const item of held){
     const has=story.has(item.id),row=document.createElement('div');row.className='satchel-item';
     const tick=document.createElement('span');tick.className='tick';tick.textContent=has?'✓':'·';
@@ -251,44 +457,86 @@ function renderSatchel(){
     const p=document.createElement('p');p.textContent=has?item.blurb:'Not found yet.';
     copy.append(h,p);
     if(has){const src=document.createElement('p');src.className='src';src.textContent=item.source;copy.append(src);}
-    row.append(tick,copy);list.append(row);
+    const inspect=document.createElement('button');inspect.className='secondary';inspect.textContent='Inspect in 3D';inspect.onclick=()=>inspectRelic(item.id);copy.append(inspect);row.append(tick,copy);list.append(row);
   }
+  const found=FLOOR_MEMORIES.filter(m=>story.seen.has(`memory:${m.level}`));
+  if(found.length){const section=document.createElement('section');section.className='journal-memories';const title=document.createElement('h3');title.textContent=`Notes from the levels · ${found.length} / 144`;section.append(title);for(const memory of found){const b=document.createElement('button');b.className='secondary';b.textContent=`${String(memory.level).padStart(3,'0')} · ${memory.title}`;b.onclick=()=>inspectFloorMemory(memory.level);section.append(b);}list.append(section);}
+
+}
+let openBookModel=null;
+function inspectRelic(id){
+  const item=COLLECTABLES.find(i=>i.id===id);if(!item)return;
+  relic.classList.remove('record-only');
+  haptics.play('inspect');
+  $('relicName').textContent=item.name;$('relicDescription').textContent=item.blurb;$('relicSource').textContent=item.source;
+  openDialog(relic);
+  const source=id==='harddrive'?cast?.relic:id==='shotgun'?firearms.model:props?.inspectionModel(id);
+  const features=$('relicFeatures');features.replaceChildren();$('relicDetail').textContent='';
+  const details=RELIC_DETAILS[id]||[];
+  for(const [name,pitch,yaw,text,variant] of details){
+    const b=document.createElement('button');b.className='secondary';b.textContent=name;b.setAttribute('aria-pressed','false');
+    b.onclick=()=>{try{const model=variant==='open-book'?(openBookModel??=openGeorgiaBook(world.m)):source;inspector.show(model);inspector.focus(pitch,yaw);$('relicDetail').textContent=text;for(const other of features.children)other.setAttribute('aria-pressed',String(other===b));}catch(error){$('relicControlsHint').textContent='3D inspection could not start. Close this view and try again.';}};
+    features.append(b);
+  }
+  try{inspector.show(source);if(details.length){inspector.focus(details[0][1],details[0][2]);$('relicDetail').textContent=details[0][3];features.firstElementChild.setAttribute('aria-pressed','true');}}catch(error){$('relicControlsHint').textContent='3D inspection could not start. Close this view and try again.';}
+
+}
+function inspectFloorMemory(level){
+  const memory=memoryFor(level);if(!memory)return;
+  story.seen.add(`memory:${level}`);saveStory();
+  openDialog(relic);inspector.hide();relic.classList.add('record-only');
+  $('relicName').textContent=memory.title;$('relicDescription').textContent=memory.text;
+  $('relicDetail').textContent=`RESIDENT NOTES · LEVEL ${String(level).padStart(3,'0')}`;
+  $('relicSource').textContent=memory.source;$('relicFeatures').replaceChildren();
 }
 function takeRelic(id){
   const item=story.take(id);
   if(!item)return;
-  audio.pickup(item.sound||'relic');saveStory();
-  showObjective(item.name,item.blurb,9000);
-  notify(story.story?story.objective:`${item.name} — in your satchel.`);
+  audio.pickup(item.sound||'relic');haptics.play('pickup');saveStory();
+  notify(`${item.name} — in your satchel.`);
   if(id==='suit')notify('The suit is on. The airlock will let you through now.');
   if(id==='shotgun'){takeWeapon('armoryShotgun02');notify('Billings’ shotgun is loaded. G or FIRE shoots; R reloads.');}
-  syncStoryHud(true);
+  // Pickups stay in play; Inspect remains available in the satchel.
+  syncStoryHud();
 }
 function openingChanged(state){
   syncMusicGate();
   // Picking the book up used to snap the camera into the screen. You are in a
   // room full of people watching a cleaning; you stay in it, free to look
   // around and walk, and Focus on screen is there if you want the whole wall.
-  const watching=state==='watch',reading=state==='read-book';chapterUntil=performance.now()+(state==='find-book'?6500:reading?5000:0);if(watching&&lastOpeningState!=='watch'){hudOpen=false;document.body.classList.remove('hud-open');}lastOpeningState=state;
-  $('chapterHud').hidden=state==='explore';$('chapterTitle').textContent=state==='find-book'?'A book on the table':watching?'Holston’s cleaning':'The room falls quiet';
-  $('chapterObjective').textContent=state==='find-book'?'The directory book is on the table in front of you.':watching?'Holston is outside. Watch from the room, or focus on the screen.':'Your directory is ready.';
+  const watching=state==='watch',reading=state==='read-book';chapterUntil=performance.now()+(state==='find-book'?6500:reading?5000:0);if(watching&&lastOpeningState!=='watch'){cinemaUntil=performance.now()+4500;hudOpen=false;document.body.classList.remove('hud-open');}lastOpeningState=state;
+  $('chapterHud').hidden=state==='explore';$('chapterTitle').textContent=state==='find-book'?'A book on the table':watching?'The cleaning':'The room falls quiet';
+  $('chapterObjective').textContent=state==='find-book'?'The directory book is on the table in front of you.':watching?'Sheriff Reeve is outside. Watch from the room, or focus on the screen.':'Your directory is ready.';
   $('focusScreenButton').hidden=!watching;$('skipOpening').hidden=!watching;$('openBookButton').hidden=!reading;
-  $('focusScreenButton').textContent=opening?.focus?'Back to cafeteria':'Focus on screen';
+  buttonLabel($('focusScreenButton'),opening?.focus?'Back to cafeteria':'Focus');$('focusScreenButton').setAttribute('aria-pressed',String(!!opening?.focus));document.body.classList.toggle('watching-cleaning',watching);
   document.body.classList.toggle('screen-focused',!!opening?.focus);
-  if(reading||state==='explore'){story?.beginSearch();if(story?.story)syncStoryHud(true);saveStory();}
+  if(reading||state==='explore'){
+    const opened=story?.beginSearch();
+    if(story?.story)syncStoryHud(true);
+    saveStory();
+    // Chapter One starts here, on the beat the screen goes back to the hill.
+    // Only when the cleaning was actually watched: finish() is also how a
+    // resumed save and the Skip button get here, and neither of those is a
+    // person who just saw something.
+    if(opened&&reading&&opening?.sawGesture)setTimeout(()=>{if(story?.chapter==='the-clean'&&!story.hasFlag('mara-spoke'))maraConversation();},900);
+  }
   if(reading||state==='explore')try{localStorage.setItem('silo18-opening-complete','1');}catch{}
 }
 function requestDirectory(){
   if(story?.story&&opening?.directoryReady)story.beginSearch();
-  if(!opening?.directoryReady){notify(opening?.watching?'Holston is outside. The book opens after the cleaning.':'Find the book on the cafeteria table first.');return;}
+  if(!opening?.directoryReady){notify(opening?.watching?'Sheriff Reeve is outside. The book opens after the cleaning.':'Find the book on the cafeteria table first.');return;}
   opening.openBook();renderDirectory();openDialog(directory);
 }
 function replayOpening(){
   if(!ready)return;for(const d of dialogs)if(d.open)d.close();world.setLevel(1);const p=topPoint(...CAFETERIA_START);body.teleport(p.x,p.y,p.z);yaw=-Math.PI/2;pitch=-.06;running=false;opening.reset();population.load(1);started=true;audio.start();syncPause();canvas.focus();
 }
 function renderDirectory(){
-  const query=$('search').value.trim().toLowerCase(),items=showAll?LEVELS:LANDMARKS;const target=$('locationList');target.replaceChildren();
-  const selected=items.filter(i=>`${i.level} ${i.name} ${i.type} ${i.zone||''} ${roomsForLevel(i.level).map(r=>r.name).join(' ')}`.toLowerCase().includes(query));
+  const query=$('search').value.trim().toLowerCase(),numeric=/^\d+$/.test(query)?Number(query):null,items=showAll?LEVELS:LANDMARKS;const target=$('locationList');target.replaceChildren();
+  $('clearSearch').hidden=!query;
+  $('directoryContext').textContent=world?.special?`You are in ${SPECIALS.find(s=>s.id===world.special)?.name||world.special}`:`You are on Level ${String(world?.activeLevel||1).padStart(3,'0')} · ${LEVELS[(world?.activeLevel||1)-1].name.split(' · ')[0]}`;
+  $('directoryLead').hidden=!story?.destination;
+  $('locationList').setAttribute('aria-labelledby',showAll?'allLevelsTab':'landmarksTab');
+  const selected=items.filter(i=>numeric!==null?i.level===numeric:`${i.level} ${i.name} ${i.type} ${i.zone||''} ${roomsForLevel(i.level).map(r=>r.name).join(' ')}`.toLowerCase().includes(query));
   let lastZone='';
   const addItem=(item,special=false)=>{
     const zone=special?'BENEATH & BEYOND':item.level<50?'UP TOP · 001–049':item.level<=100?'THE MIDS · 050–100':'DOWN DEEP · 101–144';
@@ -298,18 +546,29 @@ function renderDirectory(){
     // The level the current chapter is sending you to is marked in the
     // directory itself, because the directory is the thing you travel with.
     const where=story?.destination;
-    const isTarget=!special&&where&&where.level===item.level;
+    // A chapter can point at a special area rather than a numbered floor —
+    // the pressure gallery is below 144, not on it — so mark whichever row is
+    // actually the destination.
+    const isTarget=special?where?.special===item.id:!!where&&!where.special&&where.level===item.level;
     if(isTarget)button.classList.add('objective');
     const copy=document.createElement('span');copy.className='location-copy';const title=document.createElement('strong');title.textContent=item.name;const sub=document.createElement('small');
-    sub.textContent=isTarget?`Your objective is here · ${item.placement}`:special?item.description:`6 enterable wings · ${item.placement}`;
-    copy.append(title,sub);const arrow=document.createElement('span');arrow.textContent='↗';button.append(n,copy,arrow);button.addEventListener('click',()=>travel(special?item.id:item.level));target.append(button);
-    if(!special){const rooms=document.createElement('div');rooms.className='room-links';for(const room of roomsForLevel(item.level)){const b=document.createElement('button');b.textContent=`${String.fromCharCode(65+room.wing)} · ${room.name.toLowerCase()}`;if(isTarget&&where.wing===room.wing)b.classList.add('objective');b.addEventListener('click',()=>travel(room.id));rooms.append(b);}target.append(rooms);}
+    const locked=special?story?.travelAllowed(item.id):null;
+    sub.textContent=locked|| (isTarget?story.objective:special?item.description:item.description||'Six wings around the central gallery.');
+    if(locked){button.disabled=true;button.classList.add('locked');}
+    if(!special&&item.level===world?.activeLevel){button.classList.add('current');button.setAttribute('aria-current','location');}
+    copy.append(title,sub);const arrow=document.createElement('span');arrow.className='travel-label';arrow.textContent=locked?'Locked':'Go';button.append(n,copy,arrow);button.addEventListener('click',()=>travel(special?item.id:item.level));const entry=document.createElement('section');entry.className='directory-entry';entry.append(button);target.append(entry);
+    if(!special){const details=document.createElement('details');details.className='wing-disclosure';details.open=!!query||item.level===world?.activeLevel||!!isTarget;const summary=document.createElement('summary');summary.textContent='Choose a wing';details.append(summary);const rooms=document.createElement('div');rooms.className='room-links';for(const room of roomsForLevel(item.level)){const b=document.createElement('button');b.textContent=`${String.fromCharCode(65+room.wing)} · ${room.name.toLowerCase()}`;if(isTarget&&where.wing===room.wing)b.classList.add('objective');b.addEventListener('click',()=>travel(room.id));rooms.append(b);}details.append(rooms);entry.append(details);}
   };
   selected.forEach(i=>addItem(i));
-  for(const i of SPECIALS.filter(i=>!query||`${i.name} ${i.type}`.toLowerCase().includes(query)))addItem(i,true);
+  const specialMatches=SPECIALS.filter(i=>!query||numeric!==null&&i.level===numeric||`${i.name} ${i.type}`.toLowerCase().includes(query));for(const i of specialMatches)addItem(i,true);
+  $('directoryResults').textContent=`${selected.length} ${selected.length===1?'level':'levels'} · ${specialMatches.length} special areas${query?' matching your search':''}`;
   if(!target.children.length){const p=document.createElement('p');p.className='help';p.textContent='No matching locations. Try a level number or department.';target.append(p);}
+  // Every caller of this is the player changing what the list shows — opening
+  // the book, switching tabs, typing a search. Leaving the old scroll position
+  // behind means searching for Mechanical and landing below the four results.
+  target.scrollTop=0;
 }
-function setDirectoryMode(all){showAll=all;for(const [id,active]of [['allLevelsTab',all],['landmarksTab',!all]]){$(id).classList.toggle('active',active);$(id).setAttribute('aria-selected',String(active));}renderDirectory();}
+function setDirectoryMode(all){showAll=all;for(const [id,active]of [['allLevelsTab',all],['landmarksTab',!all]]){$(id).classList.toggle('active',active);$(id).setAttribute('aria-selected',String(active));$(id).tabIndex=active?0:-1;}renderDirectory();}
 
 async function travel(id){
   if(!ready||traveling)return;
@@ -358,6 +617,9 @@ function fire(){
   if(paused())return;
   if(!firearms.held)return;
   const before=firearms.ammo?.magazine||0,hit=firearms.fire(performance.now()/1000,camera);
+  // Only when a round actually left the barrel — a dry trigger on an empty
+  // magazine should not kick.
+  if((firearms.ammo?.magazine||0)<before)haptics.play('shot',firearms.held.family==='shotgun'?1:.75);
   if(hit?.target)rangeHits++;
   if(drone?.active&&firearms.held.family==='shotgun'&&(firearms.ammo?.magazine||0)<before){
     const eye=camera.getWorldPosition(new THREE.Vector3());camera.getWorldDirection(direction);
@@ -434,9 +696,9 @@ function updateWeaponHud(){
 function begin(mode){
   if(!ready)return;
   if(mode){
-    story=new Story(mode);terminal=new GeorgeTerminal();world.story=story;lastChapter=null;drone?.reset();firearms.holster();workAction=null;wasOutside=false;world.resetStoryWorld();world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;
+    story=new Story(mode);sideMissions=mode==='story'?new SideMissions():loadExploreMissions();terminal=new GeorgeTerminal();world.driveSeated=false;siloClock=new SiloClock({hour:8.4});world.story=story;lastChapter=null;drone?.reset();firearms.holster();workAction=null;wasOutside=false;world.resetStoryWorld();world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;
     if(mode==='story'&&opening.state!=='find-book')opening.reset();
-    if(mode==='explore'&&opening.state==='find-book')opening.finish();
+    if(mode==='explore'){opening.finish();world.openBreach();}
     saveStory();
   }
   if(story.armed&&!firearms.held)takeWeapon('armoryShotgun02');
@@ -459,7 +721,7 @@ function updateHUD(){
   }
   $('zone').textContent=world.special==='silo17'?'ABANDONED':world.outside?'THE SURFACE':world.special?'LOWER ACCESS':data.zone;$('levelLabel').textContent=world.special==='silo17'?'SILO 17':world.outside?'OUTSIDE':world.special?'BELOW MECHANICAL':`LEVEL ${String(n).padStart(3,'0')}`;$('locationName').textContent=name;
   $('depthLabel').textContent=world.special==='silo17'?'Surviving upper galleries':`${Math.max(0,Math.round(levelY(1)-body.position.y)).toLocaleString()} m below the upper landing`;$('depthMarker').style.top=`${(n-1)/143*94}%`;
-  $('modeLabel').textContent=`${cast?.active?.definition.short||'ON FOOT'}${body.climbing?' · CLIMBING':running?' · RUNNING':''}`;audio.setLocation(world.outside?'surface':world.special==='silo17'?'tunnel':world.special==='pipe-gallery'?'mines':world.special||roomType(n,wing));
+  $('modeLabel').textContent=`${cast?.active?.definition.short||'ON FOOT'}${body.climbing?' · CLIMBING':running?' · RUNNING':''} · ${siloClock.schedule.clock}`;audio.setLocation(world.outside?'surface':world.special==='silo17'?'tunnel':world.special==='pipe-gallery'?'mines':world.special||roomType(n,wing));
   // The great stairway is open steel and runs through every level, so the floor
   // underfoot there is not the floor of the room the level counter is reporting.
   // Standing in the water is the only thing that overrides the room's own
@@ -470,12 +732,11 @@ function updateHUD(){
   audio.setSurface(wading?'wet':null);
 }
 const inspectionText={
-  'terminal-note':'A note under the unplugged cable: “The directory is not the collection. Ask for the whole library.” Nothing else is written.',
+  'drive-bay':'A cartridge bay wired into the back of the machine, labelled EXTERNAL STORE 18. The slot is empty and the lamp on it is red. A note is folded under it: “The directory is not the collection. Ask for the whole library.” Nothing else is written.',
   'silo17-log':'LAST PUMP SHIFT / The lower galleries are lost. We moved the stores above the high-water band. Three landings still have emergency power. Nobody answered 18.',
   'silo17-crate':'Tools are wrapped in oilcloth above ruined ration packets. Someone kept preparing for a repair crew long after the voices stopped.',
   generator:'Six removable panels protect the turbine. The rear panel is held open for inspection; the rotor, gantry and crane can be seen around the housing.',
   water:'Filter vessels, treatment lines and pump controls keep water circulating through the silo. This department is associated with Level 55.',
-  'it-servers':'The server room is behind this door and only IT opens it. Level 19 is the department’s floor in the published material; the room plan beyond that is inferred.',
   'head-of-it':'The Head of IT works apart from the floor, down the corridor from it. The desk, the shelved records and the motto are reconstructed.',
   'vault-radio':'A panel in the vault’s server steps that does not sit quite flush with the rest. Behind it is a radio set, and it is not tuned to anything inside this silo.',
   surveillance:'The concealed observation room watches the residences. Its exact floor plan is reconstructed.',
@@ -488,16 +749,37 @@ const inspectionText={
   camp:'George and Juliette’s secluded hideout beside the excavation: a bed, a table and salvaged relics. The ladder outside the open side descends to the water. The room’s exact dimensions and position remain reconstructed from the available references.',
   relics:'Tins, bottles, books and wound cable carried down from the levels above and kept where a sweep would not find them. Possession of relics from before is an offence under the Pact.',
 };
+function finishSideAction(action){
+  const result=sideMissions.perform(action);notify(result.message);audio.click();
+  if(result.changed){saveStory();sideWorld.update(world,sideMissions,body);haptics.play('use');}
+}
 function use(){
   if(talking){endConversation();return;}
   if(opening?.state==='read-book'&&!interaction&&!paused()){requestDirectory();return;}
   if(!interaction||paused()||body.climbing||workAction)return;
+  if(interaction.action?.startsWith('side-board:')){
+    const owner=interaction.action.slice(11);startConversation({id:'orders-'+owner,sideOwner:owner,name:interaction.spec.name,role:`CORRESPONDENCE · LEVEL ${interaction.spec.level}`,greeting:'Work orders, messages and signed returns. Read a request or leave a reply.',topics:[]});return;
+  }
+  if(interaction.action?.startsWith('side-task:')){
+    const action=interaction.action.slice(10),duration=workDuration(action);
+    if(duration){workAction={until:performance.now()+duration,sideAction:action,position:interaction.position.clone(),level:world.activeLevel};notify(interaction.label+'…');}
+    else finishSideAction(action);return;
+  }
+  if(interaction.action?.startsWith('side-read:')){
+    const id=interaction.action.slice(10),mission=id==='lamp-panel'?'lamp':id==='parcel-stand'?'parcel':'sky';
+    notify(SIDE_MISSIONS[mission].objectives[sideMissions.stages[mission]]);return;
+  }
   if(interaction.action==='opening-book'){audio.click();audio.playOpeningTheme();opening.takeBook();return;}
   if(interaction.action==='billings'){billingsConversation();return;}
+  if(interaction.action==='supply-clerk'){clerkConversation();return;}
+  if(interaction.action==='deputy'){deputyConversation();return;}
+  if(interaction.action?.startsWith('floor-memory:')){inspectFloorMemory(Number(interaction.action.split(':')[1]));return;}
+  if(interaction.action==='drive-bay'){audio.click();notify(terminal.view.driveInserted?'Hard Drive 18 is seated in the bay and the lamp is green. The note folded under it reads: “The directory is not the collection. Ask for the whole library.”':inspectionText['drive-bay']);return;}
   if(interaction.action==='george-terminal'){story.reachGeorgeHome();renderTerminal();openDialog(terminalDialog);syncStoryHud();return;}
   if(interaction.action==='enter-silo17'){travel('silo17');return;}
   if(interaction.action?.startsWith('pipe-')){const step=interaction.action.slice(5);if(story.story&&(!story.has('crowbar')||!story.has('pipekit'))){notify('Bring the crowbar and Water Filtration’s service kit before opening the line.');return;}workAction={until:performance.now()+2400,step};notify(step==='cover'?'Levering the inspection cover…':step==='isolate'?'Turning the isolation wheel…':step==='collar'?'Seating the split collar…':'Tightening the collar to the witness mark…');return;}
   if(interaction.resident){startConversation(interaction.resident,interaction.actor||null);return;}
+  if(interaction.action?.startsWith('lore:')){const entry=LORE[interaction.action.slice(5)];if(entry)startConversation(entry);return;}
   if(interaction.action==='algorithm'){startConversation(ALGORITHM);return;}
   if(interaction.ladder){
     const ladder=world.underground.ladders.find(l=>l.id===interaction.ladder);
@@ -505,7 +787,7 @@ function use(){
     else notify('Move closer to the ladder.');
     return;
   }
-  if(interaction.action==='hard-drive'){if(story?.story&&!story.has('harddrive')&&world.special==='excavator')takeRelic('harddrive');else{if(!story.has('harddrive'))story.take('harddrive');audio.click();openDialog(relic);}return;}
+  if(interaction.action==='hard-drive'){if(story?.story&&!story.has('harddrive')&&world.special==='excavator')takeRelic('harddrive');else{if(!story.has('harddrive'))takeRelic('harddrive');else inspectRelic('harddrive');}return;}
   if(interaction.action?.startsWith('relic:')){takeRelic(interaction.action.slice(6));return;}
   if(interaction.action?.startsWith('rack:')){takeWeapon(interaction.action.slice(5));return;}
   if(interaction.action==='range-resupply'){
@@ -521,7 +803,7 @@ function use(){
     updateWeaponHud();notify(`${name} racked.`);
     return;
   }
-  if(interaction.sealed){audio.click();notify(interaction.sealed.reason);return;}
+  if(interaction.sealed){audio.click();haptics.play('deny');notify(interaction.sealed.reason);return;}
   if(interaction.action==='clean-camera'){audio.click();world.surface.beginCleaning();notify('Cleaning the camera lens. The cafeteria feed clears as you wipe.');return;}
   if(interaction.action?.startsWith('airlock-')){audio.airlock();world.cycleAirlock(interaction.action.slice(8));return;}
   if(interaction.action==='breach'){
@@ -530,17 +812,21 @@ function use(){
     notify('A broken opening was hidden behind the sign. Walk through it.');
     return;
   }
-  if(interaction.door){interaction.door.open=!interaction.door.open;audio.door(interaction.door.open);}
+  if(interaction.door){interaction.door.open=!interaction.door.open;audio.door(interaction.door.open);haptics.play('use');}
   else if(interaction.destination!==undefined){audio.click();travel(interaction.destination);}
   else{audio.click();notify(interaction.text||inspectionText[interaction.action]||interaction.label);}
 }
-function toggleTorch(){torchOn=!torchOn;audio.torch(torchOn);torch.visible=torchOn;$('torchButton').classList.toggle('active',torchOn);$('torchButton').setAttribute('aria-pressed',String(torchOn));}
+function toggleTorch(){torchOn=!torchOn;audio.torch(torchOn);haptics.play('use',.7);torch.visible=torchOn;$('torchButton').classList.toggle('active',torchOn);$('torchButton').setAttribute('aria-pressed',String(torchOn));}
 
+$('relicJournal').addEventListener('click',()=>{renderSatchel();openDialog(satchel);});
+$('relicReset').addEventListener('click',()=>inspector.reset());
+$('relicFlip').addEventListener('click',()=>inspector.flip());
+relic.addEventListener('close',()=>inspector.hide());
 for(const d of dialogs){d.addEventListener('cancel',e=>{e.preventDefault();if(d===welcome&&ready){if(started){d.close();syncPause();}else begin();}else closeDialog(d);});d.querySelector('[data-close]')?.addEventListener('click',()=>closeDialog(d));}
-$('terminalInsert').addEventListener('click',()=>{if(!terminal.insertDrive(story.has('harddrive')))notify('The cable needs an external drive.');renderTerminal();saveStory();});
+$('terminalInsert').addEventListener('click',()=>{if(!terminal.insertDrive(story.has('harddrive')))notify('The bay is empty and you have nothing to put in it.');else{world.driveSeated=true;notify('Hard Drive 18 slides into the bay. The lamp goes green.');}renderTerminal();saveStory();});
 $('terminalBack').addEventListener('click',()=>{terminal.back();renderTerminal();saveStory();});
 $('terminalBoot').addEventListener('click',()=>{terminal.boot();renderTerminal();saveStory();});
-$('terminalEject').addEventListener('click',()=>{terminal.ejectDrive();renderTerminal();saveStory();});
+$('terminalEject').addEventListener('click',()=>{terminal.ejectDrive();world.driveSeated=false;renderTerminal();saveStory();});
 $('terminalSearch').addEventListener('submit',e=>{e.preventDefault();terminal.search($('terminalQuery').value);renderTerminal();saveStory();});
 $('controlsButton').addEventListener('click',toggleControls);$('leaveConversation').addEventListener('click',()=>closeDialog(conversation));
 conversation.addEventListener('close',()=>{if(talking)endConversation();});
@@ -554,9 +840,18 @@ $('satchelButton').addEventListener('click',()=>{renderSatchel();openDialog(satc
 $('directoryButton').addEventListener('click',requestDirectory);
 $('welcomeDirectory').addEventListener('click',()=>{if(!ready)return;requestDirectory();});
 $('replayOpening').addEventListener('click',replayOpening);
-$('focusScreenButton').addEventListener('click',()=>{opening.focus=!opening.focus;$('focusScreenButton').textContent=opening.focus?'Back to cafeteria':'Focus on screen';document.body.classList.toggle('screen-focused',opening.focus);keys.clear();stick.x=stick.y=0;});
+$('clearSearch').addEventListener('click',()=>{$('search').value='';renderDirectory();$('search').focus();});
+$('directoryHere').addEventListener('click',()=>{$('search').value=String(world.activeLevel);setDirectoryMode(true);});
+$('directoryLead').addEventListener('click',()=>{const lead=story.destination;if(!lead)return;
+  // When the chapter names a special area, go — it is one entry in a list that
+  // also holds the mines, the generator, the excavator and the tunnel, and
+  // "find it yourself" is not what this button is for.
+  if(lead.special&&!story.travelAllowed(lead.special)){travel(lead.special);return;}
+  $('search').value=String(lead.level);setDirectoryMode(true);});
+for(const id of ['allLevelsTab','landmarksTab'])$(id).addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const all=e.key==='Home'?true:e.key==='End'?false:!showAll;setDirectoryMode(all);$(all?'allLevelsTab':'landmarksTab').focus();}});
+$('focusScreenButton').addEventListener('click',()=>{opening.focus=!opening.focus;buttonLabel($('focusScreenButton'),opening.focus?'Back to cafeteria':'Focus');$('focusScreenButton').setAttribute('aria-pressed',String(opening.focus));document.body.classList.toggle('screen-focused',opening.focus);cinemaUntil=0;hudOpen=false;document.body.classList.remove('hud-open');$('controlsButton').setAttribute('aria-expanded','false');canvas.focus();keys.clear();stick.x=stick.y=0;});
 $('skipOpening').addEventListener('click',()=>opening.finish());$('openBookButton').addEventListener('click',requestDirectory);
-$('characterButton').addEventListener('click',()=>{renderCharacters();openDialog(characters);});$('viewButton').addEventListener('click',toggleView);
+$('characterButton').addEventListener('click',openCharacters);$('welcomeCharacters').addEventListener('click',openCharacters);$('welcomeCreateCharacter').addEventListener('click',()=>openCharacters('create'));$('viewButton').addEventListener('click',toggleView);
 $('settingsButton').addEventListener('click',()=>openDialog(settings));$('aboutButton').addEventListener('click',()=>openDialog(about));
 for(const button of document.querySelectorAll('[data-travel]'))button.addEventListener('click',()=>travel(button.dataset.travel));
 $('landmarksTab').addEventListener('click',()=>setDirectoryMode(false));$('allLevelsTab').addEventListener('click',()=>setDirectoryMode(true));$('search').addEventListener('input',renderDirectory);
@@ -583,22 +878,32 @@ for(const event of ['fullscreenchange','webkitfullscreenchange'])addEventListene
   $('fullscreen').textContent=document.fullscreenElement?'Leave fullscreen':'Enter fullscreen';
 });
 $('resetPosition').addEventListener('click',()=>travel(world.special||world.activeLevel));
-for(const id of ['brightness','sensitivity','quality','timeOfDay','sound','music','reduceMotion']){if(saved[id]!==undefined){if(typeof saved[id]==='boolean')$(id).checked=saved[id];else $(id).value=saved[id];}$(id).addEventListener('input',updateSettings);}
+for(const id of ['brightness','sensitivity','quality','timeOfDay','sound','music','reduceMotion','vibration']){if(saved[id]!==undefined){if(typeof saved[id]==='boolean')$(id).checked=saved[id];else $(id).value=saved[id];}$(id).addEventListener('input',updateSettings);}
 if(saved.reduceMotion===undefined)$('reduceMotion').checked=matchMedia('(prefers-reduced-motion:reduce)').matches;
+// Somebody who has asked their system for less motion has not asked for less
+// vibration, so this defaults on and is its own switch.
+if(saved.vibration===undefined)$('vibration').checked=true;
+haptics.set($('vibration').checked);
 for(const source of SOURCES){const a=document.createElement('a');a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=source.title;const small=document.createElement('small');small.textContent=source.note;$('sources').append(a,small);}
 
 addEventListener('keydown',e=>{
   // The conversation panel is not modal, so it holds focus while the silo runs.
   // Bailing out on any dialog ancestor meant 1-4 and Esc died inside it.
   const inPanel=e.target.closest('dialog');
+  if(e.code==='Escape'&&talking&&inPanel===conversation){e.preventDefault();endConversation();return;}
   if(e.target.matches('input,select,textarea')||inPanel&&inPanel!==conversation||e.code==='Space'&&e.target.matches('button'))return;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
   if(e.repeat){keys.add(e.code);return;}
   if(e.code==='KeyM'){if(directory.open)closeDialog(directory);else requestDirectory();return;}
-  if(e.code==='KeyC'){if(characters.open)closeDialog(characters);else{renderCharacters();openDialog(characters);}return;}
+  if(e.code==='KeyC'){if(characters.open)closeDialog(characters);else openCharacters();return;}
   if(paused())return;
   if(talking){
-    if(/^Digit[1-9]$/.test(e.code)){askTopic($('dialogueChoices').children[Number(e.code.slice(5))-1]);return;}
+    if(/^Digit[0-9]$/.test(e.code)){
+      const n=Number(e.code.slice(5));
+      const box=$('dialogueChoices');
+      askTopic(n===0?box.querySelector('.dialogue-back'):box.children[n-1]);
+      return;
+    }
     if(e.code==='Escape'||e.code==='KeyE'){endConversation();return;}
   }
   if(e.code==='KeyH'){toggleControls();return;}
@@ -607,7 +912,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyV'){toggleView();return;}
   keys.add(e.code);if(e.code==='KeyE')use();if(e.code==='KeyF')toggleTorch();if(e.code==='Space')jumpQueued=true;if(e.code==='KeyG')fire();
   if(e.code==='KeyR'&&firearms.held){if(firearms.reload())updateWeaponHud();}
-  if(e.code==='KeyX'&&firearms.held&&!story.story){const name=firearms.held.name;firearms.holster();updateWeaponHud();notify(`${name} slung.`);}if(e.code==='KeyB'&&story?.story){renderSatchel();openDialog(satchel);}
+  if(e.code==='KeyX'&&firearms.held&&!story.story){const name=firearms.held.name;firearms.holster();updateWeaponHud();notify(`${name} slung.`);}if(e.code==='KeyB'&&story){renderSatchel();openDialog(satchel);}
   if(e.code==='KeyT'&&story?.story)askForHint();
   if(e.code==='Escape')openDialog(welcome);
 });
@@ -615,7 +920,20 @@ addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',()=>{ke
 document.addEventListener('visibilitychange',()=>{keys.clear();stick.x=stick.y=0;if(document.hidden&&audio.context)audio.context.suspend().catch(()=>{});else if(started&&!paused())audio.start();});
 
 let lookPointer=null,lookStart=null,lookTravel=0,jumpQueued=false;
-canvas.addEventListener('pointerdown',e=>{if(paused())return;if(opening.focus){toggleControls();return;}if(e.pointerType==='touch'&&e.clientX<innerWidth*.32)return;lookPointer=e.pointerId;lookStart={x:e.clientX,y:e.clientY};lookTravel=0;canvas.setPointerCapture(e.pointerId);});
+// Aim is the right mouse button, as it is in every other first-person game,
+// so Shift can go back to being only sprint. Held, not toggled.
+let aimHeld=false;
+const setAim=v=>{aimHeld=v&&!!firearms?.held;};
+canvas.addEventListener('contextmenu',e=>{if(!paused()&&firearms?.held)e.preventDefault();});
+addEventListener('pointerup',e=>{if(e.button===2)setAim(false);});
+addEventListener('blur',()=>setAim(false));
+canvas.addEventListener('pointerdown',e=>{
+  if(paused())return;
+  if(e.button===2){setAim(true);e.preventDefault();return;}
+  if(opening.focus){toggleControls();return;}
+  if(e.pointerType==='touch'&&e.clientX<innerWidth*.32)return;
+  lookPointer=e.pointerId;lookStart={x:e.clientX,y:e.clientY};lookTravel=0;canvas.setPointerCapture(e.pointerId);
+});
 canvas.addEventListener('pointermove',e=>{
   if(paused())return;
   let dx=0,dy=0;
@@ -644,19 +962,44 @@ const releaseStick=e=>{if(e.pointerId!==movePointer)return;movePointer=null;stic
 // --- gamepad ---------------------------------------------------------------
 // Standard mapping, which is what a DualShock 4, a DualSense and an Xbox pad
 // all report over USB and Bluetooth in every current browser.
-const PAD={CROSS:0,CIRCLE:1,SQUARE:2,TRIANGLE:3,L1:4,R1:5,L2:6,R2:7,SHARE:8,OPTIONS:9,L3:10,R3:11};
-const pad={move:{x:0,y:0},look:{x:0,y:0},run:false,connected:false},padHeld=new Set();
+//
+// The map is the one a console player already knows, because every button here
+// used to do something else as well and several did two things at once: R2 was
+// sprint and fire, L1 was sprint and reload, and sprint was also on L3. Holding
+// the trigger to run meant you could not stop running to shoot.
+//
+//   left stick     move — eased, so a gentle push is a walk and full is a jog
+//   L3             sprint, held
+//   right stick    look
+//   R3             first or third person
+//   ✕              jump
+//   ○              close the panel you are in; otherwise pause
+//   □              reload
+//   △              interact: take, open, talk, travel
+//   R1             interact as well, for the thumb that expects it there
+//   L1             torch
+//   L2             aim          R2  fire
+//   Options        the directory book
+//   Create/Share   your satchel
+//   D-pad ↑ torch   ↓ satchel   ← think about it   → choose character
+const PAD={CROSS:0,CIRCLE:1,SQUARE:2,TRIANGLE:3,L1:4,R1:5,L2:6,R2:7,SHARE:8,OPTIONS:9,L3:10,R3:11,
+  UP:12,DOWN:13,LEFT:14,RIGHT:15};
+const pad={move:{x:0,y:0},look:{x:0,y:0},run:false,aim:false,connected:false},padHeld=new Set();
 // Sticks rest slightly off centre and report noise even untouched.
 const deadzone=(v,d=.16)=>{const m=Math.abs(v);return m<d?0:Math.sign(v)*((m-d)/(1-d))**1.6;};
 function readPad(){
   let device=null;
   for(const p of navigator.getGamepads?.()||[])if(p?.connected&&p.axes?.length>=2){device=p;break;}
-  if(!device){pad.connected=false;pad.move.x=pad.move.y=pad.look.x=pad.look.y=0;pad.run=false;padHeld.clear();return null;}
-  if(!pad.connected){pad.connected=true;notify('Controller connected. Left stick moves, right stick looks, ✕ jumps.');}
+  if(!device){pad.connected=false;pad.move.x=pad.move.y=pad.look.x=pad.look.y=0;pad.run=pad.aim=false;padHeld.clear();haptics.attach(null);return null;}
+  haptics.attach(device);
+  if(!pad.connected){pad.connected=true;notify('Controller connected. L3 sprints, ✕ jumps, △ takes and opens. Full map in Settings.');haptics.play('use');}
   pad.move.x=deadzone(device.axes[0]||0);pad.move.y=deadzone(device.axes[1]||0);
   pad.look.x=deadzone(device.axes[2]||0);pad.look.y=deadzone(device.axes[3]||0);
-  const down=i=>!!device.buttons?.[i]?.pressed;
-  pad.run=down(PAD.R2)||down(PAD.L1)||down(PAD.L3);
+  // A trigger is an axis, not a switch, and a DualSense rests a little off
+  // zero. Half pull is the press everywhere else in this file.
+  const down=i=>{const b=device.buttons?.[i];return !!b&&(b.pressed||b.value>.5);};
+  pad.run=down(PAD.L3);
+  pad.aim=down(PAD.L2);
   // Edge detection: every mapped button acts on the press, not while held.
   const tapped=i=>{const held=padHeld.has(i),now=down(i);if(now)padHeld.add(i);else padHeld.delete(i);return now&&!held;};
   return {tapped,down};
@@ -664,22 +1007,40 @@ function readPad(){
 function applyPad(dt){
   const device=readPad();if(!device)return;
   const {tapped}=device;
-  if(tapped(PAD.OPTIONS)||tapped(PAD.SHARE)){if(directory.open)closeDialog(directory);else{renderDirectory();openDialog(directory);}return;}
+  if(tapped(PAD.OPTIONS)){if(directory.open)closeDialog(directory);else requestDirectory();return;}
   if(paused()){
     // On the panels the pad still has to be able to get you out again.
     if(tapped(PAD.CIRCLE)){const open=dialogs.find(d=>d.open);if(open)closeDialog(open);}
     if(tapped(PAD.CROSS)&&welcome.open&&ready)begin();
     return;
   }
-  if(tapped(PAD.CROSS))jumpQueued=true;if(tapped(PAD.R2))fire();if(tapped(PAD.L1)&&firearms.held)firearms.reload();
-  if(tapped(PAD.SQUARE)||tapped(PAD.R1))use();
-  if(tapped(PAD.TRIANGLE))toggleTorch();
+  if(talking){
+    // In a conversation the face buttons pick the first two questions and ○
+    // steps away, so a whole exchange can happen without reaching for a key.
+    const box=$('dialogueChoices');
+    if(tapped(PAD.TRIANGLE)||tapped(PAD.R1))askTopic(box.children[0]);
+    if(tapped(PAD.SQUARE))askTopic(box.children[1]);
+    if(tapped(PAD.CIRCLE))endConversation();
+    yaw-=pad.look.x*2.9*dt*lookSensitivity;
+    pitch=THREE.MathUtils.clamp(pitch-pad.look.y*2.2*dt*lookSensitivity,-1.48,1.48);
+    return;
+  }
+  if(tapped(PAD.CROSS))jumpQueued=true;
+  if(tapped(PAD.R2))fire();
+  if(tapped(PAD.SQUARE)&&firearms.held){if(firearms.reload()){haptics.play('reload');updateWeaponHud();}}
+  if(tapped(PAD.TRIANGLE)||tapped(PAD.R1))use();
+  if(tapped(PAD.L1)||tapped(PAD.UP))toggleTorch();
   if(tapped(PAD.R3))toggleView();
+  if(tapped(PAD.DOWN)||tapped(PAD.SHARE)){if(story){renderSatchel();openDialog(satchel);}}
+  if(tapped(PAD.LEFT)&&story?.story)askForHint();
+  if(tapped(PAD.RIGHT))openCharacters();
   if(tapped(PAD.CIRCLE))openDialog(welcome);
   // Right stick look. The squared response above the deadzone gives fine aim
-  // near centre and a usable sweep at full deflection.
-  yaw-=pad.look.x*2.9*dt*lookSensitivity;
-  pitch=THREE.MathUtils.clamp(pitch-pad.look.y*2.2*dt*lookSensitivity,-1.48,1.48);
+  // near centre and a usable sweep at full deflection, and aiming slows it so
+  // the sight can be put on something smaller than a doorway.
+  const sweep=pad.aim&&firearms.held?.45:1;
+  yaw-=pad.look.x*2.9*dt*lookSensitivity*sweep;
+  pitch=THREE.MathUtils.clamp(pitch-pad.look.y*2.2*dt*lookSensitivity*sweep,-1.48,1.48);
 }
 
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer?.setSize(innerWidth,innerHeight,false);rendering?.resize();}addEventListener('resize',resize);
@@ -689,23 +1050,52 @@ function frame(){
   requestAnimationFrame(frame);if(!renderer||!world)return;
   const dt=Math.min(clock.getDelta(),.05),time=performance.now()*.001;
   applyPad(dt);
+  if(relic.open){inspector.render();if(workAction)workAction.until+=dt*1000;audio.setStoryPaused?.(true);updateInterface(time);return;}
   if(!paused()){
     const forward=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-stick.y-pad.move.y;
     const right=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0)+stick.x+pad.move.x;
     const speed=(running||pad.run||keys.has('ShiftLeft')||keys.has('ShiftRight'))?3.8:1.45;
     desired.set(-Math.sin(yaw)*forward+Math.cos(yaw)*right,0,-Math.cos(yaw)*forward-Math.sin(yaw)*right);if(desired.length()>1)desired.normalize();desired.multiplyScalar(opening.focus||workAction||talking?0:speed);
-    if(workAction&&performance.now()>=workAction.until){const step=workAction.step;workAction=null;const result=step==='cover'?{complete:story.openPipeCover()}:story.capPipe(step);audio.door(true);notify(result.message||(step==='cover'?'Cover released. The isolation wheel is to the left.':story.hasFlag('pipe-capped')?'The telltale holds at zero. The service line is sealed.':'The fitting holds. Check the next point on the schematic.'));syncStoryHud(true);saveStory();}
+    if(workAction&&performance.now()>=workAction.until){
+      const work=workAction;workAction=null;
+      if(work.sideAction){if(world.activeLevel===work.level&&!world.special&&body.position.distanceTo(work.position)<5)finishSideAction(work.sideAction);}
+      else {const step=work.step,result=step==='cover'?{complete:story.openPipeCover()}:story.capPipe(step);audio.door(true);notify(result.message||(step==='cover'?'Cover released. The isolation wheel is on your right as you face the fitting.':story.hasFlag('pipe-capped')?'The telltale holds at zero. The service line is sealed.':'The fitting holds. Check the next point on the schematic.'));syncStoryHud(true);saveStory();}
+    }
 
     // Bound movement substeps prevent thin rail/door tunneling after slow frames.
     // The jump impulse belongs to one substep only, or it is applied N times.
     const count=Math.max(1,Math.ceil(dt/(1/120))),wasAirborne=!body.grounded;
     for(let i=0;i<count;i++)body.step(dt/count,desired,world.colliders,{jump:jumpQueued&&!opening.focus&&!talking&&!workAction&&i===0});
-    if(jumpQueued&&body.velocity.y>.5)audio.jump();
+    if(jumpQueued&&body.velocity.y>.5){audio.jump();haptics.play('use',.6);}
     jumpQueued=false;
-    if(wasAirborne&&body.grounded&&body.landingImpact>.05)audio.land(body.landingImpact);
+    if(wasAirborne&&body.grounded&&body.landingImpact>.05){audio.land(body.landingImpact);haptics.play('land',Math.min(1.5,.5+body.landingImpact*2));}
     if(body.position.y<2&&!world.special){const p=world.spawn(world.activeLevel);body.teleport(p.x,p.y,p.z);notify('Returned to the nearest safe landing.');}
     const bob=$('reduceMotion').checked?0:Math.sin(body.distanceWalked*8)*.018*Math.min(1,body.horizontalSpeed);
-    world.update(dt,body.position);const passage=world.transitionAt(body.position);if(passage)travel(passage);opening.update(dt);population.update(dt,body,opening.watching,cast.selected);population.separatePlayer(body);
+    // The silo's hour, read once and handed to everything that depends on it.
+    // It holds still through the cleaning: ninety seconds of the cleaner crossing
+    // the hill should not also be ninety seconds of the sun moving behind him.
+    siloClock.running=!opening.watching;
+    for(const bell of siloClock.update(dt)){audio.ambient(shiftBell());haptics.play('bell');notify(`Shift change. ${siloClock.schedule.label}, ${siloClock.schedule.clock}.`);}
+    const schedule=siloClock.schedule;
+    world.schedule=schedule;population.schedule=schedule;
+    world.update(dt,body.position);const passage=world.transitionAt(body.position);if(passage)travel(passage);opening.update(dt);population.update(dt,body,opening.watching,cast.selected);population.separatePlayer(body);sideWorld.update(world,sideMissions,body);
+    if(!opening.watching&&!talking)for(const event of population.events.slice(0,3)){
+      const delta=event.position.clone().sub(body.position),distance=delta.length();
+      if(distance<24)audio.ambient({...event,position:undefined,steps:event.steps||1,
+        gain:.028/(1+distance*.16),pan:THREE.MathUtils.clamp((delta.x*Math.cos(yaw)-delta.z*Math.sin(yaw))/Math.max(2,distance),-1,1),
+        muffle:Math.abs(delta.y)>2?1000:2400,send:1.1,rate:1});
+    }
+    // What the silo sounds like around you: where you are, whether the shaft
+    // can carry it to you, and how much of the place is awake to make it.
+    {
+      const wing=Math.round(Math.atan2(body.position.z,body.position.x)/TAU*6+6)%6,radius=Math.hypot(body.position.x,body.position.z);
+      audio.setAmbience({
+        place:world.outside?'surface':world.special==='silo17'?'tunnel':world.special==='pipe-gallery'?'mines':world.special||roomType(world.activeLevel,wing),
+        inShaft:!world.special&&!world.outside&&radius<SILO.stairRadius+2.6,
+        crowd:schedule.crowd,bustle:schedule.bustle,
+        silent:opening.watching||!!talking||wading});
+      audio.ambientTick(dt);
+    }
     // While you are talking the camera settles on whoever you are talking to,
     // so the conversation has a face in it and it is obvious who heard you.
     if(talking?.actor){
@@ -718,12 +1108,43 @@ function frame(){
       }else endConversation();
     }
     cast.update(dt,body,started);cast.setCamera(camera,body,yaw,pitch,bob);camera.getWorldDirection(direction);const eye=body.position.clone();eye.y+=body.eyeHeight;
+    // The one person the objective is waiting on gets a small mark over their
+    // head. Everybody in the silo is dressed the same on purpose, which is
+    // right for the place and useless for finding somebody, and "go and see
+    // Mara" does not help in a cafeteria with nine women in work clothes in
+    // it. objective-target.js picks them; nothing here decides.
     if(talking?.actor){const at=population.actorPosition(talking.actor);if(at&&at.distanceTo(body.position)>5.5)endConversation();}
     props.update(dt,time,story,world.activeLevel,world.special);
     // The supplied hard-drive model is placed by the character cast, so taking
     // it in story mode has to clear it from the bench there.
     if(cast?.relic&&story.story&&story.has('harddrive'))cast.relic.visible=false;
     world.actorInteractions.push(...props.interactions(story,world.activeLevel,world.special));
+    // Where to go next. Everybody in the silo is dressed the same on purpose and
+    // a floor is the size of a town square, so "Supply, Level 110" gets you off
+    // the stairs and no further. This marks the one person or the one object
+    // the chapter is actually waiting on — read from the same interaction pool
+    // the player walks up to, so it can never point at something that is not
+    // really there.
+    //
+    // It runs here rather than earlier in the frame because the relic prompts
+    // are pushed on the line above; before that, a marked object has no
+    // position yet.
+    if(storyMarker){
+      let at=null;
+      const mark=started&&!world.outside&&!world.special?objectiveMark(story,COLLECTABLES):null;
+      if(mark?.kind==='person')at=population.actorHead(mark.id);
+      else if(mark?.kind==='thing'){
+        const prompt=world.actorInteractions.find(i=>i.action==='relic:'+mark.id);
+        if(prompt)at=prompt.position.clone().add(new THREE.Vector3(0,.22,0));
+      }
+      // Whether anything stands between the eye and it, which decides the near
+      // form from the far one. The world owns the walls, so the world answers.
+      const blocked=at?world.blockedFromView(eye,at,at.distanceTo(eye)):false;
+      storyMarker.update(dt,at,eye,blocked);
+    }
+    // Chapter One and Two put three people in the way of the job. They are
+    // pushed here, beside the relic prompts, because they come and go with the
+    // state of the story rather than with the level being loaded.
     // world.storyInteractions belongs to the opening, which rebuilt it above.
     // A second writer here used to overwrite it every frame with a hardcoded
     // Billings prompt, so the directory book could never be picked up and the
@@ -736,7 +1157,7 @@ function frame(){
     if(drone.active){
       const event=drone.update(dt,eye);
       if(event==='fired')droneKill();
-      else if(event==='landed'){story.droneKilled();world.surface.setNetworkVisible(true);world.rebuildCollision();saveStory();syncStoryHud(true);notify('It is down. Beyond the ridge, other silo crowns break the horizon.');}
+      else if(event==='landed'){story.droneKilled();world.surface.setNetworkVisible(true);world.rebuildCollision();saveStory();syncStoryHud(true);notify('It is down. Beyond the ridge, more earthen bowls stretch toward the ruined skyline.');}
     }
     // The range's steel plates only exist on the top floor; the weapon keeps
     // working anywhere, but there is nothing to hit outside the room.
@@ -747,7 +1168,10 @@ function frame(){
     }
     if(firearms.targets.length)updateRangeTargets(firearms.targets,dt);
     if(firearms.held){
-      firearms.aiming=keys.has('ShiftLeft')||keys.has('ShiftRight');
+      // Aim is its own input. Shift used to do this as well as sprint, so
+      // running and aiming were the same request and you could not stop to
+      // steady a shot.
+      firearms.aiming=aimHeld||pad.aim;
       const kick=firearms.update(dt,time);
       // Recoil is added to the player's own aim rather than replacing it, so it
       // can be pulled back down the way a real one has to be.
@@ -755,20 +1179,36 @@ function frame(){
       firearms.place(camera);
       if(hudTick!==Math.floor(time*8)){hudTick=Math.floor(time*8);updateWeaponHud();}
     }
+    const wasOffering=lastInteractionLabel;
     interaction=body.climbing||opening.focus||talking?null:world.nearestInteraction(eye,direction);$('interaction').hidden=!interaction;
-    if(interaction){$('interactionLabel').textContent=interaction.label;$('interactionHint').textContent=interaction.hint||'';}
+    if(interaction)paintInteraction(document,interaction);
+    // One light tick the moment something new comes within reach, so you can
+    // feel that there is a thing here without watching the bottom of the
+    // screen for it. Keyed on the label, or turning on the spot in a corridor
+    // of identical doors would buzz once a frame.
+    lastInteractionLabel=interaction?interaction.label:null;
+    if(lastInteractionLabel&&lastInteractionLabel!==wasOffering)haptics.play('tick');
     $('touchUse').style.opacity=interaction||opening.state==='read-book'?'1':'.4';audio.step(body.distanceWalked,body.horizontalSpeed,cast.active?.motion.stepCount);
     crowdSoundTime-=dt;if(crowdSoundTime<=0){crowdSoundTime=opening.watching?4:1.1+Math.random()*1.5;audio.residents?.(population.count,opening.watching);}
   }else if(!started){
     const p=topPoint(...CAFETERIA_START);camera.position.copy(topPoint(0,1.85,10));camera.lookAt(topPoint(0,3.2,39));world.update(dt,p);population.update(dt,body,false,cast.selected);
   }else{if(workAction)workAction.until+=dt*1000;world.update(dt,body.position);cast?.update(0,body,started);}
   audio.setStoryPaused?.(document.hidden||(opening?.watching&&paused()));
+  if(relic.open)inspector.render();
+  if(opening?.watching)paintCinema(document,opening.time,OPENING_DURATION);
   updateInterface(time);
   if(time-lastHUD>.25){
     updateHUD();lastHUD=time;
     // Arriving somewhere correct should say so. Without it there is no way to
     // tell a level you were sent to from a level you wandered into, and the
     // player who is on the right floor goes on looking somewhere else.
+    // Running the dispatch down to Supply is what puts the parcel on the
+    // counter. Arriving is the trigger; nothing has to be pressed.
+    if(started&&story?.story&&!world.special&&!world.outside&&world.activeLevel===PARCEL_LEVEL&&story.reachedSupply()){
+      showObjective(story.chapterInfo.title,story.objective,7000);
+      notify('The Supply clerk takes the dispatch, then checks a second slip. “There is something here against your name.”');
+      syncStoryHud(true);saveStory();
+    }
     if(started&&story?.story&&!world.special&&!world.outside&&story.arriving(world.activeLevel)){
       // The card carries it. Toasting as well stacked two messages saying the
       // same thing in the same corner of a short screen.
@@ -786,6 +1226,12 @@ function frame(){
   torch.position.copy(camera.position);camera.getWorldDirection(direction);torch.target.position.copy(camera.position).addScaledVector(direction,15);torch.visible=torchOn&&started;
   const far=world.special?260:world.outside?1600:2300,near=world.special?.16:.1;if(camera.far!==far||camera.near!==near){camera.far=far;camera.near=near;camera.updateProjectionMatrix();}
   if(opening?.focus)rendering.renderScreen(outsideTarget.texture,camera.aspect);else rendering.render(scene,camera);
+  // Whatever this frame can spare goes into building the level you are walking
+  // towards, a wing at a time. It runs after the picture is drawn, and a frame
+  // that was already late is skipped rather than pushed further over — the
+  // work is not urgent, which is the whole point of moving it off the frame
+  // the floor is crossed in.
+  world.buildAhead(dt<.024?4:0);
 }
 
 async function boot(){
@@ -794,14 +1240,14 @@ async function boot(){
     renderer=new THREE.WebGLRenderer({canvas,antialias:!coarse,alpha:false,powerPreference:'high-performance'});renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.setClearColor(0x111b17);updateSettings();resize();
     world=new SiloWorld(scene);rendering=new Rendering(renderer);makeEnvironment(renderer,scene);updateSettings();
     await world.loadAssets(progress=>{$('enterButton').textContent=`Preparing the silo · ${Math.round(progress*45)}%`;});
-    cast=new CharacterCast(scene,world);await cast.load(progress=>{$('enterButton').textContent=`Preparing characters · ${Math.round(45+progress*55)}%`;});cast.select(saved.character||'juliette');cast.thirdPerson=saved.thirdPerson!==false;body.standHeight=body.height=cast.active.definition.height;cast.active.heading=yaw+Math.PI;renderCharacters();
+    cast=new CharacterCast(scene,world);await cast.load(progress=>{$('enterButton').textContent=`Preparing characters · ${Math.round(45+progress*55)}%`;});const customProfile=loadProfile(conversationStorage);if(customProfile)cast.register(definitionFromProfile(customProfile));cast.select(saved.character||'juliette');cast.thirdPerson=saved.thirdPerson!==false;body.standHeight=body.height=cast.active.definition.height;cast.active.heading=yaw+Math.PI;renderCharacters();
     world.setLevel(1);const start=topPoint(...CAFETERIA_START);body.teleport(start.x,start.y,start.z);yaw=-Math.PI/2;pitch=-.06;world.update(0,body.position);cast.update(0,body,false);
-    population=new Population(scene,world);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);
-    story=Story.load(savedStory);terminal=GeorgeTerminal.load(savedStory?.terminal);world.story=story;props=new StoryProps(scene,world.m);drone=new Drone(scene,world.m);
+    population=new Population(scene,world);storyMarker=new StoryMarker(scene);opening=new CafeteriaOpening(world,{complete:openingComplete,onChange:openingChanged});population.update(0,body,false,cast.selected);
+    story=Story.load(savedStory);sideMissions=story.story?SideMissions.load(savedStory?.sideMissions):loadExploreMissions();terminal=GeorgeTerminal.load(savedStory?.terminal);world.driveSeated=terminal.view.driveInserted;if(savedStory?.clock)siloClock=SiloClock.load(savedStory.clock);world.story=story;props=new StoryProps(scene,world.m);const relicFailures=await props.loadAssets();if(relicFailures)notify('Some relic models could not load. Refresh to retry.');drone=new Drone(scene,world.m);
     if(story.story&&story.chapter!=='cleaning'){opening.finish();const cp=savedStory?.checkpoint;if(cp&&Number.isInteger(cp.level)&&cp.level>=1&&cp.level<=144&&Array.isArray(cp.position)&&cp.position.length===3&&cp.position.every(Number.isFinite)&&[null,'generator','mines','excavator','tunnel','pipe-gallery','silo17'].includes(cp.special)){world.setLevel(cp.level,cp.special);const [x,y,z]=cp.position;const floor=world.colliders.floorAt(x,z,.3,y+1);if(Number.isFinite(floor)&&Math.abs(floor-y)<2)body.teleport(x,floor+.05,z);else{const dest=world.destination(cp.special||cp.level);body.teleport(...dest.position.toArray());}yaw=Number.isFinite(cp.yaw)?cp.yaw:0;}if(story.hasFlag('hideout-open'))world.openBreach();if(story.chapter==='drone'){story.killedByDrone();const back=world.destination('airlock');world.setLevel(1);body.teleport(...back.position.toArray());}world.update(0,body.position);}
     openingChanged(opening.state);syncStoryHud(true);
     outsideTarget=world.surface.initFeed(renderer);renderer.compile(scene,camera);setDirectoryMode(true);
-    ready=true;$('resumeButton').hidden=!savedStory;$('enterButton').disabled=false;$('enterButton').textContent='New game · the story';
+    ready=true;$('welcomeCharacters').disabled=false;$('welcomeCreateCharacter').disabled=false;$('resumeButton').hidden=!savedStory;$('enterButton').disabled=false;$('enterButton').textContent='Story · New game';
     if(world.materialFailures)notify('Some surface materials could not load. Refresh to retry.');
     if(world.assetFailures)notify('Some Lost Signal props could not load. The complete architectural reconstruction is still available.');
     frame();
@@ -810,8 +1256,17 @@ async function boot(){
 // One handle on the running game, for the headless smoke test that drives the
 // whole story through in a real browser. Nothing in the game reads it.
 window.__silo={begin,fire,use,travel,takeRelic,stepOutside,firearms,takeWeapon,camera,
+  // Chapter One's scenes, so a check can play them without a mouse.
+  talk:startConversation,maraScene:maraConversation,clerkScene:clerkConversation,deputyScene:deputyConversation,
   look(y,p=0){yaw=y;pitch=p;},
   get story(){return story;},get world(){return world;},get body(){return body;},
   get drone(){return drone;},get opening(){return opening;},get ready(){return ready;},
-  get audio(){return audio;},get wading(){return wading;}};
+  get audio(){return audio;},get wading(){return wading;},
+  get clock(){return siloClock;},get rendering(){return rendering;},
+  // The crowd and the cast, so an offline capture can drive every animated
+  // system on one fixed timestep instead of on whatever the frame rate
+  // happened to be. Nothing in the game reads any of this.
+  get population(){return population;},get cast(){return cast;},
+  get marker(){return storyMarker;},get marked(){return objectiveTarget(story);},
+  get mark(){return objectiveMark(story,COLLECTABLES);}};
 boot();

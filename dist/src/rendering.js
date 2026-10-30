@@ -3,7 +3,7 @@ import * as THREE from '../vendor/three.module.js';
 export function makeEnvironment(renderer,scene){
   const env=new THREE.Scene();env.background=new THREE.Color(0x747772);
   const room=new THREE.Mesh(new THREE.BoxGeometry(12,9,12),new THREE.MeshBasicMaterial({color:0x3b403f,side:THREE.BackSide}));env.add(room);
-  for(const [x,y,z,w,h,d,color] of [[0,4,0,8,.1,5,0xf0e7d6],[-5,1,0,.1,3,7,0x889b9c],[5,1,0,.1,3,7,0x99968c],[0,1,-5,4,2,.1,0x85847c]]){const card=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color}));card.position.set(x,y,z);env.add(card);}
+  for(const [x,y,z,w,h,d,color] of [[0,4,0,8,.1,5,0xf0e7d6],[-5,1,0,.1,3,7,0x889b9c],[5,1,0,.1,3,7,0x99968c],[0,1,-5,4,2,.1,0x85847c],[0,.5,5,5,2,.1,0xaaa08b]]){const card=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color}));card.position.set(x,y,z);env.add(card);}
   const pmrem=new THREE.PMREMGenerator(renderer),target=pmrem.fromScene(env,.045);scene.environment=target.texture;scene.environmentIntensity=.72;pmrem.dispose();env.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});return target;
 }
 
@@ -42,7 +42,7 @@ export class Rendering {
         vec3 dx=abs(left.z)<abs(right.z)?left:right,dy=abs(down.z)<abs(up.z)?down:up;
         vec3 n=normalize(cross(dx,dy));if(dot(n,-p)<0.)n=-n;
         float radius=clamp(resolution.y*.36/max(-p.z,1.),2.,22.);
-        for(int i=0;i<12;i++){float a=float(i)*2.399963;vec2 dir=vec2(cos(a),sin(a));float r=radius*(.3+.7*sqrt((float(i)+1.)/12.));vec2 uv=clamp(vUv+dir*pixel*r,pixel,1.-pixel);vec3 delta=positionAt(uv)-p;float distance=length(delta);occlusion+=smoothstep(.035,.20,dot(n,delta))*(1.-smoothstep(.35,1.15,distance));vec3 sampleColor=texture2D(colorMap,clamp(vUv+dir*pixel*5.,pixel,1.-pixel)).rgb;glow+=max(sampleColor-vec3(2.),vec3(0.));}
+        for(int i=0;i<12;i++){float a=float(i)*2.399963;vec2 dir=vec2(cos(a),sin(a));float r=radius*(.3+.7*sqrt((float(i)+1.)/12.));vec2 uv=clamp(vUv+dir*pixel*r,pixel,1.-pixel);vec3 delta=positionAt(uv)-p;float distance=length(delta);occlusion+=smoothstep(.012,.14,dot(n,delta))*(1.-smoothstep(.22,.72,distance));vec3 sampleColor=texture2D(colorMap,clamp(vUv+dir*pixel*5.,pixel,1.-pixel)).rgb;glow+=max(sampleColor-vec3(2.),vec3(0.));}
         }
         c*=1.-occlusion*.083333*strength;c+=glow*.0083;
         // Restrained tungsten highlights, cool concrete shadows and retained
@@ -57,7 +57,7 @@ export class Rendering {
       }`});
     this.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),this.material));
   }
-  setQuality(quality){const samples=Math.min(this.renderer.capabilities.maxSamples||0,quality==='high'?4:quality==='low'?0:2);if(this.target.samples!==samples){this.target.samples=samples;this.target.dispose();}this.material.uniforms.strength.value=quality==='high'?.28:quality==='low'?0:.18;}
+  setQuality(quality){const samples=Math.min(this.renderer.capabilities.maxSamples||0,quality==='high'?4:quality==='low'?0:2);if(this.target.samples!==samples){this.target.samples=samples;this.target.dispose();}this.material.uniforms.strength.value=quality==='high'?.34:quality==='low'?0:.24;}
   resize(){const size=this.renderer.getDrawingBufferSize(new THREE.Vector2());this.target.setSize(size.x,size.y);this.material.uniforms.resolution.value.copy(size);}
   renderScreen(texture,aspect){
     if(!this.screenScene){this.screenScene=new THREE.Scene();this.screenScene.background=new THREE.Color(0x101614);this.screenCamera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);this.screenMesh=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.MeshBasicMaterial({map:texture,depthTest:false,depthWrite:false}));this.screenScene.add(this.screenMesh);}

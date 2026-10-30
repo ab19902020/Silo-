@@ -2,6 +2,7 @@ import * as THREE from '../vendor/three.module.js';
 import { Kit, addSign, fixture, table, chair, desk, bed, pipe } from './kit.js';
 import { buildCafeteriaCeiling } from './cafeteria-ceiling.js';
 import { dressCafeteria } from './environment-details.js';
+import {hangingSign,wallSign} from './sign-mounts.js';
 import { buildGunRange } from './gun-range.js';
 
 // The cafeteria's tables: four across, five rows deep, the last row hard up
@@ -49,11 +50,13 @@ export function buildTopFloor(m) {
     // black table read as three pieces of crockery, and the one you have to
     // find is the middle one. That table is left clear.
     if(x===BOOK_TABLE[0]&&z===BOOK_TABLE[1])continue;
-    k.cylinder('white',x+.6,.91,z,.11,.13);k.cylinder('white',x-.6,.84,z,.22,.02);
+    k.bevel('metal',x,TABLE_TOP+.009,z,1.65,.018,.64);
+    k.cylinder('white',x+.6,TABLE_TOP+.018+.065,z,.085,.13);k.cylinder('white',x-.6,TABLE_TOP+.028,z,.22,.02);
   }
   for(const x of [-15.8,-12.5,-9.2]){box('green',x,.7,7,3.1,1.4,1.5);k.bevel('metal',x,1.45,7,3.2,.1,1.6);}
   for(let j=0;j<10;j++){k.cylinder('white',-16+j*.7,1.57,7,.2,.15);}
-  label('CAFETERIA',0,4.1,1,5,.7);label('SHERIFF  →',15,3.7,30,3.1,.4,Math.PI/2);
+  k.box('darkMetal',0,4.1,1.10,5.2,.82,.10);for(const x of [-2,2])k.beam('metal',[x,4.48,1.10],[x,8.3,1.10],.016);
+  label('CAFETERIA',0,4.1,1,5,.7);hangingSign(root,m,'SHERIFF  →',[15,3.7,30],3.1,.4,Math.PI/2,8.3);
   // A 30 m rounded wall display, continuously fed by the exterior camera.
   const frame=new THREE.Mesh(makeDisplayGeometry(31.1,7.3),m.darkMetal);frame.position.set(0,.35,39.56);frame.rotation.y=Math.PI;frame.userData.ownedGeometry=true;root.add(frame);
   const screen=new THREE.Mesh(makeDisplayGeometry(30,6.8),new THREE.MeshBasicMaterial({color:0xffffff}));screen.rotation.y=Math.PI;screen.position.set(0,.6,39.34);screen.userData.ownedGeometry=true;screen.userData.ownedMaterial=true;root.add(screen);
@@ -65,7 +68,29 @@ export function buildTopFloor(m) {
   box('darkConcrete',26,4.9,34,16,.4,20,false);
   for(const x of [22,28])for(const z of [29,35]){desk(k,x,z);chair(k,x,z+1);solids.push({x,z,w:2,d:1,y0:0,y1:1.5});}
   for(const x of [20,22,24]){box('green',x,1.25,42,1.6,2.5,.7);for(const y of [.4,.9,1.4,1.9]){k.box('brass',x,y,41.61,.28,.04,.03);}}
-  label('SHERIFF’S STATION',26,3.8,24.2,6,.7,0);for(const z of [28,37])fixture(k,26,4.55,z,5);
+  // One runners' rack, inside the Wing A entrance before the dining tables.
+  // Chapter One puts the player to work as a runner, and a job you are merely
+  // told you have is not a job: this is the thing you take it off. Pigeonholes
+  // by destination band, a chalked shift list and a shelf at writing height.
+  {
+    const rx=-6.1,rz=4.3,ry=0;
+    const at=(x,y,z)=>[rx+Math.cos(ry)*x+Math.sin(ry)*z,y,rz-Math.sin(ry)*x+Math.cos(ry)*z];
+    const put=(mat,x,y,z,w,h,d)=>{const p=at(x,y,z);k.box(mat,p[0],p[1],p[2],ry?d:w,h,ry?w:d);};
+    for(const x of [-.78,.78])put('darkMetal',x,.47,0,.09,.94,.34);
+    put('darkMetal',0,.055,0,1.68,.11,.34);
+    put('wood',0,.905,0,1.68,.07,.38);                       // the writing shelf
+    solids.push({x:at(0,0,0)[0],z:at(0,0,0)[2],w:1.74,d:.42,y0:0,y1:.94});
+    put('wood',0,1.40,-.10,1.68,.035,.26);                   // pigeonholes
+    for(const y of [1.08,1.24])put('wood',0,y,-.10,1.62,.018,.24);
+    for(let i=0;i<6;i++)put('wood',-.66+i*.264,1.24,-.10,.018,.35,.24);
+    for(let r=0;r<3;r++)for(let c=0;c<5;c++)if((r+c)%3)put('paper',-.53+c*.264,1.32-r*.16,-.06,.13,.005,.16);
+    put('black',0,1.55,-.10,1.62,.13,.025);                  // the chalked shift list
+    for(let r=0;r<4;r++)for(let c=0;c<4;c++)put('pale',-.58+c*.39,1.59-r*.028,-.086,.24,.005,.003);
+    addSign(root,'RUNNERS · DISPATCH',at(0,1.75,-.10).map((v,i)=>i===1?v:v),1.5,.26,ry+Math.PI,{background:'#34453b'});
+    // The sealed dispatch and its pickup prompt belong to StoryProps, so
+    // picking it up also removes the visible card and objective marker.
+  }
+  hangingSign(root,m,'SHERIFF’S STATION',[26,3.8,24.2],6,.7,0,4.7);for(const z of [28,37])fixture(k,26,4.55,z,5);
   // A duty monitor on the station wall, on the same feed. Wool only ever
   // describes two wall-screens — the cafeteria and the cell — so this one is a
   // placement, not a claim: the office that runs the cleanings watches them.
@@ -76,7 +101,7 @@ export function buildTopFloor(m) {
   wall(21,44,6,.3,4.7);wall(31,44,6,.3,4.7);box('pale',26,4.25,44,4,.9,.3);
   floor(26,49,8,10);wall(30,49,.3,10,4.7);wall(22,45,.3,2,4.7);wall(22,53,.3,2,4.7);box('darkConcrete',26,4.85,49,8,.3,10,false);
   floor(18,49,8,6);wall(14,49,.3,6,3.7);wall(18,46,8,.3,3.7);wall(18,52,8,.3,3.7);box('pale',18,3.85,49,8,.3,6,false);
-  bed(k,15.3,49);k.box('wood',19.5,.5,51.5,2,.15,.5);label('HOLDING 3',21.8,2.8,47,2,.35,Math.PI/2);
+  bed(k,15.3,49);k.box('wood',19.5,.5,51.5,2,.15,.5);hangingSign(root,m,'HOLDING 3',[21.8,2.8,47],2,.35,Math.PI/2,3.7);
   // The cell carries the same exterior feed as the cafeteria wall. It is the
   // one thing the condemned are given to look at, and it faces the bunk.
   const cellFrame=new THREE.Mesh(new THREE.BoxGeometry(.12,1.5,2.4),m.darkMetal);cellFrame.position.set(14.28,1.85,49);cellFrame.userData.ownedGeometry=true;root.add(cellFrame);
@@ -86,7 +111,7 @@ export function buildTopFloor(m) {
   // Bars leave a true 1.5 m opening. Empty benches and folded equipment only.
   for(const z of [46.2,46.45,46.7,47,47.25,50.75,51,51.3,51.6,51.8])k.cylinder('darkMetal',22,1.6,z,.026,3.2);
   box('green',29,.55,49,1,1.1,5);for(const z of [47.5,49,50.5]){k.bevel('linen',29,1.18,z,.72,.13,.65);k.torus('brass',29,1.27,z,.17,.035,Math.PI/2);}
-  label('CLEANING PREPARATION',26,3.9,44.2,3.5,.42,0);fixture(k,26,4.5,49,3.2,true,true);
+  wallSign(root,m,'CLEANING PREPARATION',[26,4.3,44.177],3.5,.42,0);fixture(k,26,4.5,49,3.2,true,true);
   // Mechanically operated inner / outer pressure doors with collision linked
   // to their animated position. Cycling one closes the other first.
   floor(26,59,6,10);wall(23,59,.45,10,4.8);wall(29,59,.45,10,4.8);box('darkConcrete',26,5,59,6,.4,10,false);
@@ -106,9 +131,10 @@ export function buildTopFloor(m) {
   for(const z of [56,60,63]){fixture(k,23.32,2.7,z,1.4,true,true);fixture(k,28.68,2.7,z,1.4,true,true);}
   for(const x of [24,28])pipe(k,x,59,4.4,9,.08,'metal');
   for(let z=55;z<64;z+=.35)k.box('darkMetal',26,.008,z,4.8,.012,.06);
-  label('RANGE  ↓',26,3.8,25.4,3.1,.4,0);
+  hangingSign(root,m,'RANGE  ↓',[26,3.8,25.4],3.1,.4,0,4.7);
   const range=buildGunRange(m);root.add(range.root);
   solids.push(...range.solids);floors.push(...range.floors);interactions.push(...range.interactions);
+  box('green',-6.1,.59,7,.86,1.18,.82);
   dressCafeteria(k,root,{rows:TABLE_ROWS,columns:TABLE_COLUMNS,clear:BOOK_TABLE});root.add(k.group());
   root.userData={...root.userData,solids,floors,interactions,animated,doors,type:'cafeteria',outsideScreen:screen,extraScreens:[cellScreen,dutyScreen],rangeTargets:range.targets,bespoke:true};return root;
 }

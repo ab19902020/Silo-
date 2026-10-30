@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
 import { SiloWorld } from '../dist/src/world.js';
 import { SILO,STAIR_SWEEP,landingAngle,landingPoint,levelY } from '../dist/src/data.js';
-import { cleaningSample } from '../dist/src/opening.js';
-import { topPoint,groundY,sensorLocal } from '../dist/src/surface.js';
+import { cleaningSample,HANA_REST } from '../dist/src/opening.js';
+import { topPoint,groundY,sensorLocal,SENSOR,TREE } from '../dist/src/surface.js';
 import { readGLB,geometryGLTF } from '../scripts/glb.mjs';
 import { SkeletalMotion } from '../dist/src/locomotion.js';
 import { CharacterBody,ColliderSet } from '../dist/src/physics.js';
@@ -49,7 +49,7 @@ test('the panorama includes sky above the crater and night lighting reaches both
 
 test('all three supplied rigs distinguish jump ascent, fall and grounded recovery',async()=>{
   for(const [id,height] of [['juliette',1.73],['sims',1.83],['bernard',1.87]]){
-    const {json,bin}=await readGLB(new URL(`../dist/assets/characters/${id}.glb`,import.meta.url)),gltf=await geometryGLTF(json,bin),motion=new SkeletalMotion(gltf.scene,height),body=new CharacterBody({standHeight:height}),colliders=new ColliderSet();
+    const {json,bin}=await readGLB(new URL(`./fixtures/imported-characters/${id}.glb`,import.meta.url)),gltf=await geometryGLTF(json,bin),motion=new SkeletalMotion(gltf.scene,height),body=new CharacterBody({standHeight:height}),colliders=new ColliderSet();
     colliders.addRing({innerRadius:0,outerRadius:30,minY:-1,maxY:0,climbable:true});body.teleport(0,0,0);const states=new Set();
     for(let i=0;i<180;i++){body.step(1/60,new T.Vector3(0,0,1.4),colliders,{jump:i===30});gltf.scene.position.copy(body.position);gltf.scene.updateMatrixWorld(true);motion.update(1/60,{speed:body.horizontalSpeed,position:body.position,grounded:body.grounded,impact:body.landingImpact,ground:()=>0});states.add(motion.state);for(const b of Object.values(motion.bones))assert.ok(b.quaternion.toArray().every(Number.isFinite));}
     assert.ok(states.has('Jump')&&states.has('Fall'),`${id}: ${[...states]}`);assert.ok(body.grounded&&motion.air<.001);assert.ok(motion.legs.every(l=>l.error<.02));
@@ -63,4 +63,15 @@ test('each landing has one visible top face, without overlapping flat treads',()
     const faces=ray.intersectObjects([world.landings,world.stairs],true).filter(h=>Math.abs(h.distance-.5)<.0001);
     assert.equal(faces.length,1,`level ${level} side ${side}: ${faces.length} coplanar top faces`);
   }
+});
+
+
+test('the centred sensor frames the whole cleaner, stair lip and body on the right slope',()=>{
+  const s=world.surface;s.camera.updateMatrixWorld(true);assert.equal(SENSOR.x,26);
+  const feet=cleaningSample(8).position,foot=topPoint(...feet.toArray()).project(s.camera),head=topPoint(feet.x,feet.y+1.8,feet.z).project(s.camera);
+  assert.ok(Math.abs(foot.x)<.001&&Math.abs(head.x)<.001);assert.ok(foot.y>-.98&&head.y<.9);
+  const lip=topPoint(26,14,108).project(s.camera);assert.ok(lip.y>-.98&&lip.y<-.55,`stair lip ${lip.y}`);
+  const body=topPoint(HANA_REST[0],groundY(...HANA_REST)+.25,HANA_REST[1]).project(s.camera);
+  assert.ok(body.x>.3&&body.x<.8&&Math.abs(body.y)<.85);
+  const tree=world.surface.feedRoot.getObjectByName('dead-tree'),bounds=new T.Box3().setFromObject(tree),tip=new T.Vector3(TREE.z+SILO.deckOuter,bounds.max.y,-TREE.x).project(s.camera);assert.ok(tip.y<1,'tree crown cropped');
 });

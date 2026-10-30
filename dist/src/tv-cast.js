@@ -1,0 +1,47 @@
+// Television identities, grouped by their first appearance. Placements and
+// costumes are game interpretations; historical guests do not replace story NPCs.
+// Reference audit: docs/playable-cast.md.
+const guest=(id,name,role,season,appearance={},extra={})=>({id,name,role,season,origin:'Silo 18',level:1,wing:0,height:1.75,story:'guest',appearance:{skin:0xb9947b,hair:0x403126,coat:0x657166,outfit:'shirt',...appearance},...extra});
+export const LEAD_CAST=Object.freeze([
+ guest('juliette','Juliette Nichols','Mechanical engineer',1,{skin:0xc29b82,hair:0x8c7451,coat:0x65716a,outfit:'work',female:true,hairStyle:'ponytail',faceWidth:.97,shortSleeves:true},{height:1.73,level:144,wing:1,story:null,activity:'work'}),
+ guest('sims','Robert Sims','Judicial security',1,{skin:0x80583f,hair:0x211b17,coat:0x292f2c,shirt:0x292f2c,coatLength:.69,outfit:'coat',bald:true,beard:.72,build:1.08,faceWidth:1.02},{height:1.83,level:14,story:null}),
+ guest('bernard','Bernard Holland','Head of IT',1,{skin:0xc5a087,hair:0xa09e91,coat:0x6e6d5c,coatLength:.77,shirt:0x8e8a77,outfit:'coat',age:.8,glasses:true,faceWidth:1.04},{height:1.87,level:19,wing:2,story:null,activity:'read'}),
+]);
+export const EXTENDED_CAST=Object.freeze([
+ guest('sandy','Sandy','Sheriff’s office',1,{skin:0xa57a5f,hair:0x25221e,coat:0x826e54,outfit:'uniform',female:true,hairStyle:'bun'},{story:null,top:[24,41]}),
+ guest('molly','Molly Karins','Mid-level deputy',1,{skin:0xb18a6d,hair:0x211e1b,coat:0x7b7054,outfit:'uniform',female:true,hairStyle:'ponytail'},{story:null,level:50}),
+ guest('kathleen','Kathleen Billings','Billings family',1,{skin:0xc49c80,hair:0x4a3527,coat:0x9b8770,outfit:'knit',female:true,hairStyle:'waves'},{story:null,level:8}),
+ guest('diego','Diego','IT watcher',1,{skin:0xaf8769,hair:0x26201d,coat:0x82735d,outfit:'work',glasses:true},{story:null,level:19,wing:3}),
+ guest('regina','Regina Jackson','Relic dealer',1,{skin:0x9a7257,hair:0x2f2620,coat:0x827372,outfit:'cardigan',female:true,hairStyle:'long',age:.35},{story:null,level:100,wing:1}),
+ guest('danny','Danny','Computer hacker',1,{skin:0xb9977b,hair:0x795839,coat:0x777864,outfit:'work',hairStyle:'curls',build:.93},{story:null,level:19,wing:1}),
+ guest('hanna','Hanna Nichols','Surgeon · Nichols family',1,{skin:0xc49b80,hair:0x72553c,coat:0xaaa99a,outfit:'medical',female:true,hairStyle:'waves'},{level:62}),
+ guest('trumbull','Douglas Trumbull','Judicial enforcer',1,{skin:0xc49d82,hair:0x59412e,coat:0x343a36,outfit:'coat',build:1.06},{level:14,height:1.84}),
+ guest('anthony','Anthony Sims','Sims family',1,{skin:0x93694e,hair:0x28201a,coat:0x788074,outfit:'knit',hairStyle:'curls',build:.93,youth:true},{height:1.36,level:15}),
+ guest('solo','Solo · Jimmy Conroy','Vault keeper',2,{skin:0xbc9478,hair:0x8b7250,coat:0x7b7560,outfit:'work',hairStyle:'long',beard:.92,age:.55},{origin:'Silo 17',height:1.75}),
+ guest('audrey','Audrey','Survivor',2,{skin:0xbc9176,hair:0x63452d,coat:0x807564,outfit:'work',female:true,hairStyle:'long',build:.94},{origin:'Silo 17',height:1.68}),
+ guest('rick','Rick','Survivor',2,{skin:0x78573e,hair:0x2b211a,coat:0x73796a,outfit:'shirt',hairStyle:'curls',build:.96},{origin:'Silo 17',height:1.77}),
+ guest('hope','Hope · Eater','Survivor',2,{skin:0xaf8063,hair:0x30231b,coat:0x8a7e65,outfit:'work',female:true,hairStyle:'braids',build:.94},{origin:'Silo 17',height:1.63}),
+ guest('russell','Russell Conroy','Head of IT',2,{skin:0xb59073,hair:0x645644,coat:0x77745c,outfit:'coat',age:.65,glasses:true},{origin:'Silo 17',height:1.78}),
+ guest('gwen','Gwen Conroy','Conroy family',2,{skin:0xbd967e,hair:0x624f3c,coat:0x927f6e,outfit:'knit',female:true,hairStyle:'waves',age:.45},{origin:'Silo 17',height:1.68}),
+ guest('sheriff17','Silo 17 Sheriff','Rebellion leader',2,{skin:0xc09a7d,hair:0x4f3c2b,coat:0x76674f,outfit:'uniform',beard:.35},{origin:'Silo 17',height:1.81}),
+ guest('tim','Tim','Sheriff’s family',2,{skin:0xba9275,hair:0x57412d,coat:0x8a816c,outfit:'shirt',hairStyle:'fringe',build:.93,youth:true},{origin:'Silo 17',height:1.39}),
+ guest('gladys','Gladys','Mechanical elder',2,{skin:0xbfa087,hair:0xa6a08c,coat:0x777c70,outfit:'work',female:true,hairStyle:'bun',age:.85},{level:144,height:1.64}),
+ guest('frances','Frances Boyer','Kennedy family',2,{skin:0x9b7156,hair:0x2e221b,coat:0x897663,outfit:'knit',female:true,hairStyle:'longCurls'},{level:100,height:1.70}),
+ guest('penbrook','Terrance Penbrook','Quinn’s descendant',2,{skin:0xc0a084,hair:0xb5afa0,coat:0x807b67,outfit:'cardigan',age:.9,glasses:true},{height:1.79}),
+ guest('lukas-mother','Lukas’ mother','Kyle family',2,{skin:0x9f7559,hair:0x6b6252,coat:0x9b8977,outfit:'robe',female:true,hairStyle:'bun',age:.7},{height:1.64}),
+ guest('mark','Mark Chambers','Manufacturing supervisor',2,{skin:0xbb967c,hair:0x372b24,coat:0x6b7a73,outfit:'work',hairStyle:'waves'},{level:110}),
+ guest('daniel','Daniel Keene · Troy','Congressman',2,{skin:0xba9278,hair:0x372c22,coat:0x43525a,shirt:0xb9b8a8,outfit:'coat',hairStyle:'waves',faceWidth:.97},{origin:'Before Times',featuredSeason:3,height:1.83}),
+ guest('helen','Helen Drew','Journalist',2,{skin:0xb58b70,hair:0x30251f,coat:0x99876d,outfit:'coat',female:true,hairStyle:'long',faceWidth:.98},{origin:'Before Times',featuredSeason:3,height:1.69}),
+ guest('charlotte','Charlotte Keene','Military pilot',3,{skin:0xc6a18b,hair:0x664b34,coat:0x526861,outfit:'work',female:true,hairStyle:'ponytail'},{origin:'Before Times',height:1.68}),
+ guest('thurman','Rosalind Thurman','Senator',3,{skin:0xc09c84,hair:0x776858,coat:0x5d6261,shirt:0xc4bdad,outfit:'coat',female:true,hairStyle:'waves',age:.8},{origin:'Before Times',height:1.66}),
+ guest('anna','Anna Thurman','Congressional aide',3,{skin:0xc9a088,hair:0x785037,coat:0x817068,outfit:'coat',female:true,hairStyle:'waves'},{origin:'Before Times',height:1.67}),
+ guest('henry','Henry','Government operative',3,{skin:0xbda08b,hair:0xc0b9aa,coat:0x64706c,outfit:'coat',age:.9,glasses:true,faceWidth:.97},{origin:'Before Times',height:1.70}),
+ guest('victor','Dr. Victor Crnkovich','Physician',3,{skin:0xb9967c,hair:0x9e9586,coat:0xb9bba9,outfit:'medical',age:.8,faceWidth:.96},{origin:'Before Times',height:1.77}),
+ guest('per','Per Stensen','Industrialist',3,{skin:0xbe987f,hair:0x544334,coat:0x56616a,outfit:'coat',glasses:true,age:.35},{origin:'Before Times',height:1.86}),
+ guest('ed','Ed Harwood','Head of Mining',3,{skin:0xb49a80,hair:0x786850,coat:0x656458,outfit:'work',age:.75,faceWidth:.94,build:.95},{level:144,height:1.87}),
+ guest('orla','Orla Kent','Supply supervisor',3,{skin:0xa77b5f,hair:0x3c2a1d,coat:0x798077,outfit:'work',female:true,hairStyle:'ponytail'},{level:126,height:1.70}),
+ guest('mike','Mike','Supply worker',3,{skin:0xbe987b,hair:0x503622,coat:0x827a66,outfit:'work',beard:.38},{level:126,height:1.78}),
+ guest('glenda','Glenda Harwood','Supply apprentice',3,{skin:0xa87e60,hair:0x33251d,coat:0x79836e,outfit:'work',female:true,hairStyle:'bun'},{level:126,height:1.66}),
+ guest('gus','Gus','Knox’s father',3,{skin:0xba997e,hair:0x9f9785,coat:0x787968,outfit:'work',age:.85,beard:.6,build:1.08},{level:144,height:1.80}),
+ guest('joel','Joel','Before Times',3,{skin:0xc39e82,hair:0x554431,coat:0x65706a,outfit:'shirt',beard:.25},{origin:'Before Times',height:1.78}),
+]);

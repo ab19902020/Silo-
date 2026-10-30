@@ -1,5 +1,11 @@
 # Stair bridges, cafeteria and exterior camera — 8 September 2026
 
+> **Renamed since this was written.** The cleaner and the woman at the foot
+> of the tree are now Sheriff **Nathan Reeve** and **Hana Reeve**, original
+> Silo 18 characters. The sequence itself is unchanged — see
+> [the Chapter One notes](chapter-one.md). The names below are the ones the
+> code used at the time.
+
 Built on `b619e5a`, including the contributor's concrete stair guards, realistic resident proportions, hatch mouth, cell and sheriff monitors, and two separate audio tracks. The supplied reference files are preserved in [references](references/).
 
 ## What changed

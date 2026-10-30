@@ -3,8 +3,13 @@ import { SILO, TAU, levelY, roomType, landingAngle, landingPoint } from './data.
 import { roomPoint } from './characters.js';
 import { topPoint } from './surface.js';
 import { CharacterBody } from './physics.js';
-import { RESIDENT_CAST, CROWD_APPEARANCES } from './resident-data.js';
+import { RESIDENT_CAST, CROWD_APPEARANCES, crowdAppearanceIndex } from './resident-data.js';
+import { residentName } from './resident-stories.js';
 import { createResident, poseResident } from './resident-model.js';
+import { assignWorkday, workAt, JOBS } from './workday.js';
+import { attachWorkProps, showWorkProps, updateWorkGrip } from './work-props.js';
+import { PorterTraffic } from './porter-traffic.js';
+import { objectiveTarget } from './objective-target.js';
 
 export const CROWD_LIMITS=Object.freeze({low:28,balanced:48,high:72});
 const unit=new THREE.Vector3(),desired=new THREE.Vector3();
@@ -29,7 +34,7 @@ function clearSegment(world,a,b){
 export function populationRecords(level){
   if(['excavator','tunnel','silo17','pipe-gallery'].includes(level))return [];
   const records=[],y=levelY(level);
-  const add=(position,extra={})=>{const i=records.length;records.push({id:`resident-${level}-${i}`,position,seed:level*197+i*37,level,kind:'resident',activity:'idle',...extra});};
+  const add=(position,extra={})=>{const i=records.length;const record={id:`resident-${level}-${i}`,position,seed:level*197+i*37,level,kind:'resident',activity:'idle',...extra};record.workday=assignWorkday(record);records.push(record);};
   if(level==='generator'||level==='mines'){
     const generator=level==='generator';
     const stations=generator?[[-15,52,-17.5],[-10,52,-17.5],[10,52,-17.5],[15,52,-17.5],[-11.7,62.22,2],[11.7,62.22,2]]:[[102.5,48,-8],[111,48,10],[84,48,20],[126,48,28]];
@@ -76,7 +81,10 @@ export function populationRecords(level){
     ]});
   }
   for(let wing=0;wing<6;wing++){
-    if(level===1&&wing===0)continue;const type=roomType(level,wing);
+    // The cafeteria and the bazaar staff themselves, below. The generic pair
+    // would only add two more people standing on one spot in the middle of
+    // rooms that are supposed to be the busiest in the silo.
+    if(wing===0&&(level===1||level===100))continue;const type=roomType(level,wing);
     const works=['workshop','mechanical','farm','medical','it','recycling','water','laundry'].includes(type);
     // One of the two stays at the bench; the other works the room.
     add(roomPoint(level,wing,3.1,5.5),{wing,activity:works?'work':'talk',kind:type});
@@ -97,16 +105,79 @@ export function populationRecords(level){
     for(let i=0;i<8;i++)add(topPoint(...[paths[i][0],0,paths[i][1]]),{kind:'cafeteria',activity:'walk',
       stops:paths.slice(i).concat(paths.slice(0,i)).map(([x,z],j)=>({p:topPoint(x,0,z),pose:j%3===0?'talk':'idle',hold:j%2?3:7}))});
   }
-  if(level===100)for(let i=0;i<16;i++)add(roomPoint(level,0,(i%4-1.5)*3,5+Math.floor(i/4)*4),{kind:'bazaar',activity:i%3?'talk':'work',wing:0});
-  for(const def of RESIDENT_CAST.filter(d=>!d.story&&(d.level===level||level===1&&d.opening))){
-    const position=level===1?(def.top?topPoint(def.top[0],0,def.top[1]):topPoint(-15,0,35)):roomPoint(level,def.wing,def.id==='shirley'?-3.2:2.8,def.id==='cooper'?12:7);
-    add(position,{id:def.id,definition:def,kind:'named',activity:def.activity==='read'?'idle':def.activity||'idle',wing:def.wing,heading:level===1?Math.PI/2:Math.PI/2-def.wing*TAU/6});
+  // The bazaar is a street with six shops off it, and what it had was sixteen
+  // people standing in a four-by-four grid, none of them moving. A market is
+  // the one room in the silo whose whole point is that people are going
+  // somewhere: somebody minding each stall, somebody being served at it, and
+  // somebody walking through on their way to a different floor.
+  //
+  // Every position here was checked against the level's own colliders rather
+  // than guessed — the shops open off the street through a portal at x = ±3.3
+  // and the counters stand against the back wall, so a route into a stall has
+  // to go through the doorway and stop in front of the counter.
+  if(level===100){
+    const B=(x,z)=>roomPoint(100,0,x,z);
+    const SHOPS=[[-1,0],[1,0],[-1,1],[1,1],[-1,2],[1,2]]
+      .map(([side,row])=>{const centre=4.5+row*6.55;return {side,row,centre,counter:centre+1.85};});
+    // Whoever is keeping the stall: at the counter, then along it to the
+    // shelves at the end, then back to the front to talk to whoever is there.
+    SHOPS.forEach((shop,i)=>{
+      const x=shop.side*6.4,front=shop.counter-.85;
+      add(B(x,front),{kind:'trader',wing:0,activity:'walk',seed:31000+i*53,
+        heading:Math.PI/2,stops:[
+          {p:B(x,front),pose:'work',hold:13+i},
+          {p:B(shop.side*8.2,front-.6),pose:'work',hold:7},
+          {p:B(shop.side*4.9,front-.3),pose:'talk',hold:9+(i%3)*2},
+        ]});
+    });
+    // Shoppers. Three stalls each, in a different order, so the street is
+    // never a queue of people all heading the same way.
+    const stall=(shop,wait)=>[
+      {p:B(shop.side*2.1,shop.centre),pose:'idle',hold:1},
+      {p:B(shop.side*5.6,shop.counter-1.25),pose:'talk',hold:wait},
+      {p:B(shop.side*2.4,shop.centre-1.3),pose:'idle',hold:2},
+    ];
+    for(let i=0;i<8;i++){
+      const route=[SHOPS[i%6],SHOPS[(i+2)%6],SHOPS[(i+4)%6]];
+      add(B(i%2?1.2:-1.2,2.5+i*2.4),{kind:'shopper',wing:0,activity:'walk',seed:32000+i*71,stops:[
+        {p:B(i%2?1.2:-1.2,2.2),pose:'idle',hold:3+i%3},
+        ...stall(route[0],8+(i%4)*3),
+        {p:B(i%2?-1.1:1.1,route[0].centre+2.8),pose:'idle',hold:2},
+        ...stall(route[1],7+(i%3)*4),
+        {p:B(0,22.2),pose:'talk',hold:5+i%4},
+        ...stall(route[2],9+(i%2)*4),
+        {p:B(i%2?-1.3:1.3,1.8),pose:'idle',hold:4},
+      ]});
+    }
+    // And people simply passing through, because a street is also the way to
+    // somewhere else.
+    for(let i=0;i<4;i++){
+      const lane=i%2?1.5:-1.5,down=i<2;
+      const ends=down?[1.6,8,15,22.4]:[22.4,15,8,1.6];
+      add(B(lane,ends[0]),{kind:'bazaar',wing:0,activity:'walk',seed:33000+i*89,
+        stops:ends.map((z,j)=>({p:B(lane,z),pose:j===0||j===3?'idle':'idle',hold:j===0||j===3?3:1}))});
+    }
+  }
+  // `absent` is the people who are genuinely not in the silo to be walked up
+  // to: Reeve and Hana are outside on the hill, George died before the game
+  // starts. It used to be spelled `story`, which quietly meant that being
+  // important to the plot was the same thing as not existing — and that is
+  // how the one person Chapter One sends you to talk to ended up with no body.
+  for(const def of RESIDENT_CAST.filter(d=>!d.absent&&(d.level===level||level===1&&d.opening))){
+    // `station` is a measured spot in the room, for the few people whose job
+    // is a place: the clerk belongs behind her counter, not in the middle of
+    // the floor where the generic placement would put her.
+    const position=level===1?(def.top?topPoint(def.top[0],0,def.top[1]):topPoint(-15,0,35))
+      :def.station?roomPoint(level,def.wing,def.station[0],def.station[1])
+      :roomPoint(level,def.wing,def.id==='shirley'?-3.2:2.8,def.id==='cooper'?12:7);
+    const facing=level===1?Math.PI/2:(def.facing??0)+Math.PI/2-def.wing*TAU/6;
+    add(position,{id:def.id,definition:def,kind:'named',activity:def.activity==='read'?'idle':def.activity||'idle',wing:def.wing,heading:facing});
   }
   return records;
 }
 
 export class Population{
-  constructor(scene,world){this.scene=scene;this.world=world;this.records=new Map();this.actors=new Map();this.level=null;this.time=0;this.rebalance=0;this.watch=false;this.count=0;this.talkingTo=null;this.total=[...Array.from({length:144},(_,i)=>i+1),'generator','mines'].reduce((total,level)=>total+populationRecords(level).length,0);}
+  constructor(scene,world){this.scene=scene;this.world=world;this.schedule=null;this.records=new Map();this.actors=new Map();this.level=null;this.time=0;this.rebalance=0;this.watch=false;this.count=0;this.talkingTo=null;this.porters=new PorterTraffic(scene,world);this.events=[];this.total=this.porters.records.length+[...Array.from({length:144},(_,i)=>i+1),'generator','mines'].reduce((total,level)=>total+populationRecords(level).length,0);}
   load(level){
     for(const actor of this.actors.values())this.remove(actor);this.actors.clear();this.level=level;
     if(!this.records.has(level)){
@@ -114,36 +185,79 @@ export class Population{
       for(const r of placed){
         r.home=r.position.clone();r.wait=(r.seed%17)*.31;r.goal=r.seed%7;r.holding='idle';
         if(r.stops){r.stops=r.stops.map(s=>({...s,p:safeResidentSpot(this.world,s.p)})).filter(s=>s.p);if(r.stops.length<2)r.activity='idle';}
+        let routine=r.stops;
+        if(!routine&&!r.seat){routine=[{p:r.home.clone(),pose:'work',hold:12}];for(const offset of [[.8,0],[0,.9],[-.8,0]]){const p=r.home.clone().add(new THREE.Vector3(offset[0],0,offset[1]));if(clearSegment(this.world,r.home,p))routine.push({p,pose:'work',hold:8});}}
+        r.workStops=routine?.map((s,i)=>({...s,p:s.p.clone(),pose:i%3===0?'work':s.pose}))||[];r.baseActivity=r.activity;
       }
       this.records.set(level,placed);
     }
     this.rebalance=0;
   }
-  remove(actor){actor.root.removeFromParent();actor.model.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.dispose();});}
+  remove(actor){actor.root.removeFromParent();actor.model.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.dispose();if(o.isInstancedMesh)o.dispose();});}
   spawn(r){
-    const index=r.seed%CROWD_APPEARANCES.length;
-    const definition=r.definition||{id:`crowd-${index}`,name:r.kind==='porter'?'Silo porter':r.kind==='diner'?'Cafeteria resident':r.kind==='bazaar'?'Market resident':`${r.kind[0].toUpperCase()+r.kind.slice(1)} worker`,height:1.63+(index%5)*.045,appearance:CROWD_APPEARANCES[index]};
-    const actor=createResident(definition);actor.record=r;actor.root.position.copy(r.position);actor.root.rotation.y=r.heading??(r.seed%628)/100;actor.heading=actor.root.rotation.y;actor.body=new CharacterBody({radius:.26,standHeight:definition.height,stepHeight:.3});actor.body.teleport(r.position.x,r.position.y,r.position.z);actor.tick=0;this.scene.add(actor.root);this.actors.set(r.id,actor);return actor;
+    const index=crowdAppearanceIndex(r.seed);
+    const definition=r.definition||{id:`crowd-${index}`,name:residentName(r.seed),role:r.workday.title,height:1.63+(index%5)*.045,appearance:CROWD_APPEARANCES[index]};
+    const actor=createResident(definition);actor.record=r;actor.root.position.copy(r.position);actor.root.rotation.y=r.heading??(r.seed%628)/100;actor.heading=actor.root.rotation.y;actor.body=new CharacterBody({radius:.26,standHeight:definition.height,stepHeight:.3});actor.body.teleport(r.position.x,r.position.y,r.position.z);actor.tick=0;attachWorkProps(actor,this.world.m,r.workday);this.scene.add(actor.root);this.actors.set(r.id,actor);return actor;
   }
   update(dt,body,watch=false,selected=null){
-    this.time+=dt;this.watch=watch;this.world.residentInteractions=[];
+    this.time+=dt;this.watch=watch;this.events=[];
+    this.porters.update(dt,body,this.schedule,this.talkingTo,watch);this.events.push(...this.porters.events);this.world.residentInteractions=[...this.porters.interactions];
     if(this.world.outside||['excavator','tunnel','silo17','pipe-gallery'].includes(this.world.special)){for(const a of this.actors.values())a.root.visible=false;this.count=0;return;}
     const level=this.world.special||this.world.activeLevel;if(this.level!==level)this.load(level);
-    const records=this.records.get(this.level),limit=CROWD_LIMITS[this.world.quality]||48;
+    // How many people are out is the hour's business, not the renderer's. The
+    // named residents sort first and survive any limit, so no part of the story
+    // can be locked out by the night cycle emptying the galleries.
+    // Cast selection is an avatar choice, not permission to remove a required
+    // story role. Free roam still hides the selected resident's duplicate.
+    const required=objectiveTarget(this.world.story);
+    if(required!==this.requiredContact){this.requiredContact=required;this.rebalance=0;}
+    const records=this.records.get(this.level),crowd=this.schedule?.crowd;
+    const limit=Math.max(6,Math.round((CROWD_LIMITS[this.world.quality]||48)*(Number.isFinite(crowd)?.25+.75*crowd:1)))-this.porters.count;
+    for(const r of records){
+      r.currentWork=workAt(r.workday,this.schedule?.hour??8.4);
+      if(this.schedule&&r.dailyPhase!==r.currentWork.phase){
+        r.dailyPhase=r.currentWork.phase;
+        // Keep story contacts in their departments. Work and rest change their
+        // activity locally rather than moving a required conversation away.
+        if(!r.seat){
+          r.stops=r.currentWork.onDuty?r.workStops:r.workStops.filter((_,i)=>i%2===0).map(s=>({...s,pose:r.dailyPhase==='errand'?'work':r.dailyPhase==='off-duty'?'talk':'idle',hold:12+(r.seed%8)}));
+          if(r.stops.length>1)r.activity='walk';else r.activity=r.currentWork.onDuty?'work':'idle';
+          r.goal=0;r.wait=0;r.holding='idle';
+        }
+      }
+    }
     this.rebalance-=dt;
     if(this.rebalance<=0){
       this.rebalance=.8;
-      const order=records.filter(r=>r.id!==selected).sort((a,b)=>(a.position.distanceToSquared(body.position)-(a.definition?900:0))-(b.position.distanceToSquared(body.position)-(b.definition?900:0))),keep=new Set(order.slice(0,limit).map(r=>r.id));
+      // Named residents are kept unconditionally; everybody else competes on
+      // distance. This used to be a -900 bonus applied to the sort key — but
+      // the key is distance SQUARED, so the bonus was worth thirty metres and
+      // nothing more. On Level 001, the biggest floor in the silo, travel puts
+      // you on the stair landing and the cafeteria is the far side of it:
+      // Billings stands 50.7 m away and sorted as 1672, against 1172 for the
+      // forty-eighth crowd member. So he was culled, along with Mara, Jahns
+      // and Marnes — and the moment you left Level 001 and came back, the
+      // entire named cast of the floor was gone and did not return. Chapter
+      // Eleven asks you to bring the Georgia book to Billings, and by then
+      // every player has left and come back.
+      //
+      // There are never more than a handful of named people on a floor, so
+      // there is no budget argument for ranking them against the crowd at all.
+      const rank=r=>r.definition?0:1;
+      const order=records.filter(r=>r.id!==selected||r.id===required).sort((a,b)=>
+        rank(a)-rank(b)||a.position.distanceToSquared(body.position)-b.position.distanceToSquared(body.position));
+      const capacity=Math.max(limit,order.filter(r=>r.definition).length);
+      const keep=new Set(order.slice(0,capacity).map(r=>r.id));
       for(const [id,a] of this.actors)if(!keep.has(id)){this.remove(a);this.actors.delete(id);}
-      for(const r of order.slice(0,limit))if(!this.actors.has(r.id))this.spawn(r);
+      for(const r of order.slice(0,capacity))if(!this.actors.has(r.id))this.spawn(r);
     }
-    this.count=this.actors.size;
+    this.count=this.actors.size+this.porters.count;
     for(const a of this.actors.values()){
-      const r=a.record,dist=a.root.position.distanceTo(body.position);a.root.visible=r.id!==selected;if(!a.root.visible)continue;
+      const r=a.record,dist=a.root.position.distanceTo(body.position);a.root.visible=r.id!==selected||r.id===required;if(!a.root.visible)continue;
       const cafeteria=this.level===1&&r.position.x>SILO.deckOuter&&-r.position.z<18&&r.position.x<SILO.deckOuter+40;
       const watching=watch&&cafeteria;a.tick+=dt;
-      if(dist<5)this.world.residentInteractions.push({position:a.root.position.clone().add(new THREE.Vector3(0,1.25,0)),label:`Talk to ${a.definition.name}`,hint:a.definition.role||'Silo resident',action:`resident-${r.id}`,actor:r.id,resident:{...a.definition,kind:r.kind}});
-      const interval=r.id===this.talkingTo?0:dist<16?1/30:dist<40?1/15:1/8;if(a.tick<interval)continue;const step=Math.min(a.tick,.15);a.tick=0;
+      if(dist<5)this.world.residentInteractions.push({position:a.root.position.clone().add(new THREE.Vector3(0,1.25,0)),label:`Talk to ${a.definition.name}`,hint:r.currentWork?.task||a.definition.role||'Silo resident',action:`resident-${r.id}`,actor:r.id,resident:{...a.definition,id:r.definition?.id||r.id,level:r.level,kind:r.kind,workday:r.workday,currentWork:r.currentWork}});
+      const interval=r.id===this.talkingTo?0:dist<16?0:dist<40?1/30:1/15;if(a.tick<interval)continue;const step=Math.min(a.tick,.15);a.tick=0;
       let pose=r.activity,speed=0;desired.set(0,0,0);
       // Whoever you are talking to stops what they were doing and turns to
       // face you, and stays turned until you walk away. Being addressed by
@@ -160,7 +274,7 @@ export class Population{
         let target,facing=null;
         const here=r.stops?.[r.goal%r.stops.length];
         if(here){
-          if(r.wait>0){r.wait=Math.max(0,r.wait-step);pose=r.holding;facing=r.facing;}
+          if(r.wait>0){pose=r.holding;facing=r.facing;}
           else if(here.p.distanceTo(r.position)<.5){r.wait=here.hold??5;r.holding=here.pose||'idle';r.facing=here.face||null;r.goal++;pose=r.holding;facing=r.facing;}
           else target=here.p;
         }
@@ -170,12 +284,13 @@ export class Population{
           // Residents yield to the player and one another, then keep walking.
           for(const other of this.actors.values())if(other!==a){unit.copy(a.root.position).sub(other.root.position).setY(0);const d=unit.length();if(d>0&&d<.85)desired.addScaledVector(unit,Math.min(1.4,(.85-d)*1.6)/d);}
           unit.copy(a.root.position).sub(body.position).setY(0);const d=unit.length();if(d>0&&d<1.25)desired.addScaledVector(unit,(1.25-d)*1.5/d);
-          if(desired.length()>1)desired.normalize();
+          if(desired.length()>1.4)desired.setLength(1.4);
+          a.root.rotation.y=steerResident(a.root.rotation.y,desired,step);
         }
         r.wait=Math.max(0,r.wait-step);
         for(let t=0;t<step;t+=1/60)a.body.step(Math.min(1/60,step-t),desired,this.world.colliders);
         speed=a.body.horizontalSpeed;a.root.position.copy(a.body.position);r.position.copy(a.body.position);
-        if(speed>.04){const heading=Math.atan2(a.body.velocity.x,a.body.velocity.z),delta=Math.atan2(Math.sin(heading-a.root.rotation.y),Math.cos(heading-a.root.rotation.y));a.root.rotation.y+=delta*(1-Math.exp(-7*step));}else if(pose==='walk')pose='idle';
+        if(speed<=.04&&pose==='walk')pose='idle';
         // A closed door or furniture blocks the route; choose a reachable
         // neighbour after a pause rather than teleporting through it.
         if(speed<.035&&desired.length()>.2){r.blocked=(r.blocked||0)+step;if(r.blocked>2){r.wait=1.5;r.holding='idle';r.blocked=0;if(r.stops){const candidates=r.stops.map((s,i)=>({s,i})).filter(v=>v.s.p.distanceTo(r.position)>.6&&clearSegment(this.world,r.position,v.s.p));if(candidates.length)r.goal=candidates[(r.seed+r.goal)%candidates.length].i;}}}
@@ -184,11 +299,29 @@ export class Population{
       if(a.pose!==pose){a.poseFrom=Object.fromEntries(Object.entries(a.motion.bones).map(([n,b])=>[n,{q:b.quaternion.clone(),p:b.position.clone()}]));a.pose=pose;a.poseMix=0;}
       a.ground=(x,z)=>this.world.colliders.floorAt(x,z,.08,a.root.position.y+.3);
       poseResident(a,pose,this.time+r.seed*.37,step,speed);
+      const doing=pose==='work'||r.seat&&r.currentWork.onDuty&&!watching&&r.id!==this.talkingTo;showWorkProps(a,r.workday,r.currentWork,doing);a.workEquipment.visible=dist<18;
+      if(!watching&&r.id!==this.talkingTo){
+        if(r.seat&&doing){a.motion.rotate('HandR',Math.sin(this.time*1.7+r.seed)*.045);a.motion.rotate('Head',.025);}
+        else if(!r.seat&&['break','meal'].includes(r.currentWork.phase))a.motion.rotate('ForearmR',-.65);
+        a.model.updateWorldMatrix(true,true);
+      }
+      if(doing&&r.currentWork.onDuty&&!watching){
+        r.workElapsed=(r.workElapsed||0)+step;
+        if(r.workElapsed>9+(r.seed%8)){r.workElapsed=0;r.completedTasks=(r.completedTasks||0)+1;if(dist<18)this.events.push({id:JOBS[r.workday.job].sound,position:a.root.position.clone()});}
+      }
       if(a.poseFrom){a.poseMix=Math.min(1,a.poseMix+step/.28);const t=a.poseMix*a.poseMix*(3-2*a.poseMix);for(const [n,b] of Object.entries(a.motion.bones)){const old=a.poseFrom[n];b.quaternion.copy(old.q.clone().slerp(b.quaternion,t));b.position.copy(old.p.clone().lerp(b.position,t));}if(t>=1)a.poseFrom=null;a.model.updateWorldMatrix(true,true);}
-
+      updateWorkGrip(a,step);
     }
   }
-  actorPosition(id){const a=this.actors.get(id);return a?a.root.position.clone():null;}
+  actorPosition(id){const a=this.actors.get(id);return a?a.root.position.clone():this.porters.actorPosition(id);}
+  // The crown of somebody's head, for anything that has to sit above it. Their
+  // own height, not an average: Knox is 1.89 and Gloria is 1.61, and a mark
+  // pinned at a fixed height would be on his chin and a foot over hers.
+  actorHead(id){
+    const a=this.actors.get(id);
+    if(!a)return null;
+    const p=a.root.position.clone();p.y+=a.definition?.height||1.72;return p;
+  }
   separatePlayer(body){
     if(this.world.outside||['excavator','tunnel','silo17','pipe-gallery'].includes(this.world.special))return;
     for(const a of this.actors.values()){
@@ -198,4 +331,14 @@ export class Population{
       if(clearResidentSpot(this.world,candidate,body.radius))body.position.copy(candidate);
     }
   }
+}
+
+// Turn toward the next path segment before accelerating into it. Mutating the
+// desired velocity here also keeps the capsule and visible gait in agreement.
+export function steerResident(heading,velocity,dt){
+  if(velocity.lengthSq()<.0001)return heading;
+  const target=Math.atan2(velocity.x,velocity.z),delta=Math.atan2(Math.sin(target-heading),Math.cos(target-heading));
+  const turn=THREE.MathUtils.clamp(delta*(1-Math.exp(-6*dt)),-3*dt,3*dt);
+  const remaining=delta-turn;velocity.multiplyScalar(Math.max(0,Math.cos(remaining))**2);
+  return heading+turn;
 }

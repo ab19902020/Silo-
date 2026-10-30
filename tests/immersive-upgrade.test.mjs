@@ -21,10 +21,23 @@ globalThis.document={createElement:()=>({getContext:()=>({fillRect(){},strokeRec
 test('every playable resident and department worker has complete conversations before and after the cleaning',()=>{
   const people=[...PLAYABLE_CHARACTERS,...['porter','diner','cafeteria','bazaar','farm','medical','mechanical','workshop','engineer','miner','it','water','recycling'].map(kind=>({id:'crowd-0',name:'Resident',kind}))];
   for(const person of people)for(const cleaned of [false,true]){
-    const text=conversationFor(person,{cleaned,playerName:'Juliette Nichols'});assert.equal(text.name,person.name);assert.equal(text.topics.length,3);assert.equal(new Set(text.topics.map(t=>t.id)).size,3);
-    for(const line of [text.role,text.greeting,...text.topics.flatMap(t=>[t.label,t.reply])])assert.ok(typeof line==='string'&&line.length>3&&!line.includes('undefined'));
+    const text=conversationFor(person,{cleaned,playerName:'Juliette Nichols'});assert.equal(text.name,person.name);
+    // Topic counts vary by person now — the whole point is that the question
+    // list tells you who you are talking to — so the contract is a sane range
+    // with unique ids, not one fixed number for everybody.
+    assert.ok(text.topics.length>=4&&text.topics.length<=9,`${person.id||person.kind}: ${text.topics.length} topics`);
+    assert.equal(new Set(text.topics.map(t=>t.id)).size,text.topics.length);
+    const lines=[text.role,text.greeting,...text.topics.flatMap(t=>[t.label,t.reply,...(t.follow||[]).flatMap(f=>[f.label,f.reply])])];
+    for(const line of lines)assert.ok(typeof line==='string'&&line.length>3&&!line.includes('undefined'));
+    // Follow-ups are what make it a conversation rather than five answers.
+    assert.ok(text.topics.some(t=>t.follow?.length),`${person.id||person.kind} has no follow-ups`);
   }
   assert.match(conversationFor({name:'Miner',kind:'miner'}).topics[0].reply,/Mining/);
+  // And the named cast are actually different people: no two of them may be
+  // handed the same set of questions, which is the fault this replaced.
+  const named=['juliette','walker','knox','shirley','jahns','marnes','lukas','bernard','pete','gloria','carla','patrick'];
+  const asked=named.map(id=>conversationFor({id,name:id,role:'r'},{}).topics.map(t=>t.label).join('|'));
+  assert.equal(new Set(asked).size,named.length,'two named residents ask the same questions');
 });
 
 test('NPC prompts persist between animation ticks, including unnamed cafeteria residents',()=>{
@@ -33,7 +46,7 @@ test('NPC prompts persist between animation ticks, including unnamed cafeteria r
   for(let i=0;i<5;i++){population.update(.0001,body);assert.deepEqual(world.residentInteractions.map(x=>x.action),candidates);assert.ok(world.residentInteractions.every(x=>x.resident?.name));}
 });
 
-test('Holston and Allison settle on the hillside together, including their visible skinned surfaces',()=>{
+test('the cleaner and the woman at the tree settle on the hillside together, including their visible skinned surfaces',()=>{
   const world=new SiloWorld(new T.Scene());world.setLevel(1);const opening=new CafeteriaOpening(world);opening.takeBook();
   for(let t=79;t<=90;t+=1/30){opening.time=t;opening.sample(1/30);}
   opening.finish();world.scene.updateMatrixWorld(true);const heads=[];
@@ -44,7 +57,7 @@ test('Holston and Allison settle on the hillside together, including their visib
     assert.ok(actor.model.position.length()<1.2,'invalid skin/world-space conversion');
   }
   assert.ok(heads[0].distanceTo(heads[1])>.45&&heads[0].distanceTo(heads[1])<.85,'heads do not lie beside each other');
-  const cloth=opening.cleaners[0].model.children.find(x=>x.isSkinnedMesh);assert.ok(!cloth.material[1].visible&&!cloth.material[2].visible,'Holston still wears the helmet or visor');
+  const cloth=opening.cleaners[0].model.children.find(x=>x.isSkinnedMesh);assert.ok(!cloth.material[1].visible&&!cloth.material[2].visible,'the cleaner still wears the helmet or visor');
 });
 
 test('water reflection mirrors the camera and restores render state even on failure',()=>{
@@ -59,7 +72,7 @@ test('water reflection mirrors the camera and restores render state even on fail
 });
 
 test('exported cleaning suits preserve separate skin, cloth and visor materials with valid primitive references',async()=>{
-  const {json}=await readGLB(residentGLB(RESIDENT_CAST.find(x=>x.id==='holston'),true));
+  const {json}=await readGLB(residentGLB(RESIDENT_CAST.find(x=>x.id==='reeve'),true));
   const materials=new Set();for(const mesh of json.meshes)for(const p of mesh.primitives){assert.ok(json.materials[p.material]);materials.add(p.material);assert.ok(p.attributes.JOINTS_0!==undefined&&p.attributes.WEIGHTS_0!==undefined);}
   for(const index of [0,1,2,3,4,5])assert.ok(materials.has(index));assert.ok(json.materials[2].pbrMetallicRoughness.metallicFactor>.5);assert.ok(json.materials[3].pbrMetallicRoughness.roughnessFactor<json.materials[0].pbrMetallicRoughness.roughnessFactor);
 });
@@ -140,7 +153,7 @@ test('Level 19 carries the IT floor, the Head of IT behind a corridor, and the v
   const actions=r=>r.userData.interactions.map(i=>i.action);
   assert.ok(actions(vault).includes('algorithm'),'you cannot address the Algorithm');
   assert.ok(actions(vault).includes('vault-radio'),'the concealed radio is missing');
-  assert.ok(actions(it).includes('it-servers'),'the server room notice is missing');
+  assert.ok(it.userData.interactions.some(i=>i.destination==='room:19:1'),'the server aisle must lead into the vault');
   assert.ok(actions(office).includes('head-of-it'));
   assert.ok(vault.getObjectByName('algorithm-interface'),'the interface is not in the room');
   assert.ok(world.animated.some(a=>a.object.name==='algorithm-interface'),'the interface is not turning');
@@ -159,7 +172,7 @@ test('Level 19 carries the IT floor, the Head of IT behind a corridor, and the v
 });
 
 test('the Algorithm answers, and does not read out television lines',()=>{
-  assert.equal(ALGORITHM.name,'LEGACY');
+  assert.equal(ALGORITHM.name,'THE ALGORITHM');
   assert.ok(ALGORITHM.topics.length>=4);
   for(const t of ALGORITHM.topics){assert.ok(t.label&&t.reply&&t.reply.length>30,`thin reply for ${t.id}`);}
 });
@@ -169,7 +182,7 @@ test('the Algorithm answers, and does not read out television lines',()=>{
 // both grow with speed, roughly as its square root, and a rig that puts every
 // extra metre per second into cadence alone reads as a scurry.
 test('the stride lengthens with the pace, and the pelvis does not bounce',()=>{
-  const def=RESIDENT_CAST.find(d=>d.id==='holston');
+  const def=RESIDENT_CAST.find(d=>d.id==='reeve');
   const gait=speed=>{
     const a=createResident(def,{}),dt=1/60;
     a.root.position.set(0,0,0);a.root.rotation.y=0;
@@ -203,7 +216,7 @@ test('the stride lengthens with the pace, and the pelvis does not bounce',()=>{
 });
 
 test('a planted foot stays planted at every pace',()=>{
-  const def=RESIDENT_CAST.find(d=>d.id==='holston');
+  const def=RESIDENT_CAST.find(d=>d.id==='reeve');
   for(const speed of [1.0,1.25,1.6,2.6,3.6,3.9]){
     const a=createResident(def,{}),dt=1/60;
     a.root.position.set(0,0,0);

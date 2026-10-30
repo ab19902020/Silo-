@@ -1,5 +1,11 @@
 # Interface, conversations and visual update
 
+> **Renamed since this was written.** The cleaner and the woman at the foot
+> of the tree are now Sheriff **Nathan Reeve** and **Hana Reeve**, original
+> Silo 18 characters. The sequence itself is unchanged — see
+> [the Chapter One notes](chapter-one.md). The names below are the ones the
+> code used at the time.
+
 The supplied gameplay screenshot showed a persistent chapter panel, large touch controls and jagged dark silhouettes. This update changes the runtime presentation and the underlying materials while preserving the contributor's staircase geometry, full set of floors, connected routes and audio.
 
 ## Playing

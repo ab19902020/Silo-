@@ -1,5 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { Kit, addSign, fixture, pipe } from './kit.js';
+import { wallWriting } from './environment-lore.js';
 import { SILO, TAU } from './data.js';
 
 // Back-of-house circulation is inferred. It gives the six wings a second
@@ -27,6 +28,8 @@ export function buildPassages(m,level,types){
       connector.box('darkConcrete',0,H,25.25,3.2,.18,2.5);
       fixture(connector,0,3.3,25.3,1.6);
       const g=connector.group();g.position.set(Math.cos(a)*SILO.deckOuter,0,Math.sin(a)*SILO.deckOuter);g.rotation.y=ry;root.add(g);
+      const mount=new Kit(m);mount.box('darkMetal',0,2.7,26.76,2.65,.46,.08);
+      for(const x of [-1,1])mount.box('metal',x,3.2,26.76,.025,1,.025);g.add(mount.group());
       const signPoint=new THREE.Vector3(0,2.7,26.7).applyAxisAngle(new THREE.Vector3(0,1,0),ry).add(g.position);
       addSign(root,`GALLERY ${String.fromCharCode(65+w)} · ${String(level).padStart(3,'0')}`,signPoint.toArray(),2.45,.32,ry);
     }
@@ -70,6 +73,11 @@ export function buildPassages(m,level,types){
     for(const x of [.08,2.42])pk.box('rust',x,1.24,-.03,.045,2.43,.08);panel.add(pk.group());
     root.userData.breachPanel=panel;
     root.userData.interactions.push({position:[Math.cos(a)*(X-2.4),1.5,Math.sin(a)*(X-2.4)],...(breach.open?{label:'Step through the concealed opening',destination:'excavator'}:{label:'Move the warning sign aside',action:'breach'})});
+    for(const [side,z,words] of [[-1,I+3.2,'MARA  /  ELI\nTOMAS  /  NELL\nWE KEPT YOUR PLACE'],[1,X-2.8,'REMEMBER THE HANDS\nTHAT KEPT THE LIGHTS ON\n||||  ||||  ||||']]){
+      const writing=wallWriting(words);writing.position.set(side*(half-.008),1.65,z);writing.rotation.y=-side*Math.PI/2;spur.add(writing);
+    }
+    const lorePoint=new THREE.Vector3(-.85,1.5,I+3.2).applyAxisAngle(new THREE.Vector3(0,1,0),Math.PI/2-a);
+    root.userData.interactions.push({position:lorePoint.toArray(),label:'Read the names on the wall',action:'lore:memorial'});
     spur.add(sk.group());
   }
   root.add(k.group());root.userData.openings=openings;return root;

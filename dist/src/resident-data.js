@@ -1,37 +1,66 @@
+import {LEAD_CAST} from './tv-cast.js';
 // The Silo 18 ensemble for the opening-era exploration. Locations without a
 // published floor number are game placements, not claims about the set plan.
 const person=(id,name,role,level,wing,appearance,extra={})=>({id,name,role,level,wing,height:1.75,appearance,...extra});
 export const RESIDENT_CAST=Object.freeze([
-  person('holston','Holston Becker','Sheriff',1,0,{trouser:0x3c4038,skin:0x76503c,hair:0x211d19,outfit:'uniform',coat:0x655442,beard:.55},{height:1.78,story:'cleaner'}),
-  person('allison','Allison Becker','IT systems',6,0,{trouser:0x47505a,skin:0xb88b70,hair:0x302921,outfit:'knit',coat:0xb1a58e,hairStyle:'fringe',female:true},{height:1.64,story:'outside'}),
-  person('walker','Martha Walker','Electronics workshop',144,1,{trouser:0x33383c,shirt:0x9aa0a4,skin:0xc39f87,hair:0x73776f,outfit:'cardigan',coat:0x4c5865,hairStyle:'braids',female:true,age:.9},{height:1.65,activity:'work'}),
+  ...LEAD_CAST,
+  // The only person in the cafeteria watching his hands rather than the view.
+  // Standing at the screen wall, a little to the right of the book table, which
+  // is where the chapter says she is: "the runner standing beside you at the
+  // screen wall". She had no body at all — the tag below used to mean "not in
+  // the world", so Chapter One told you to go and talk to somebody who was not
+  // anywhere, and the scene only worked because it plays itself.
+  person('mara','Mara Teague','Runner · dispatch',1,0,{skin:0x9a7358,hair:0x2b2420,outfit:'work',coat:0x6d7468,hairStyle:'bun',female:true},{height:1.67,activity:'idle',opening:true,top:[4.6,33.4]}),
+  person('reeve','Nathan Reeve','Sheriff',1,0,{skin:0x76503c,hair:0x211d19,outfit:'uniform',coat:0x655442,beard:.55},{height:1.78,absent:'on the hill'}),
+  person('hana','Hana Reeve','IT systems',6,0,{skin:0xb88b70,hair:0x302921,outfit:'knit',coat:0xb1a58e,hairStyle:'fringe',female:true},{height:1.64,absent:'on the hill'}),
+  // Chapter Two's two people. They had lines, a scripted scene each and a
+  // prompt on the floor where they were supposed to be standing, and no
+  // bodies: you walked up to an empty Supply counter and a voice handed you a
+  // parcel. `station` pins them to a measured spot in the room rather than
+  // letting the generic placement drop them in the middle of it — she belongs
+  // behind her counter and he belongs beside the door he is holding.
+  //
+  // Both are deliberately un-tagged by `story`, unlike Reeve and Hana: that
+  // tag means "not in the world", and these two very much are.
+  person('delen','Delen Osgood','Supply counter · Level 110',110,0,{skin:0xa8815f,hair:0x4a4038,outfit:'work',coat:0x6f7a72,hairStyle:'bun',female:true,age:.55},{height:1.66,activity:'work',station:[0,5.3],facing:-Math.PI/2}),
+  person('kell','Aron Kell','Deputy · Down Deep station · Level 110',110,0,{skin:0x7d5942,hair:0x2a2420,outfit:'uniform',coat:0x63553f,beard:.3},{height:1.82,activity:'idle',station:[2.4,1.8]}),
+  person('walker','Martha Walker','Electronics workshop',144,1,{skin:0xc39f87,hair:0x73776f,outfit:'cardigan',coat:0x4c5865,hairStyle:'braids',female:true,age:.9},{height:1.65,activity:'work'}),
   person('knox','Knox','Head of Mechanical',144,0,{skin:0xb18b74,hair:0x342b25,outfit:'work',coat:0x79796b,beard:.65,build:1.15,shortSleeves:true,tattoo:true},{height:1.89,activity:'work'}),
   person('shirley','Shirley Campbell','Mechanical engineer',144,0,{skin:0x865b44,hair:0x251e1b,outfit:'work',coat:0x646e67,hairStyle:'bun',female:true},{height:1.70,activity:'work'}),
-  person('jahns','Ruth Jahns','Mayor',3,0,{trouser:0x2f3532,shirt:0x8d8f84,skin:0xc19d85,hair:0xbbb9af,outfit:'robe',coat:0x414b49,hairStyle:'bun',female:true,age:.8,chain:true},{height:1.70,activity:'read',opening:true}),
-  person('marnes','Sam Marnes','Chief deputy',1,0,{trouser:0x43443c,skin:0xb38d72,hair:0x938e7e,outfit:'uniform',coat:0x695945,moustache:true,age:.8},{height:1.78,top:[25,33],opening:true}),
-  person('billings','Paul Billings','Deputy · Judicial administrator',1,0,{trouser:0x3b4140,skin:0x714e39,hair:0x211d1a,outfit:'uniform',coat:0x665a45,beard:.35,hairStyle:'curls'},{height:1.80,top:[29,38]}),
-  person('lukas','Lukas Kyle','IT systems analyst',19,2,{trouser:0x39434c,shirt:0xb4b6ae,skin:0x947256,hair:0x25201d,outfit:'vest',coat:0x66767b,hairStyle:'waves',beard:.4},{height:1.78,activity:'read'}),
-  person('camille','Camille Sims','Former raider · Sims family',15,0,{trouser:0x55473b,skin:0x865f47,hair:0x211a18,outfit:'knit',coat:0x8f7970,hairStyle:'longCurls',female:true},{height:1.72}),
-  person('meadows','Judge Mary Meadows','Head of Judicial',14,1,{trouser:0x3a3832,shirt:0x9c9585,skin:0x845e49,hair:0x393531,outfit:'robe',coat:0xaa9c6c,hairStyle:'curls',female:true,chain:true,age:.4},{height:1.72,activity:'read'}),
+  person('jahns','Ruth Jahns','Mayor',3,0,{skin:0xc19d85,hair:0xbbb9af,outfit:'robe',coat:0x414b49,hairStyle:'bun',female:true,age:.8,chain:true},{height:1.70,activity:'read',opening:true}),
+  person('marnes','Sam Marnes','Chief deputy',1,0,{skin:0xb38d72,hair:0x938e7e,outfit:'uniform',coat:0x695945,moustache:true,age:.8},{height:1.78,top:[25,33],opening:true}),
+  person('billings','Paul Billings','Deputy · Judicial administrator',1,0,{skin:0x714e39,hair:0x211d1a,outfit:'uniform',coat:0x665a45,beard:.35,hairStyle:'curls'},{height:1.80,top:[29,38]}),
+  person('lukas','Lukas Kyle','IT systems analyst',19,2,{skin:0x947256,hair:0x25201d,outfit:'work',coat:0x8d7950,quilted:true,hairStyle:'waves',beard:.4},{height:1.78,activity:'read'}),
+  person('camille','Camille Sims','Former raider · Sims family',15,0,{skin:0x865f47,hair:0x211a18,outfit:'knit',coat:0x8f7970,hairStyle:'longCurls',female:true},{height:1.72}),
+  person('meadows','Judge Mary Meadows','Head of Judicial',14,1,{skin:0x845e49,hair:0x393531,outfit:'robe',coat:0xaa9c6c,hairStyle:'curls',female:true,chain:true,age:.4},{height:1.72,activity:'read'}),
   person('carla','Carla McLain','Head of Supply',126,2,{skin:0x835f49,hair:0x42433d,outfit:'work',coat:0x6b7470,hairStyle:'waves',female:true,age:.5},{height:1.68,activity:'work'}),
-  person('patrick','Patrick Kennedy','Maintenance · relic trader',100,0,{trouser:0x4b4436,shirt:0x9d9689,skin:0xbb977f,hair:0x584b3b,outfit:'coat',coat:0x605c48,beard:.3,bald:true},{height:1.72}),
-  person('pete','Dr. Pete Nichols','Medical physician',62,0,{trouser:0x5c605e,shirt:0xa9adae,skin:0xc19b82,hair:0x918b7f,outfit:'medical',coat:0xc2c4b4,age:.6},{height:1.84,activity:'work'}),
-  person('gloria','Gloria Hildebrandt','Former fertility counsellor',62,0,{trouser:0x4d433a,shirt:0x9d968a,skin:0xbca18a,hair:0xb6b3a5,outfit:'cardigan',coat:0x927f76,hairStyle:'waves',female:true,age:1},{height:1.61,activity:'read'}),
-  person('hank','Hank','Down Deep deputy',120,0,{trouser:0x4a4436,skin:0xb38f78,hair:0x62523e,outfit:'uniform',coat:0x857b65,beard:.8,hairStyle:'waves'},{height:1.82}),
+  person('patrick','Patrick Kennedy','Maintenance · relic trader',100,0,{skin:0xbb977f,hair:0x584b3b,outfit:'coat',coat:0x605c48,beard:.3,bald:true},{height:1.72}),
+  person('pete','Dr. Pete Nichols','Medical physician',62,0,{skin:0xc19b82,hair:0x918b7f,outfit:'medical',coat:0xc2c4b4,age:.6},{height:1.84,activity:'work'}),
+  person('gloria','Gloria Hildebrandt','Former fertility counsellor',62,0,{skin:0xbca18a,hair:0xb6b3a5,outfit:'cardigan',coat:0x927f76,hairStyle:'waves',female:true,age:1},{height:1.61,activity:'read'}),
+  person('hank','Hank','Down Deep deputy',120,0,{skin:0xb38f78,hair:0x62523e,outfit:'uniform',coat:0x857b65,beard:.8,hairStyle:'waves'},{height:1.82}),
   person('cooper','Cooper','Mechanical apprentice',144,0,{skin:0xba947a,hair:0x574532,outfit:'work',coat:0x6d786e,hairStyle:'waves'},{height:1.74,activity:'work'}),
   person('teddy','Teddy','Mechanical worker',144,3,{skin:0x694932,hair:0x211b18,outfit:'work',coat:0x8c7b50},{height:1.79,activity:'work'}),
-  person('amundsen','Amundsen','Judicial raider',14,0,{trouser:0x2d3431,shirt:0x8b9088,skin:0xb28e76,hair:0x38322b,outfit:'coat',coat:0x343d3a},{height:1.85}),
-  person('george','George Wilkins','Computer repair · relic researcher',100,0,{trouser:0x474f46,skin:0xb48e75,hair:0x3c2d21,outfit:'shirt',coat:0x758079,beard:.65,hairStyle:'waves'},{height:1.78,story:'memory'}),
+  person('amundsen','Amundsen','Judicial raider',14,0,{skin:0xb28e76,hair:0x38322b,outfit:'coat',coat:0x343d3a},{height:1.85}),
+  person('george','George Wilkins','Computer repair · relic researcher',100,0,{skin:0xb48e75,hair:0x3c2d21,outfit:'shirt',coat:0x758079,beard:.65,hairStyle:'waves'},{height:1.78,absent:'dead before the game starts'}),
 ]);
-// Trousers are named rather than derived, because a silo where everybody's legs
-// are a darker version of their own top is a silo wearing one colour.
+// Crowd art direction: seven of ten generic complexion slots are light.
+// This is a requested visual balance, not a claim about canonical demographics.
+// Named cast appearances above are independent and are never remapped.
 export const CROWD_APPEARANCES=Object.freeze([
-  {skin:0xc19a7c,hair:0x403124,coat:0x6e786d,outfit:'work'},
-  {skin:0x71513e,hair:0x26201a,coat:0x797b65,outfit:'shirt',trouser:0x3f4348,female:true,hairStyle:'bun'},
-  {skin:0xa27858,hair:0x393026,coat:0x4f6870,outfit:'work',beard:.4},
-  {skin:0xb8977d,hair:0x99948a,coat:0x7f7361,outfit:'cardigan',trouser:0x4a443c,shirt:0xa39c90,female:true,age:.8,hairStyle:'waves'},
-  {skin:0x6c4a33,hair:0x302521,coat:0x766855,outfit:'coat',trouser:0x363b3a,shirt:0x93958a,hairStyle:'curls'},
-  {skin:0xcba586,hair:0x774f31,coat:0x6c7777,outfit:'shirt',trouser:0x4d4438,female:true,hairStyle:'long'},
-  {skin:0x96755c,hair:0x28231c,coat:0x898370,outfit:'uniform',trouser:0x45463d},
-  {skin:0xa98b71,hair:0x756a54,coat:0x687960,outfit:'work',build:1.1},
+ {skin:0xe1ba9c,hair:0x493526,coat:0x66756a,pants:0x353e39,shirt:0xa7aa97,outfit:'work',footwear:'boots',trouserFit:'cargo'},
+ {skin:0xcba586,hair:0xa68b57,coat:0x536972,pants:0x7c715c,shirt:0xa7aa97,outfit:'shirt',female:true,hairStyle:'bun',shortSleeves:true,footwear:'slipon'},
+ {skin:0xd8b49a,hair:0x795134,coat:0x78635e,pants:0x353e39,shirt:0xa7aa97,outfit:'cardigan',age:.4,hairStyle:'waves',fabric:'ribbed',glasses:true,frameStyle:'rectangular',frameColor:0x776c62},
+ {skin:0xc49b7d,hair:0xa7a396,coat:0x7c715c,pants:0x353e39,shirt:0x968776,outfit:'coat',female:true,age:.8,hairStyle:'waves',shoeColor:0x574432},
+ {skin:0xdfb99e,hair:0x26201b,coat:0x66756a,pants:0x536972,shirt:0xa7aa97,outfit:'vest',hairStyle:'short',beard:.3,trouserFit:'tapered'},
+ {skin:0xd1ae92,hair:0x8b4330,coat:0x78635e,pants:0x353e39,outfit:'knit',female:true,hairStyle:'ponytail',fabric:'ribbed',footwear:'slipon'},
+ {skin:0xe1ba9c,hair:0x493526,coat:0x7c715c,pants:0x353e39,shirt:0xa7aa97,outfit:'work',build:1.1,beard:.6,footwear:'boots'},
+ {skin:0xaf8160,hair:0x26201b,coat:0x536972,pants:0x7c715c,shirt:0xa7aa97,outfit:'shirt',hairStyle:'waves',trouserFit:'tapered'},
+ {skin:0x795039,hair:0x26201b,coat:0x968776,pants:0x353e39,shirt:0x66756a,outfit:'cardigan',female:true,hairStyle:'braids',footwear:'slipon',glasses:true,frameColor:0x82704b},
+ {skin:0x593a29,hair:0x26201b,coat:0x66756a,pants:0x7c715c,shirt:0xa7aa97,outfit:'work',hairStyle:'curls',footwear:'boots',trouserFit:'cargo'},
 ]);
+// Mix the seed before selecting: sequential floor/route seeds must not alias
+// with the palette length. Streaming the same resident always gives the same fit.
+export function crowdAppearanceIndex(seed){
+ let h=(Number(seed)||0)>>>0;h=Math.imul(h^(h>>>16),0x45d9f3b);h=Math.imul(h^(h>>>16),0x45d9f3b);h=(h^(h>>>16))>>>0;
+ return h%CROWD_APPEARANCES.length;
+}

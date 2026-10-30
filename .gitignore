@@ -4,3 +4,4 @@ node_modules/
 qa-output/
 .openai/artifacts/
 models/cast/*.glb
+playthrough.log

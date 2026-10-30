@@ -5,7 +5,11 @@ import * as THREE from '../vendor/three.module.js';
 // the star field swim. The horizon stays hazy above the enclosing crater.
 export class ExteriorSky{
   constructor(){
-    this.mode='day';this.elapsed=0;this.daylight=1;
+    // `scheduledDay` is the silo clock's own daylight, handed in by the
+    // world. On the cycle setting the sky follows it, so the view on the
+    // cafeteria screen is the hour the rest of the silo is living in
+    // rather than a second, unrelated sun on a timer of its own.
+    this.mode='day';this.elapsed=0;this.daylight=1;this.scheduledDay=null;
     this.material=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,fog:false,toneMapped:false,uniforms:{day:{value:1},time:{value:0}},vertexShader:`varying vec3 vDirection;void main(){vDirection=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`
       precision highp float;varying vec3 vDirection;uniform float day,time;
       float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -29,6 +33,6 @@ export class ExteriorSky{
     const geometry=new THREE.SphereGeometry(1100,40,24);this.mesh=new THREE.Mesh(geometry,this.material);this.mesh.name='exterior-sky';this.mesh.frustumCulled=false;this.mesh.renderOrder=-100;this.feed=this.mesh.clone();
   }
   setMode(mode){this.mode=['day','night','cycle'].includes(mode)?mode:'day';this.update(0);}
-  update(dt){this.elapsed+=dt;const sun=this.mode==='night'?0:this.mode==='day'?1:.5+.5*Math.cos(this.elapsed/1200*Math.PI*2);this.daylight=THREE.MathUtils.smoothstep(sun,.12,.65);this.material.uniforms.day.value=this.daylight;this.material.uniforms.time.value=this.elapsed;}
+  update(dt){this.elapsed+=dt;const sun=this.mode==='night'?0:this.mode==='day'?1:Number.isFinite(this.scheduledDay)?this.scheduledDay:.5+.5*Math.cos(this.elapsed/1200*Math.PI*2);this.daylight=THREE.MathUtils.smoothstep(sun,.12,.65);this.material.uniforms.day.value=this.daylight;this.material.uniforms.time.value=this.elapsed;}
   get fogColor(){return new THREE.Color(0x0b1221).lerp(new THREE.Color(0x929fa3),this.daylight);}
 }

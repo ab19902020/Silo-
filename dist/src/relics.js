@@ -2,18 +2,37 @@ import * as THREE from '../vendor/three.module.js';
 import { Kit } from './kit.js';
 import { roomPoint } from './characters.js';
 import { COLLECTABLES } from './story.js';
+import {buildMementoModel} from './mementos.js';
+import {loadRelicModel} from './relic-assets.js';
 
 // The physical relics, and the thing that comes for you when you go outside.
 //
-// Each collectable is a small procedural prop standing where the story says it
-// is, with a slow turn and a lift so it reads as something to pick up rather
-// than set dressing. The hard drive is the exception: that one is a real
-// supplied model and is placed by `characters.js`, so this module leaves it be.
+// Blender-authored relics rest on their actual supporting surfaces. Procedural
+// tools remain as fallbacks; the supplied drive is placed by characters.js.
 
 const build={
+  // A folded grey card with a wax seal and a routing line. Small: it is the
+  // reason you are allowed on the stairs, not a burden.
+  dispatch:(k)=>{
+    k.bevel('paper',0,.006,0,.104,.012,.148);
+    k.box('pale',0,.0125,-.030,.092,.001,.052);            // the routing block
+    for(let i=0;i<3;i++)k.box('darkMetal',-.028+i*.020,.0132,-.030,.010,.0012,.0016);
+    k.box('darkMetal',0,.0132,.040,.044,.0012,.0016);      // the runner's line
+    k.cylinder('red',0,.0135,.058,.010,.003);              // the seal
+  },
+  // Brown paper, string, and the Supply hold-slip still tied under it. Sized
+  // to something a runner would carry in one hand without thinking about it.
+  package:(k)=>{
+    k.bevel('bread',0,.036,0,.190,.072,.135);                  // the parcel
+    for(const x of [-.048,.048])k.box('linen',x,.073,0,.006,.004,.137);  // string, across
+    k.box('linen',0,.073,0,.192,.004,.006);                    //  and along
+    k.box('paper',.046,.0735,-.024,.082,.002,.058);            // the hold-slip
+    for(let i=0;i<3;i++)k.box('darkMetal',.026+i*.018,.0748,-.030,.012,.0012,.0016);
+    k.box('darkMetal',.058,.0748,-.012,.030,.0012,.0016);      // the countersignature
+  },
   pez:(k)=>{
     k.box('white',0,0,0,.024,.086,.014);                       // the sleeve
-    for(let i=0;i<4;i++)k.box('red',0,-.03+i*.02,.008,.019,.014,.003);
+    for(let i=0;i<4;i++)k.box('blue',0,-.03+i*.02,.008,.019,.014,.003);
     k.box('yellow',0,.055,.004,.026,.03,.026);                 // the head, tipped back
     k.sphere('yellow',0,.072,.012,.014,.013,.016);
     k.box('ochre',0,.068,.028,.010,.008,.016);                 // bill
@@ -75,7 +94,7 @@ const build={
   },
 };
 
-const TURN=.55;
+
 
 // Somewhere for a story item to live.
 //
@@ -100,6 +119,36 @@ const FIXTURES=[
   }},
 ];
 
+// The concession the comment below has always promised and the file never
+// made good on. A relic is a real object at its real size: a wristwatch is
+// five centimetres of dark metal, and on a market counter in a silo lit by
+// half a dozen fittings it is not so much hidden as simply unlit.
+//
+// So a relic carries a trace of its own texture as light. It is not a marker
+// and not a glow — at arm's length you cannot tell it is there, and it never
+// lifts the object off its own surface. It only stops a small thing sinking
+// entirely into a dark room, which is what was happening.
+const GLINT=.055;
+function catchTheLight(model){
+  model.traverse(o=>{
+    if(!o.isMesh)return;
+    const single=!Array.isArray(o.material);
+    const lit=(single?[o.material]:o.material).map(source=>{
+      const m=source.clone();
+      // Only the materials that have somewhere to put it. A basic material
+      // has no emissive channel and needs none — it is already unlit.
+      if(m.emissive){
+        m.emissive.copy(m.color);
+        if(m.map)m.emissiveMap=m.map;
+        m.emissiveIntensity=GLINT;
+        m.needsUpdate=true;
+      }
+      return m;
+    });
+    o.material=single?lit[0]:lit;
+  });
+}
+
 export class StoryProps{
   constructor(scene,materials){
     this.scene=scene;this.m=materials;this.items=new Map();
@@ -113,9 +162,10 @@ export class StoryProps{
       return {fixture,group};
     });
     for(const item of COLLECTABLES){
-      if(item.prop||item.id==='shotgun'||!build[item.id])continue;                  // the hard drive is a supplied model
-      const k=new Kit(materials);build[item.id](k);
-      const group=new THREE.Group();group.add(k.group());group.name=`relic-${item.id}`;
+      if(item.prop||item.handed||(!build[item.id]&&!item.optional))continue;   // supplied models, and things put into your hands
+      const group=new THREE.Group();
+      if(item.optional)group.add(buildMementoModel(item.id,materials));else{const k=new Kit(materials);build[item.id](k);group.add(k.group());}
+      group.name=`relic-${item.id}`;
       // A relic is a real object at its real size, and a PEZ dispenser on a bar
       // among forty mugs is genuinely hard to see. A faint glint above it is
       // the concession: enough to catch the eye down the room, not enough to
@@ -127,6 +177,14 @@ export class StoryProps{
       this.items.set(item.id,{item,group,base:group.position.y});
     }
   }
+  async loadAssets(){
+    const results=await Promise.allSettled(['pez','watch','georgia'].map(async id=>{
+      const model=await loadRelicModel(id),entry=this.items.get(id);if(!entry||!model)return;
+      entry.group.clear();entry.group.add(model);model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+      catchTheLight(model);
+    }));return results.filter(r=>r.status==='rejected').length;
+  }
+  inspectionModel(id){return this.items.get(id)?.group||null;}
   // Only what the story says is there, on the level you are standing on.
   update(dt,time,story,level,special){
     for(const {fixture,group} of this.fixtures)group.visible=!special&&fixture.level===level;
@@ -134,15 +192,9 @@ export class StoryProps{
       const on=!special&&story.visible(id)&&entry.item.level===level;
       entry.group.visible=on;
       if(!on)continue;
-      // Small things turn and lift, so they read as something to take rather
-      // than as part of the furniture. A crate, a crowbar and a shotgun are
-      // things somebody put down: they stay where they were left.
-      if(entry.item.float){
-        entry.group.rotation.y=time*TURN;
-        entry.group.position.y=entry.base+Math.sin(time*1.6)*.014;
-      }else{
-        entry.group.rotation.y=0;entry.group.position.y=entry.base;
-      }
+      // Relics rest on their support. Rotation belongs to the inspection view.
+      entry.group.rotation.y=Math.PI/2-entry.item.wing*Math.PI/3;
+      entry.group.position.y=entry.base;
     }
   }
   interactions(story,level,special){
@@ -150,7 +202,7 @@ export class StoryProps{
     if(special)return out;
     for(const [id,entry] of this.items){
       if(!story.visible(id)||entry.item.level!==level)continue;
-      out.push({position:entry.group.position.clone(),label:`Take ${entry.item.name.replace(/^A /,'the ').replace(/^An /,'the ')}`,action:`relic:${id}`});
+      out.push({position:entry.group.position.clone(),label:`Take ${entry.item.name.replace(/^A /,'the ').replace(/^An /,'the ')}`,action:`relic:${id}`,pickup:true});
     }
     return out;
   }

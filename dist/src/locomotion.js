@@ -1,4 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
+import {capturedPose} from './captured-motion.js';
+import {leadArmPose} from './arm-motion.js';
 
 const up=new THREE.Vector3(0,1,0),forward=new THREE.Vector3(0,0,1),sideways=new THREE.Vector3(1,0,0);
 const clamp=THREE.MathUtils.clamp,lerp=THREE.MathUtils.lerp;
@@ -6,28 +8,22 @@ const ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
 const cycle=t=>((t%1)+1)%1;
 export const MOTION_CLIPS=Object.freeze({Idle:3.2,Walk:1.05,Run:.72,StairUp:1.2,StairDown:1.25,TurnLeft:1.4,TurnRight:1.4,Fall:1.4});
 
-// Gait geometry, in one place because the pose and the phase advance have to
-// agree exactly or the feet skate. STANCE is the fraction of the cycle a foot
-// is down — a walk keeps both feet down for a moment, a run has neither down.
-// REACH is how far ahead of the hip the foot plants, in body heights.
-//
-// REACH was measured against total height, and that was the crouch. A leg
-// only reaches so far before the pelvis has to sink to let the foot down:
-// planting it `reach` ahead forces the hip to drop by L - sqrt(L^2 - reach^2).
-// Every rig here — the supplied bodies and the generated residents alike —
-// carries its hip-to-ankle at about 44.5% of height rather than a human's
-// ~49%, so a height-based stride demanded a 15 cm sink on every step and the
-// characters walked like they were kneeling.
-//
-// Stride is now measured against the leg that has to swing it. As a fraction
-// of leg length the drop is fixed no matter how the rig is proportioned:
-// 0.41 costs 8.8% of leg length, 0.52 costs 14.6%, which is about right for a
-// run where the knee stays bent anyway.
-// Longer stride costs pelvis sink, and these legs are short, so the two are
-// balanced rather than either being taken to its ideal. A run also spends less
-// of its cycle on the ground, which buys stride length for free.
-const STANCE=run=>lerp(.62,.35,run);
-const REACH=run=>lerp(.49,.62,run);
+// Stance duration and reach are shared by phase advance and IK targets.
+// Reach is measured against each rig's leg length. The shorter travel and
+// slightly shorter support interval reduce crouching without a large change
+// in cadence; both feet still overlap in a walk and leave the ground in a run.
+const STANCE=run=>lerp(.60,.32,run);
+const REACH=run=>lerp(.45,.56,run);
+// The foot's travel through stance is not centred on the hip. The hip passes
+// over the planted foot at about 40% of stance, not half way, so the foot is
+// planted nearer the body than it is left behind: measured, a 2 m/s walk puts
+// the heel down about 0.40 m ahead and takes the toe off about 0.62 m behind.
+// Placing it symmetrically is what forced the pelvis to sink — reaching the
+// full half-stride ahead with a straight leg costs L - sqrt(L^2 - reach^2),
+// which was 17 cm a step at a brisk walk and made the walk a pogo stick.
+// The total travel is unchanged, so the stride and the phase advance still
+// agree and the foot still does not skate.
+const BIAS=run=>lerp(.22,.08,run);
 // Nobody takes a full stride up a staircase. Shortening it on a slope is both
 // what people do and what keeps the ankle inside the leg's reach on a tread.
 // The pose and the phase advance must apply this identically.
@@ -40,17 +36,36 @@ export class SkeletalMotion{
     this.model=model;this.height=height;this.bones={};this.rest={};
     model.updateWorldMatrix(true,true);const inverse=model.matrixWorld.clone().invert(),mq=model.getWorldQuaternion(new THREE.Quaternion()).invert();
     model.traverse(b=>{if(b.isBone){this.bones[b.name]=b;this.rest[b.name]={p:b.position.clone(),q:b.quaternion.clone(),worldQ:mq.clone().multiply(b.getWorldQuaternion(new THREE.Quaternion())),point:b.getWorldPosition(new THREE.Vector3()).applyMatrix4(inverse)};}});
+    this.restEntries=Object.entries(this.bones).map(([name,bone])=>[bone,this.rest[name]]);
+    for(const [,r] of this.restEntries)r.inverseQ=r.worldQ.clone().invert();
+    this.rotationQ=new THREE.Quaternion();this.axisQ=new THREE.Quaternion();this.performance=null;this.armPerformance={};
     this.legs=['L','R'].map(s=>{const hip=this.rest['Thigh'+s].point,knee=this.rest['Shin'+s].point,ankle=this.rest['Foot'+s].point;return {side:s,hip:hip.clone(),ankle:ankle.clone(),a:hip.distanceTo(knee),b:knee.distanceTo(ankle),anchor:null,stance:false,target:new THREE.Vector3(),error:0};});
     // What the gait is actually built on: how far this rig's leg reaches, not
     // how tall it happens to be.
     this.legLength=Math.min(...this.legs.map(l=>l.a+l.b));
-    this.phase=0;this.time=0;this.weight=0;this.run=0;this.pace=1;this.slope=0;this.air=0;this.unsupported=0;this.lastPosition=null;this.state='Idle';this.lastHeading=0;this.footContacts=[];this.stepCount=0;this.rise=0;this.landing=0;
+    // Which way the pelvis leans to stand over the first leg. Taken from the
+    // rig rather than assumed, so a mirrored skeleton does not sway backwards.
+    this.stanceSide=Math.sign(this.legs[0].ankle.x)||1;
+    this.pelvisDrop=0;this.phase=0;this.time=0;this.weight=0;this.run=0;this.pace=1;this.slope=0;this.air=0;this.unsupported=0;this.lastPosition=null;this.state='Idle';this.lastHeading=0;this.footContacts=[];this.stepCount=0;this.rise=0;this.landing=0;
   }
-  reset(){this.lastPosition=null;this.weight=0;this.air=0;this.unsupported=0;this.stepCount=0;this.rise=0;this.landing=0;for(const leg of this.legs){leg.anchor=null;leg.stance=false;}}
-  neutral(){for(const [name,b] of Object.entries(this.bones)){b.position.copy(this.rest[name].p);b.quaternion.copy(this.rest[name].q);}}
+  reset(){this.pelvisDrop=0;this.lastPosition=null;this.weight=0;this.run=0;this.pace=1;this.phase=0;this.slope=0;this.air=0;this.unsupported=0;this.stepCount=0;this.rise=0;this.landing=0;for(const leg of this.legs){leg.anchor=null;leg.stance=false;}}
+  neutral(){for(const [b,r] of this.restEntries){b.position.copy(r.p);b.quaternion.copy(r.q);}}
   rotate(name,angle,axis=sideways){
     const b=this.bones[name],r=this.rest[name];if(!b)return;
-    const local=r.worldQ.clone().invert().multiply(new THREE.Quaternion().setFromAxisAngle(axis,angle)).multiply(r.worldQ);b.quaternion.multiply(local);
+    const local=this.rotationQ.copy(r.inverseQ).multiply(this.axisQ.setFromAxisAngle(axis,angle)).multiply(r.worldQ);b.quaternion.multiply(local);
+  }
+  relaxHand(side,phase=0,amount=1,run=0){
+    const frame=this.model.userData.handFrames?.[side];if(!frame)return;
+    const hand=this.bones['Hand'+side],elbow=this.bones['Forearm'+side],mq=this.model.getWorldQuaternion(new THREE.Quaternion());
+    const along=hand.getWorldPosition(new THREE.Vector3()).sub(elbow.getWorldPosition(new THREE.Vector3())).normalize();
+    along.applyAxisAngle(sideways.clone().applyQuaternion(mq),Math.sin(phase)*.025);
+    const normal=new THREE.Vector3(side==='L'?1:-1,0,0).applyQuaternion(mq);normal.addScaledVector(along,-normal.dot(along)).normalize();
+    const across=along.clone().cross(normal).normalize();normal.crossVectors(across,along).normalize();
+    const target=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(across,along,normal))
+      .multiply(new THREE.Quaternion().fromArray(frame.quaternion).invert()).multiply(this.rest['Hand'+side].worldQ);
+    this.setWorldQuaternion(hand,hand.getWorldQuaternion(new THREE.Quaternion()).slerp(target,amount));
+    const curlAxis=new THREE.Vector3(1,0,0).applyQuaternion(new THREE.Quaternion().fromArray(frame.quaternion));
+    this.rotate('Fingers'+side,-(.22+.24*run)*amount,curlAxis);this.rotate('FingerTips'+side,-(.30+.25*run)*amount,curlAxis);
   }
   setWorldQuaternion(b,q){b.quaternion.copy(b.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(q));b.updateWorldMatrix(false,true);}
   aim(b,child,target){
@@ -68,6 +83,8 @@ export class SkeletalMotion{
   }
   pose({phase=this.phase,weight=this.weight,run=this.run,slope=this.slope,pace=this.pace,turn=0,air=0,impact=0,rise=0,ground=null,dt=0,lock=false}={}){
     this.neutral();const h=this.height,L=this.legLength,p=phase*Math.PI*2,stance=STANCE(run),reach=REACH(run)*SHORTEN(slope)*L*weight*pace*(1-air);
+    const performance=this.performance=capturedPose(this.model.userData.gaitStyle,phase,run,this.performance);
+    const arms=this.model.userData.armRetargeted?leadArmPose(this.model.userData.gaitStyle,phase,run,this.armPerformance):performance.joints;
     // Residual knee flex at mid-stance. This is not cosmetic: a walker whose
     // stance leg is straight has to drop the pelvis the full geometric depth
     // at double support, which is a 10 cm bounce a step. A real mid-stance
@@ -79,36 +96,58 @@ export class SkeletalMotion{
     // is the single clearest tell of a bad walk. A run inverts it: highest at
     // mid-flight, lowest at mid-stance under peak knee flexion, so the peak
     // reference slides half a period across as the pace comes up.
-    const bob=Math.cos(4*Math.PI*(phase-lerp(stance*.5,stance*.5+.25,run)));
-    // Measured human pelvis rise is about 4.5 cm walking and 9 cm running.
     // Measured human pelvis rise is about 4.5 cm walking and 9 cm running, and
     // at a walk nearly all of it already arrives for free out of the leg
     // geometry below — the pelvis has to drop at double support because both
     // legs are reaching. Adding a full explicit rise on top of that produced a
     // 10.5 cm bounce, which is twice a person. A run does need it, because the
     // flight phase is not in the geometry.
-    hips.position.y+=L*lerp(.006,.055,run)*bob*weight*(1-.5*Math.min(1,Math.abs(slope)));   // stairs are climbed flatter
+    hips.position.y+=L*performance.pelvis[1]*lerp(.40,.65,run)*weight*(1-.5*Math.min(1,Math.abs(slope)));
     hips.position.y-=h*.012*air;
     hips.position.y-=L*.30*impact;                                  // knees absorb the landing
     hips.position.x+=Math.sin(this.time*Math.PI*2/3.2)*h*.003*(1-weight);
+    // The pelvis shifts across onto whichever leg is carrying, once per step,
+    // because the body has to put its weight over the foot that is holding it
+    // up. Measured excursion is about 4.5 cm side to side at a walk and half
+    // that at a run, where the feet land nearer the midline. Without it the
+    // hips travel down a rail and no amount of leg animation reads as weight.
+    hips.position.x+=this.stanceSide*L*clamp(performance.pelvis[0],-.05,.05)*weight;
     // Pelvic rotation about the spine. Kept small deliberately: the foot goals
     // in this rig are placed in model space and do not follow the pelvis, so
     // turning it further pulls the hips off their own feet and the stance leg
     // runs out of reach on a stair tread.
-    this.rotate('Hips',Math.sin(p)*.040*weight,up);
-    this.rotate('Hips',Math.sin(p)*.045*weight,forward);            // pelvis lists onto the swing side
-    this.rotate('Spine',-.025*weight-.10*run-.065*Math.max(0,slope)*weight-.30*impact);
+    this.rotate('Hips',clamp(performance.body[0],-.12,.12)*weight,up);
+    this.rotate('Hips',clamp(performance.body[1],-.055,.055)*weight,forward);
+    this.rotate('Spine',(clamp(performance.body[3]+.12*(1-run),-.025,.18)+.05*run+.055*Math.max(0,slope))*weight+.22*impact);
     this.rotate('Spine',Math.sin(p)*-.016*weight,forward);
-    this.rotate('Chest',Math.sin(p)*-.075*weight+clamp(turn,-1,1)*.035,up);   // shoulders counter the hips
-    this.rotate('Chest',-.055*run-.12*impact);
+    this.rotate('Chest',clamp(performance.body[2]-performance.body[0],-.16,.16)*weight+clamp(turn,-1,1)*.025,up);
+    this.rotate('Chest',.025*run+.08*impact);
     this.rotate('Chest',Math.sin(this.time*Math.PI*2/3.2)*.003);
     this.rotate('Head',Math.sin(this.time*Math.PI*2/3.2+.7)*.009,up);
-    this.rotate('Head',.062*run+.06*Math.max(0,slope)*weight+.22*impact);     // eyes stay on the horizon
+    this.rotate('Head',-.14*run-.035*Math.max(0,slope)*weight+.08*impact);     // eyes stay on the horizon
     this.rotate('Neck',.012*weight);
     for(const [i,leg] of this.legs.entries()){
       const t=cycle(phase+i*.5),on=t<stance,u=on?t/stance:(t-stance)/(1-stance);
-      let z=on?reach*(1-2*u):reach*(-1+2*ease(u));
-      const lift=on?0:Math.sin(Math.PI*u)**1.5*h*lerp(.044,.10,run)*weight*(1-air);
+      // Where the foot is planted and where it leaves, biased backward.
+      const bias=BIAS(run),front=reach*(1-bias),back=-reach*(1+bias);
+      // Through stance the foot tracks the ground exactly. Through swing it
+      // used to be a smoothstep, which arrives with zero speed — so the foot
+      // touched down travelling forward with the body and then stopped dead,
+      // a 1.6 m/s jump at a walk and 4.4 m/s at a run, on every step. A cubic
+      // that leaves and arrives at the ground's own speed removes that, and
+      // the overshoot it produces late in swing is the retraction a real foot
+      // makes just before it lands.
+      // The speed the foot is travelling as stance hands over to swing, and
+      // as swing hands back. Named for the handover and not for `slope`,
+      // which is the ground's and is still needed further down this loop.
+      const handover=-(front-back)*(1-stance)/stance;
+      let z;
+      if(on)z=front+(back-front)*u;
+      else {const u2=u*u,u3=u2*u;z=(2*u3-3*u2+1)*back+(-2*u3+3*u2)*front+(2*u3-3*u2+u)*handover;}
+      // The heel recovers early during running; a late, low arc reads as a
+      // straight-legged shuffle. Both ends have zero vertical velocity.
+      const recorded=performance.joints['foot'+leg.side];
+      const lift=on?0:Math.max(0,recorded[1])*L*ease(u/.13)*ease((1-u)/.13)*weight*(1-air);
       // A foot held flat through the whole cycle is what makes a walk read as
       // a shuffle. Heel lands first with the toe up, the sole rolls flat, then
       // the heel lifts and the step leaves off the toe. Positive pitch is
@@ -131,50 +170,111 @@ export class SkeletalMotion{
       const toe=(Math.max(0,roll)*.100+Math.max(0,-roll)*.050)*h;
       const slopeLift=Math.max(0,slope)*h*.045*(on?0:Math.sin(Math.PI*u))*weight;
       const ankle=leg.ankle.clone();ankle.z+=z;ankle.y+=lift+toe+slopeLift;
+      // A relaxed bind can have widely spaced boots. Walking lands beneath
+      // the body on the recorded foot tracks, instead of preserving that pose.
+      ankle.x=lerp(ankle.x,Math.sign(leg.ankle.x)*clamp(Math.abs(recorded[0]),.055,.14)*L,weight*(1-air));
       ankle.x+=Math.sin(p+i*Math.PI)*turn*.012*h*weight;
       // Going up, the legs trail and tuck; coming down they reach for the floor.
       if(air){const ascent=ease((rise+.75)/1.5);ankle.y+=h*lerp(.018,.15,ascent)*air;ankle.z+=h*lerp(.040,-.08,ascent)*air+(i===0?1:-1)*h*.018*air*weight;}
       this.model.updateWorldMatrix(true,true);const goal=ankle.applyMatrix4(this.model.matrixWorld);
-      const canLock=lock&&weight>.45&&air<.10;
+      const canLock=lock&&weight>.45&&air<.10&&Math.abs(turn)<2.4;
+      let floorUnder=null;
       if(ground&&air<.10){
-        const floor=ground(goal.x,goal.z);if(Number.isFinite(floor))goal.y=floor+leg.ankle.y+lift+toe+slopeLift;
+        const floor=ground(goal.x,goal.z);if(Number.isFinite(floor)){goal.y=floor+leg.ankle.y+lift+toe+slopeLift;floorUnder=floor;}
         if(canLock&&on){
           if(!leg.stance||!leg.anchor||leg.anchor.distanceTo(goal)>.55){leg.anchor=goal.clone();}
           goal.x=leg.anchor.x;goal.z=leg.anchor.z;
-          const anchorFloor=ground(goal.x,goal.z);if(Number.isFinite(anchorFloor))goal.y=anchorFloor+leg.ankle.y+toe;
+          const anchorFloor=ground(goal.x,goal.z);if(Number.isFinite(anchorFloor)){goal.y=anchorFloor+leg.ankle.y+toe;floorUnder=anchorFloor;}
         }else leg.anchor=null;
       }
       leg.justLanded=canLock&&on&&!leg.stance;leg.stance=canLock&&on;
       const q=this.model.getWorldQuaternion(new THREE.Quaternion())
         .multiply(new THREE.Quaternion().setFromAxisAngle(sideways,roll))
         .multiply(this.rest['Foot'+leg.side].worldQ);
-      leg.goal={goal,q,swing:reach>1e-5?z/reach:0,i};
+      leg.goal={goal,q,swing:reach>1e-5?z/reach:0,i,on,u,floorUnder};
     }
     // Lower the pelvis only as much as the measured limbs require. This lets
     // the trailing foot stay on a lower tread instead of stretching the knee
     // or lifting the heel through the air as the capsule climbs a step.
     let drop=0;
-    for(const leg of this.legs){const hip=this.bones['Thigh'+leg.side].getWorldPosition(new THREE.Vector3()),goal=leg.goal.goal,flat=(hip.x-goal.x)**2+(hip.z-goal.z)**2,vertical=Math.sqrt(Math.max(.01,(leg.a+leg.b-.004)**2-flat));drop=Math.max(drop,hip.y-goal.y-vertical);}
+    // Only a foot that is carrying can pull the pelvis down. A foot in the air
+    // does not need to be reached — it can simply swing shorter — and letting
+    // it ask was most of the bounce: the moment the trailing foot left the
+    // ground it was still at its furthest back, so the deepest reach of the
+    // whole cycle was being demanded of a leg with no weight on it. The demand
+    // is held through stance, released over the first quarter of swing and
+    // taken up again over the last, so the pelvis is already low enough when
+    // the foot lands rather than snapping down to meet it.
+    //
+    // The release is off the moment the two feet are on different floors: on a
+    // stair the swinging foot really is reaching for a tread the pelvis has to
+    // come down to, which is what the depth below is for. The treads are
+    // compared directly rather than inferred from the slope, which reads near
+    // zero on a flight of flat ones.
+    for(const [i,leg] of this.legs.entries()){
+      const other=this.legs[1-i].goal;
+      const stepped=leg.goal.floorUnder!=null&&other?.floorUnder!=null
+        &&Math.abs(leg.goal.floorUnder-other.floorUnder)>.06;
+      const {on,u,goal}=leg.goal,hold=on||stepped?1:Math.max(1-u/.25,ease((u-.75)/.25));
+      if(hold<=0)continue;
+      const hip=this.bones['Thigh'+leg.side].getWorldPosition(new THREE.Vector3()),
+        flat=(hip.x-goal.x)**2+(hip.z-goal.z)**2,
+        vertical=Math.sqrt(Math.max(.01,(leg.a+leg.b-.004)**2-flat));
+      drop=Math.max(drop,hold*(hip.y-goal.y-vertical));
+    }
     // On the flat a deep sink is the kneeling walk and is capped hard. Climbing
     // a stair genuinely needs the depth, so the cap opens up with the slope.
     // The cap is a backstop, not the thing that keeps the walk upright — the
     // stride does that. Measured slope reads near zero on a stair of flat
     // treads, so capping against it starved the drop exactly where the trailing
     // foot is a whole tread below the hip and the depth is real.
-    hips.position.y-=Math.min(L*.42,Math.max(0,drop));this.model.updateWorldMatrix(true,true);
+    // Meet the supporting foot immediately, but release the load gradually.
+    // Snapping up as the trailing leg lifts made each step visibly hitch.
+    drop=Math.min(L*.42,Math.max(0,drop));
+    this.pelvisDrop=dt>0?Math.max(drop,THREE.MathUtils.damp(this.pelvisDrop,drop,18,dt)):drop;
+    hips.position.y-=this.pelvisDrop;this.model.updateWorldMatrix(true,true);
     for(const leg of this.legs){
       const {goal,q,swing,i}=leg.goal;this.solve(leg,goal,q);
+      if(weight>.001&&air<.05){
+        // Retarget from the same relaxed arm pose used at rest so starting
+        // and stopping do not snap the elbows back to the bind pose.
+        this.rotate('UpperArm'+leg.side,-Math.sign(leg.hip.x)*.055,forward);
+        this.rotate('Forearm'+leg.side,-.18);
+        const worldQ=this.model.getWorldQuaternion(new THREE.Quaternion());
+        for(const [prefix,boneName,childName] of [['upper','UpperArm','Forearm'],['fore','Forearm','Hand']]){
+          const bone=this.bones[boneName+leg.side],child=this.bones[childName+leg.side];
+          const origin=bone.getWorldPosition(new THREE.Vector3()),restDirection=child.getWorldPosition(new THREE.Vector3()).sub(origin).normalize();
+          const direction=new THREE.Vector3(...arms[prefix+leg.side]).normalize().applyQuaternion(worldQ);
+          restDirection.lerp(direction,weight).normalize();this.aim(bone,child,origin.add(restDirection));
+        }
+        if(this.model.userData.armRetargeted)this.relaxHand(leg.side,p+i*Math.PI,1,run);
+        else this.rotate('Hand'+leg.side,Math.sign(leg.hip.x)*.10,forward);
+        if(this.bones['Fingers'+leg.side]&&!this.model.userData.armRetargeted){this.rotate('Hand'+leg.side,-Math.sign(leg.hip.x)*.12,up);this.rotate('Fingers'+leg.side,-.22-.65*run);this.rotate('FingerTips'+leg.side,-.28-.72*run);}
+        this.rotate('Coat'+leg.side,clamp(-swing*.075*weight-.025*run,-.12,.12));
+        continue;
+      }
+      // Arms follow the stride rhythm, not the asymmetric foot trajectory.
+      // Peak forward swing opposes the leg at its forward passing position.
+      const arm=Math.cos(2*Math.PI*(phase+i*.5));
       // Arms oppose the advancing leg. Elbows remain soft and wrists follow,
       // while a small inward adjustment removes the old spread-arm silhouette.
-      this.rotate('UpperArm'+leg.side,(.52+.46*run)*swing*weight-(.24+.44*Math.max(0,rise))*air-.24*impact);
+      this.rotate('UpperArm'+leg.side,(.30+.34*run)*arm*weight-(.24+.44*Math.max(0,rise))*air-.24*impact);
       // Tuck the upper arms in as the pace rises. Left wide with the elbows
       // closed for a run, the hands end up parked in front of the chest.
-      this.rotate('UpperArm'+leg.side,(i===0?-1:1)*(.16+.07*run+.14*air),forward);
+      this.rotate('UpperArm'+leg.side,-Math.sign(leg.hip.x)*(.055+.035*run+.14*air),forward);
       this.rotate('UpperArm'+leg.side,-.10*run*weight,up);
       // The elbow closes as the arm comes through and opens as it goes back;
       // at a run it never straightens.
-      this.rotate('Forearm'+leg.side,-.22-.86*run*weight-(.34+.42*run)*Math.max(0,-swing)*weight-.30*air-.45*impact);
-      this.rotate('Hand'+leg.side,.04*weight*swing);
+      this.rotate('Forearm'+leg.side,-.18-.95*run*weight-(.12+.18*run)*Math.max(0,-arm)*weight-.30*air-.45*impact);
+      this.rotate('Hand'+leg.side,.035*weight*arm);
+      if(this.model.userData.armRetargeted)this.relaxHand(leg.side,p+i*Math.PI,1-air,run);
+      if(this.bones['Fingers'+leg.side]&&!this.model.userData.armRetargeted){
+        // Generated hands have two finger segments; relax them when walking
+        // and curl them into a loose fist at a run, palms facing the ribs.
+        this.rotate('Hand'+leg.side,-Math.sign(leg.hip.x)*.12,up);
+        this.rotate('Fingers'+leg.side,-.22-.65*run*weight);
+        this.rotate('FingerTips'+leg.side,-.28-.72*run*weight);
+      }
       this.rotate('Coat'+leg.side,clamp(-swing*.075*weight-.025*run,-.12,.12));
     }
     this.model.updateWorldMatrix(true,true);
