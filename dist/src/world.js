@@ -132,8 +132,12 @@ export class SiloWorld {
     this.structure=k.group(transforms.slice(0,15),true);this.scene.add(this.structure);this.landings=lk.group(transforms.slice(0,15),true);this.scene.add(this.landings);
     const sk=new Kit(this.m);
     sk.cylinder('concrete',0,H/2,0,C,H);
+    // The glass stands 2.5 cm proud of its backing. Their outer faces used to
+    // meet exactly, 36 cm from the column, and fought over every pixel there:
+    // a dashed white flicker down every lamp on the stair.
+    const L=.215;
     for(let j=0;j<8;j++){const a=j*TAU/8,ry=Math.PI/2-a;for(const da of [-.06,0,.06]){const aa=a+da;sk.box('darkMetal',Math.cos(aa)*(C+.018),H/2,Math.sin(aa)*(C+.018),.12,H-.5,.04,Math.PI/2-aa);}
-      if(j%2===0)for(const y of [2.7,7.1]){sk.cylinder('metal',Math.cos(a)*(C+.17),y,Math.sin(a)*(C+.17),.19,1.95);sk.cylinder('lamp',Math.cos(a)*(C+.19),y,Math.sin(a)*(C+.19),.17,1.72);sk.sphere('lamp',Math.cos(a)*(C+.19),y+.87,Math.sin(a)*(C+.19),.17);sk.sphere('lamp',Math.cos(a)*(C+.19),y-.87,Math.sin(a)*(C+.19),.17);for(const dy of [-.47,.47])sk.torus('darkMetal',Math.cos(a)*(C+.19),y+dy,Math.sin(a)*(C+.19),.185,.025,Math.PI/2);}
+      if(j%2===0)for(const y of [2.7,7.1]){sk.cylinder('metal',Math.cos(a)*(C+.17),y,Math.sin(a)*(C+.17),.19,1.95);sk.cylinder('lamp',Math.cos(a)*(C+L),y,Math.sin(a)*(C+L),.17,1.72);sk.sphere('lamp',Math.cos(a)*(C+L),y+.87,Math.sin(a)*(C+L),.17);sk.sphere('lamp',Math.cos(a)*(C+L),y-.87,Math.sin(a)*(C+L),.17);for(const dy of [-.47,.47])sk.torus('darkMetal',Math.cos(a)*(C+L),y+dy,Math.sin(a)*(C+L),.185,.025,Math.PI/2);}
     }
     buildStairFlight(sk);
     for(const y of [2.4,6.5]){sk.box('darkMetal',C+.06,y,0,.14,1.6,.35);sk.box('lamp',C+.14,y,0,.05,1.35,.16);}
