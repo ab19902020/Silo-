@@ -57,7 +57,9 @@ export function buildResidentModel(definition,{suit=false}={}){
       colors.push(tone.r*shade,tone.g*shade,tone.b*shade);
       const skinPart=painted||tone===skin||tone.skinSurface,hairPart=tone===hair||tone.hairSurface,leather=tone===dark;
       if(finish)surfaces.push(finish[0],finish[1]||0,finish[2]||0,finish[3]||0);
-      else surfaces.push(skinPart?.51:hairPart?.9:leather?.59:.84,0,skinPart?1:0,skinPart||hairPart||leather?0:1);
+      // Hair is marked with 2 in the third channel so the shader can lay
+      // strands over it. It also carries a sheen: at .9 it was felt.
+      else surfaces.push(skinPart?.51:hairPart?.62:leather?.59:.84,0,skinPart?1:hairPart?2:0,skinPart||hairPart||leather?0:1);
     }
     if(geometry.index)for(const i of geometry.index.array)indices.push(start+i);else for(let i=0;i<p.count;i++)indices.push(start+i);geometry.dispose();
   };

@@ -23,7 +23,7 @@ export function residentGLB(definition,suit=false){
   const buckets=new Map(),finish=g.attributes.residentSurface;
   for(const group of (g.groups.length?g.groups:[{start:0,count:g.index.count,materialIndex:0}]))for(let i=group.start;i<group.start+group.count;i+=3){
     const index=g.index.getX(i);let material=group.materialIndex;
-    if(material===0&&finish){material=finish.getZ(index)>.5?3:finish.getW(index)<.5?(finish.getX(index)>.85?4:5):0;}
+    if(material===0&&finish){const kind=finish.getZ(index);material=kind>1.5?4:kind>.5?3:finish.getW(index)<.5?(finish.getX(index)>.85?4:5):0;}   // 2 marks hair, 1 skin
     if(!buckets.has(material))buckets.set(material,[]);buckets.get(material).push(g.index.getX(i),g.index.getX(i+1),g.index.getX(i+2));
   }
   const primitives=[...buckets].map(([material,indices])=>({attributes,indices:append(new Uint32Array(indices),'SCALAR',5125),material,mode:4}));
