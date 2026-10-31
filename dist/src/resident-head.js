@@ -52,7 +52,9 @@ export function addResidentHead({a,skin,hair,dark,add,binding,ell,box,tube}){
  const glossy=(hex)=>{const c=new T.Color(hex);c.residentSurface=[.14,0,0,0];return c;};
  for(const [index,side] of [-1,1].entries()){
   const {x:ex,y:cy,z:ez}=eyeCenters[index];
-  ell(ex,cy,ez,r,r,r,glossy(0xbcb8a9),'Head',20);
+  // The whites were a mid grey, and under the silo's lamps every eye in the
+  // place looked dead. Still not paper-white: an eye is in its own shade.
+  ell(ex,cy,ez,r,r,r,glossy(0xd0cbbd),'Head',20);
   const cap=(radius,half,color)=>{const g=new T.SphereGeometry(radius,20,8,0,Math.PI*2,0,half);g.rotateX(Math.PI/2);g.translate(ex,cy,ez);add(g,color,'Head');};
   cap(r+.00025,.51,glossy(a.eyes??0x575647));cap(r+.00045,.235,glossy(0x080b09));
   for(const upper of [true,false])add(eyelidGeometry(eyeCenters[index],r,upper),skin,'Head');
