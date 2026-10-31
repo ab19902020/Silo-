@@ -46,6 +46,10 @@ export function addResidentHead({a,skin,hair,dark,add,binding,ell,box,tube}){
    const amount=clamp(Math.max(jaw*beard,a.moustache?tache*.75:0),0,.85);
    c.lerp(hair,amount);
   }
+  // The body's skin carries a faint mottling (resident-model.js, `shade`) and
+  // the head did not, so the two met in a pale ring round the neck. The same
+  // mottling, from the same position, makes the join disappear.
+  c.multiplyScalar(.97+.025*Math.cos(y*11+x*24)+.010*Math.sin(x*47+y*31));
   return {color:c,surface:[.53,0,1,0]};
  },skin);
  const eyeCenters=[-1,1].map(side=>shapeFace(side*.03385,1.6183,.08499,a)),r=.0118*(a.eyeSize??1);
