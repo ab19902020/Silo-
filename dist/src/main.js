@@ -858,6 +858,10 @@ for(const button of document.querySelectorAll('[data-travel]'))button.addEventLi
 $('landmarksTab').addEventListener('click',()=>setDirectoryMode(false));$('allLevelsTab').addEventListener('click',()=>setDirectoryMode(true));$('search').addEventListener('input',renderDirectory);
 $('fireButton').addEventListener('click',fire);$('reloadButton').addEventListener('click',()=>{firearms.reload();updateWeaponHud();});
 $('interaction').addEventListener('click',use);$('touchUse').addEventListener('click',use);$('jumpButton').addEventListener('click',()=>{jumpQueued=true;});$('runButton').addEventListener('click',()=>{running=!running;$('runButton').classList.toggle('active',running);});$('torchButton').addEventListener('click',toggleTorch);
+// The Android app already runs full screen, and a WebView has no fullscreen
+// API to offer, so the button there could only ever apologise. It marks itself
+// in the user agent; the button goes.
+if(/Silo18App\//.test(navigator.userAgent))$('fullscreen').hidden=true;
 $('fullscreen').addEventListener('click',async()=>{
   try{
     if(document.fullscreenElement){await document.exitFullscreen();return;}

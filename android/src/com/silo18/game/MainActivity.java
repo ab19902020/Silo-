@@ -70,6 +70,9 @@ public class MainActivity extends Activity {
         s.setBuiltInZoomControls(false);
         s.setUseWideViewPort(true);
         s.setLoadWithOverviewMode(true);
+        // The page hides controls that make no sense inside the app (its
+        // fullscreen button) when it sees this.
+        s.setUserAgentString(s.getUserAgentString() + " Silo18App/1.0");
         // The opening music and the cafeteria sound start before the first tap.
         call(s, "setMediaPlaybackRequiresUserGesture", new Class<?>[]{boolean.class}, false);
         web.setWebChromeClient(new WebChromeClient());

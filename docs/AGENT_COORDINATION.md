@@ -112,3 +112,16 @@ on GitHub Pages works in the app — but two things are worth knowing:
   offline. New file types need a MIME entry in `MainActivity.TYPES`.
 - Back runs the page's Escape behaviour: it fires `cancel` on the open
   `<dialog>`, or a keydown `Escape` when none is open.
+
+## Hair and fabric
+
+- `residentSurface.z` is a kind marker: 1 skin, 2 hair, 0 everything else. The
+  shader lays strands over hair from it, and `scripts/export-residents.mjs`
+  files hair into its own material by it. Hair roughness is .62, not .9.
+- Hair volume is per style in `resident-head.js` (`volume`): buns, tails and
+  braids lie close; loose styles carry 1–3.5 cm, most of it on the crown. The
+  push uses normals welded across the head's UV seam; without that a crack
+  opens along every crown.
+- The fabric weave in `resident-surface.js` is a fine twill (1350 rad/m) that
+  fades out past arm's length. At 420 it was a 1.5 cm lattice that made every
+  shirt look quilted.
