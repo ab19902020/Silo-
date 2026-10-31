@@ -52,11 +52,14 @@ const HEADFUL=process.env.HEADFUL==='1';
 
 const browser=await chromium.launch({headless:!HEADFUL,
   args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
-const page=await browser.newPage({viewport:{width:1280,height:720}});
+// FAST=1 renders a small window on the Low preset. Software rendering is the
+// bottleneck here, and the story does not care how many pixels it is drawn in.
+const FAST=process.env.FAST==='1';
+const page=await browser.newPage({viewport:FAST?{width:640,height:360}:{width:1280,height:720}});
 const errors=[];
 page.on('pageerror',e=>errors.push('pageerror: '+e.message));
 page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text().slice(0,180));});
-await page.addInitScript(()=>{try{localStorage.clear();}catch{}});
+await page.addInitScript(fast=>{try{localStorage.clear();if(fast)localStorage.setItem('silo18-settings',JSON.stringify({quality:'low'}));}catch{}},FAST);
 await page.goto(PAGE,{waitUntil:'load'});
 await page.waitForFunction(()=>window.__silo?.ready,null,{timeout:900000});
 
