@@ -52,11 +52,14 @@ const HEADFUL=process.env.HEADFUL==='1';
 
 const browser=await chromium.launch({headless:!HEADFUL,
   args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
-const page=await browser.newPage({viewport:{width:1280,height:720}});
+// FAST=1 renders a small window on the Low preset. Software rendering is the
+// bottleneck here, and the story does not care how many pixels it is drawn in.
+const FAST=process.env.FAST==='1';
+const page=await browser.newPage({viewport:FAST?{width:640,height:360}:{width:1280,height:720}});
 const errors=[];
 page.on('pageerror',e=>errors.push('pageerror: '+e.message));
 page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text().slice(0,180));});
-await page.addInitScript(()=>{try{localStorage.clear();}catch{}});
+await page.addInitScript(fast=>{try{localStorage.clear();if(fast)localStorage.setItem('silo18-settings',JSON.stringify({quality:'low'}));}catch{}},FAST);
 await page.goto(PAGE,{waitUntil:'load'});
 await page.waitForFunction(()=>window.__silo?.ready,null,{timeout:900000});
 
@@ -323,6 +326,38 @@ await step('Ch12 · travel to Supply, 144',async()=>{await travel('144');await f
 await step('Ch12 · take the sealed suit',()=>reach(o=>o.action==='relic:suit','relic:suit'));
 await step('Ch13 · travel to the airlock',async()=>{await travel('airlock');await frames(9);return {};});
 await step('Ch13 · cycle the inner door',()=>reach(o=>/airlock-/.test(o.action||'')));
+// The rest of the ending: the outer door, the hill, and the thing over the
+// ridge. Walking up the ramp is placed rather than pathed, as everywhere else
+// here; the route itself is tests/playthrough.test.mjs's business.
+await frames(12);
+await step('Ch13 · cycle the outer door',()=>reach(o=>o.action==='airlock-outer','airlock-outer'));
+await frames(24);
+await step('Ch13 · walk out onto the hill',async()=>{
+  await page.evaluate(()=>{const s=window.__silo,d=s.world.destination('surface');s.body.teleport(d.position.x,d.position.y+.2,d.position.z);s.look(d.yaw,0);});
+  await frames(12);
+  const out=await page.evaluate(()=>({outside:window.__silo.world.outside,drone:!!window.__silo.drone?.active}));
+  return out.outside?{}:{stuck:'stood on the surface and the game never counted it as outside'};
+});
+await step('Ch14 · the thing over the ridge',async()=>{
+  // Let it close, keep the sight on it, and fire when it is inside thirty
+  // metres — what the objective tells the player to do.
+  for(let i=0;i<160;i++){
+    const r=await page.evaluate(()=>{
+      const s=window.__silo,d=s.drone;if(!d?.active)return {done:true,chapter:s.story.chapter};
+      const eye=s.camera.getWorldPosition(s.camera.position.clone()),at=d.group.position;
+      const dx=at.x-eye.x,dy=at.y-eye.y,dz=at.z-eye.z,flat=Math.hypot(dx,dz);
+      s.look(Math.atan2(dx,dz)+Math.PI,Math.atan2(dy,flat));
+      return {distance:Math.hypot(flat,dy),hits:d.hits,falling:d.falling||false};
+    });
+    if(r.done)break;
+    await frames(1);
+    if(r.distance<28)await page.evaluate(()=>{const s=window.__silo;if(s.firearms.status()?.empty)s.firearms.reload?.();s.fire();});
+    await frames(2);
+  }
+  await frames(30);
+  const end=await page.evaluate(()=>({chapter:window.__silo.story.chapter,active:!!window.__silo.drone?.active}));
+  return end.chapter==='free'?{}:{stuck:`the drone fight ended in chapter "${end.chapter}" (drone ${end.active?'still flying':'gone'})`};
+});
 
 say('\n\n=== SUMMARY ===');
 let stuck=0;

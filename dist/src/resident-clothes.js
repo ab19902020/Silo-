@@ -1,5 +1,15 @@
 import * as T from '../vendor/three.module.js';
 
+// How far an outer garment stands off the body it hangs on, and how wide it is
+// open at the waist. The jacket shell and the coat skirt below it share both,
+// so the two meet at the waist seam without a step.
+export const JACKET_STAND={coat:.012,medical:.011,cardigan:.010,vest:.006,robe:.0018};
+export const JACKET_OPEN={coat:.16,medical:.16,cardigan:.20,vest:.18,robe:.015};
+// How far open the front is at the collarbone. The upper chest is narrow, so an
+// angle that looks modest at the waist swallows most of it up here; at .64 the
+// cardigan's V took the whole front of the chest and read as a bib.
+export const JACKET_NECK={coat:.52,medical:.50,cardigan:.44,vest:.58};
+
 // Cloth panels are thin, fitted surfaces with the same skinning as the body.
 // Only actual hardware (buttons, buckle and tools) has rigid relief.
 export function addResidentClothes({a,wide,coat,shirt,dark,surface,add,binding}){
@@ -21,61 +31,153 @@ export function addResidentClothes({a,wide,coat,shirt,dark,surface,add,binding})
   // Fine ribbing conforms to the chest; it is no longer a stack of blocks.
   for(let i=0;i<7;i++)panel(0,1.105+i*.039,.24,.0012,tint(.94));
  }
- // Turned-down collar: a subdivided cloth panel, folded onto the shoulder.
- if(['work','uniform','shirt'].includes(a.outfit))for(const sign of [-1,1]){
-  const corners=[[.028,1.427],[.058,1.422],[.086,1.375],[.022,1.395]],p=[],idx=[],n=6;
-  for(let j=0;j<=n;j++)for(let i=0;i<=n;i++){
-   const u=i/n,v=j/n,top=new T.Vector2(...corners[0]).lerp(new T.Vector2(...corners[1]),u),bottom=new T.Vector2(...corners[3]).lerp(new T.Vector2(...corners[2]),u),point=top.lerp(bottom,v);
-   p.push(sign*point.x*wide,point.y,.0008*Math.sin(Math.PI*v));
+ // A collar, rather than a flat quad laid on the shoulder. The old one was four
+ // corners of a plane fitted to the chest in the undershirt's colour, so from
+ // any distance it read as a pale sticker above the breastbone — and a collar is
+ // the garment feature you see first at conversation range.
+ //
+ // This is the shape a real one makes: a band standing against the neck, a roll
+ // where it turns over, and a fall lying out across the shoulder. It is built on
+ // the neck hole's own ellipse, which the body sews shut at a known size, so it
+ // sits on the neck wherever the body around it has been reshaped.
+ if(['work','uniform','shirt','vest','coat','medical','robe'].includes(a.outfit)){
+  const stand=a.outfit==='work'?.030:.026, fall=a.outfit==='shirt'?.055:.048;
+  const open=['coat','medical','vest'].includes(a.outfit)?.62:a.outfit==='robe'?.50:a.outfit==='shirt'?.44:.34;
+  // [along the collar, how far out, how high, how dark]
+  const profile=[[0,1.00,1.447,.94],[.32,1.06,1.474,.98],[.50,1.20,1.468,1.03],
+                 [.74,1.38,1.450,.97],[1,1.00+fall*7.2,1.449-fall*.74,.90]];
+  const at=t=>{
+   for(let k=0;k<profile.length-1;k++){
+    const [t0,r0,y0,s0]=profile[k],[t1,r1,y1,s1]=profile[k+1];
+    if(t<=t1||k===profile.length-2){const f=clamp((t-t0)/Math.max(1e-6,t1-t0),0,1),e=f*f*(3-2*f);
+     return [r0+(r1-r0)*e,y0+(y1-y0)*e,s0+(s1-s0)*e];}
+   }
+  };
+  const rows=7,cols=30,p=[],idx=[],tones=[],si=[],sw=[];
+  const neck=binding('Neck')[0],chest=binding('Chest')[0];
+  for(let j=0;j<=rows;j++)for(let i=0;i<=cols;i++){
+   const t=j/rows,[r,y,shade]=at(t),angle=open+(i/cols)*(TAU-open*2);
+   // The stand hugs the neck and the fall spreads across the back more than the
+   // front, the way a collar does when it is not being held down by a tie.
+   const spread=1+.14*Math.max(0,-Math.cos(angle))*t;
+   p.push(Math.sin(angle)*.066*wide*r*spread,y,Math.cos(angle)*.060*r*spread+.010);
+   tones.push(shade);
+   // The stand belongs to the neck; the fall lies on the shoulder and takes its
+   // weights from the body there, so it moves with a shrug or a turned spine
+   // rather than hanging off the neck bone like a hoop.
+   const onShoulder=T.MathUtils.smoothstep(t,.45,1);
+   const support=onShoulder>.01?surface.sample(Math.sin(angle),Math.min(y,1.408),Math.cos(angle),'radial'):null;
+   const mix=new Map([[neck,(1-clamp((y-1.40)/.075,0,1))*0+clamp((y-1.40)/.075,0,1)],[chest,1-clamp((y-1.40)/.075,0,1)]]);
+   for(const [bone,w] of [...mix])mix.set(bone,w*(support?1-onShoulder:1));
+   if(support)for(let k=0;k<4;k++)mix.set(support.indices[k],(mix.get(support.indices[k])||0)+support.weights[k]*onShoulder);
+   const pairs=[...mix].filter(([,w])=>w>1e-6).sort((a,b)=>b[1]-a[1]).slice(0,4);
+   const total=pairs.reduce((sum,[,w])=>sum+w,0)||1;
+   for(let k=0;k<4;k++){si.push(pairs[k]?.[0]||0);sw.push((pairs[k]?.[1]||0)/total);}
   }
-  for(let j=0;j<n;j++)for(let i=0;i<n;i++){const k=j*(n+1)+i;idx.push(k,k+n+1,k+1,k+1,k+n+1,k+n+2);}
-  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setIndex(idx);g.computeVertexNormals();surface.fit(g,{smooth:true,offset:.0018});add(g,shirt,'Chest',null,true);
+  for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const k=j*(cols+1)+i;idx.push(k,k+cols+1,k+1,k+1,k+cols+1,k+cols+2);}
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));
+  g.setAttribute('attachmentSkinIndex',new T.Uint16BufferAttribute(si,4));
+  g.setAttribute('attachmentSkinWeight',new T.Float32BufferAttribute(sw,4));
+  g.setIndex(idx);g.computeVertexNormals();
+  add(g,coat,'Chest',null,true,(x,y,z,i)=>({color:coat.clone().multiplyScalar(tones[i]),surface:[.87,0,0,1]}));
  }
  if(a.quilted)for(let i=0;i<7;i++)for(const s of [-1,1])panel(s*(.026+i*.017),1.16,.0008,.22,tint(.92));
  if(layered){
-  // A separate shirt insert has a sewn contour. Interpolating vertex colours
-  // across the original chest triangles produced the old jagged V-neck.
-  {
-   const p=[],idx=[],rows=22,cols=12;
-   for(let j=0;j<=rows;j++)for(let i=0;i<=cols;i++){
-    const y=1.427-j/rows*.435,half=.028+.034*T.MathUtils.smoothstep(y,1.16,1.427);
-    p.push((i/cols*2-1)*half*wide,y,0);
-   }
-   for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const k=j*(cols+1)+i;idx.push(k,k+cols+1,k+1,k+1,k+cols+1,k+cols+2);}
-   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setIndex(idx);surface.fit(g,{smooth:true,offset:.004});add(g,shirt,'Chest',null,true);
-  }
-  if(a.outfit==='vest'){
-   const p=[],idx=[],rows=20,cols=12;
-   for(let j=0;j<=rows;j++)for(let i=0;i<=cols;i++){
-    const y=1.405-j/rows*.413,half=.127-.057*T.MathUtils.smoothstep(y,1.34,1.405);p.push((i/cols*2-1)*half*wide,y,0);
-   }
-   for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const k=j*(cols+1)+i;idx.push(k,k+cols+1,k+1,k+1,k+cols+1,k+cols+2);}
-   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setIndex(idx);surface.fit(g,{smooth:true,side:-1,offset:.002});add(g,coat,'Chest',null,true);
-  }
-  // The opening is bounded by actual fitted cloth, rather than a differently
-  // coloured stripe. Front panels follow the chest's full blend weights.
+  // An open garment is a garment, sampled round the body ring by ring the way
+  // the coat skirts below already are — not a set of flat rectangles projected
+  // onto the chest along one axis. Those came out as stepped, jagged stickers:
+  // a beige strip for the shirt, grey slabs for the fronts, a pale square for
+  // each pocket, and the fronts never turned the corner round the ribs. This is
+  // one shell from the waist seam up over the shoulders, open down the front,
+  // standing off the body by the thickness of the cloth, carrying the skin
+  // weights of the body under each point. Its front edge is the boundary of the
+  // shirt that shows through, so that boundary is as clean as the shell.
+  const stand=JACKET_STAND[a.outfit],base=JACKET_OPEN[a.outfit],neckOpen=JACKET_NECK[a.outfit];
+  const bottom=a.outfit==='vest'?.935:1.008,top=1.447;
+  const openingAt=y=>base+(neckOpen-base)*T.MathUtils.smoothstep(y,1.10,1.40);
+  // A radial sample is only support if it is on the side of the body the ray
+  // came in from. High on the chest the front has no supported triangles, and
+  // the ray used to sail straight through and come back with a point on the
+  // shoulder blade — so the top of every open jacket was built inside the body.
+  const nearSide=(support,angle)=>support&&support.point.x*Math.sin(angle)+(support.point.z-.010)*Math.cos(angle)>0?support:null;
+  // The fallback surface includes the arms, and cloth on the front of the chest
+  // should follow the chest. It keeps a trace of the arm — the skin under it does
+  // too — but no more than a collar or yoke is allowed.
+  const ARM=new Set(['UpperArmL','UpperArmR','ForearmL','ForearmR','HandL','HandR','FingersL','FingersR','FingerTipsL','FingerTipsR'].map(n=>binding(n)[0]));
+  const lightArm=support=>{
+   if(!support)return null;
+   let arm=0;for(let k=0;k<4;k++)if(ARM.has(support.indices[k]))arm+=support.weights[k];
+   if(arm<=.08)return support;
+   const scale=.08/arm,rest=(1-.08)/Math.max(1e-6,1-arm);
+   return {...support,weights:support.weights.map((w,k)=>w*(ARM.has(support.indices[k])?scale:rest))};
+  };
+  const chestAt=(angle,y)=>nearSide(surface.sample(Math.sin(angle),y,Math.cos(angle),'radial'),angle)
+   ||(Math.abs(angle)<.95?lightArm(nearSide(surface.full?.sample(Math.sin(angle),y,Math.cos(angle),'radial'),angle)):null);
+  const rows=26,cols=24;
   for(const sign of [-1,1]){
-   const p=[],idx=[],rows=18,cols=8;
-   for(let j=0;j<=rows;j++)for(let i=0;i<=cols;i++){
-    const y=1.405-j/rows*.413,neck=T.MathUtils.smoothstep(y,1.15,1.405);
-    const inner=.025+neck*(a.outfit==='vest'?.040:a.outfit==='cardigan'?.038:.035);
-    p.push(sign*(inner+(.127-.057*T.MathUtils.smoothstep(y,1.34,1.405)-inner)*i/cols)*wide,y,.002);
-   }
-   for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const k=j*(cols+1)+i;idx.push(k,k+cols+1,k+1,k+1,k+cols+1,k+cols+2);}
-   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setIndex(idx);surface.fit(g,{smooth:true,offset:.008});add(g,coat,'Chest',null,true);
-   if(['coat','medical'].includes(a.outfit)){
-    // Long folded lapels, with a small lifted ridge and a tailored point.
-    const p=[],idx=[],n=18;
-    for(let j=0;j<=n;j++){
-     const t=j/n,y=1.404-t*.222,inner=(.030+.030*(1-t))*wide,width=.014*Math.sin(Math.PI*t);
-     p.push(sign*inner,y,.006,sign*(inner+width),y,.009);
+   const p=[],idx=[],si=[],sw=[],grid=[];
+   // A waistcoat is cut away under the arm; the others carry on round the back.
+   const reach=a.outfit==='vest'?Math.PI*.98:Math.PI;
+   // Over the shoulder the chest stops offering support — its triangles follow
+   // the arm, and arms are kept out of the garment surface — so above the
+   // armpit the shell is swept across the front panel only, out to a smooth
+   // curve that stays on the chest, and the cloth thins into the body along
+   // that curve. The shoulders above it are the garment's own cloth already.
+   // Letting every column run up until its own support failed instead gave a
+   // sawtooth edge across the upper chest, one tooth per column.
+   const edgeMax=y=>reach+(.72-reach)*T.MathUtils.smoothstep(y,1.27,1.35)-.03*T.MathUtils.smoothstep(y,1.38,1.44);
+   const previous=[];
+   for(let j=0;j<=rows;j++){
+    const y=bottom+(top-bottom)*j/rows,open=openingAt(y),far=Math.max(open+.10,edgeMax(y));
+    for(let i=0;i<=cols;i++){
+     const u=i/cols,angle=sign*(open+(far-open)*u);
+     let support=chestAt(angle,y)||previous[i];
+     if(!support)throw Error('Missing jacket support');
+     previous[i]=support;grid.push(support);
+     // Cloth stands furthest off the body over the ribs and least over the
+     // shoulder, where the weight of the garment hangs from; across the top of
+     // the chest it thins out towards the curve where the panel meets the body.
+     // Round the sides the cloth has already settled onto the body by the time
+     // the panel narrows, so the narrowing leaves no lip across the chest.
+     const outer=T.MathUtils.smoothstep(Math.abs(angle),.66,.92)*T.MathUtils.smoothstep(y,1.18,1.29);
+     const lift=Math.max(.0022,stand*(1-.6*T.MathUtils.smoothstep(y,1.31,1.447))*(1-outer));
+     const point=support.point.clone().addScaledVector(support.normal,lift);
+     p.push(point.x,point.y,point.z);
+     for(let q=0;q<4;q++){si.push(support.indices[q]);sw.push(support.weights[q]);}
     }
-    for(let j=0;j<n;j++){const k=j*2;idx.push(k,k+1,k+2,k+1,k+3,k+2);}
-    const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setIndex(idx);surface.fit(g,{smooth:true,offset:.008});add(g,tint(.89),'Chest',null,true);
    }
-   patch(sign*.092*wide,1.078,.061,.066);
+   for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){
+    const k=j*(cols+1)+i;
+    if(sign>0)idx.push(k,k+cols+1,k+1,k+1,k+cols+1,k+cols+2);else idx.push(k,k+1,k+cols+1,k+1,k+cols+2,k+cols+1);
+   }
+   // The front edge has the thickness of the cloth: a narrow facing turns from
+   // the edge of the shell back to the shirt beneath it, so a resident seen
+   // three-quarter on shows the edge of a garment, not the edge of a sheet.
+   const facing=p.length/3;
+   for(let j=0;j<=rows;j++){
+    const support=grid[j*(cols+1)],point=support.point.clone().addScaledVector(support.normal,.0012);
+    p.push(point.x,point.y,point.z);
+    for(let k=0;k<4;k++){si.push(support.indices[k]);sw.push(support.weights[k]);}
+   }
+   for(let j=0;j<rows;j++){
+    const a0=j*(cols+1),a1=(j+1)*(cols+1),b0=facing+j,b1=facing+j+1;
+    if(sign>0)idx.push(a0,b0,a1,a1,b0,b1);else idx.push(a0,a1,b0,a1,b1,b0);
+   }
+   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));
+   g.setAttribute('attachmentSkinIndex',new T.Uint16BufferAttribute(si,4));g.setAttribute('attachmentSkinWeight',new T.Float32BufferAttribute(sw,4));
+   g.setIndex(idx);g.computeVertexNormals();
+   const facingShade=a.outfit==='cardigan'?.86:.92;
+   add(g,coat,'Chest',null,true,(x,y,z,i)=>({color:tint(i>=facing?facingShade:.98+.02*Math.sin(y*61+x*37)),surface:[.88,0,0,1]}));
   }
-  if(['cardigan','vest'].includes(a.outfit))for(let i=0;i<4;i++)button(.035*wide,1.035+i*.046,.0035,dark);
+  if(['cardigan','vest'].includes(a.outfit))for(let i=0;i<4;i++){
+   const y=1.035+i*.046,angle=-(openingAt(y)+.05),support=chestAt(angle,y);
+   if(!support)continue;
+   const g=new T.CircleGeometry(.0042,14),q=new T.Quaternion().setFromUnitVectors(new T.Vector3(0,0,1),support.normal);
+   g.applyQuaternion(q);const at=support.point.clone().addScaledVector(support.normal,stand+.0025);g.translate(at.x,at.y,at.z);
+   const count=g.attributes.position.count,bsi=[],bsw=[];for(let v=0;v<count;v++)for(let k=0;k<4;k++){bsi.push(support.indices[k]);bsw.push(support.weights[k]);}
+   g.setAttribute('attachmentSkinIndex',new T.Uint16BufferAttribute(bsi,4));g.setAttribute('attachmentSkinWeight',new T.Float32BufferAttribute(bsw,4));
+   add(g,dark,'Chest');
+  }
  }
  // A sewn waistband follows the real waist circumference and its blend weights.
  if(!['knit','cardigan','robe','medical','coat'].includes(a.outfit)){
@@ -105,11 +207,11 @@ export function addResidentClothes({a,wide,coat,shirt,dark,surface,add,binding})
  if(['coat','cardigan','medical','robe'].includes(a.outfit))for(const [side,sign] of [['L',1],['R',-1]]){
   const hem=a.coatLength??(a.outfit==='robe'?.34:a.outfit==='cardigan'?.86:a.outfit==='medical'?.68:.59),rows=18,cols=30,p=[],idx=[],si=[],sw=[];
   for(let j=0;j<=rows;j++)for(let i=0;i<=cols;i++){
-   const t=j/rows,y=1.008+(hem-1.008)*t,opening=a.outfit==='robe'?.015:a.outfit==='cardigan'?.20:.16,angle=sign*(opening+i/cols*(Math.PI-opening));
+   const t=j/rows,y=1.008+(hem-1.008)*t,opening=JACKET_OPEN[a.outfit]??.16,angle=sign*(opening+i/cols*(Math.PI-opening));
    const support=surface.sample(Math.sin(angle),Math.max(y,.85),Math.cos(angle),'radial');
    if(!support)throw Error('Missing coat support');
    const flare=(a.outfit==='robe'?.047:a.outfit==='cardigan'?.004:.018)*Math.sin(t*Math.PI/2),fold=.0035*Math.sin(angle*10+.7)*Math.pow(t,1.3);
-   const anchor=support.point.clone().addScaledVector(support.normal,.0018+.004*T.MathUtils.smoothstep(1.008-y,0,.15));
+   const anchor=support.point.clone().addScaledVector(support.normal,(JACKET_STAND[a.outfit]??.0018)+.004*T.MathUtils.smoothstep(1.008-y,0,.15));
    p.push(anchor.x+Math.sin(angle)*(flare+fold)*wide,y,anchor.z+Math.cos(angle)*(flare+fold)*.73);
    const coatWeight=T.MathUtils.smoothstep(t,0,1)*.025;
    const leg=(1-T.MathUtils.smoothstep(y,.80,1.008))*(1-coatWeight),shin=a.outfit==='robe'?(1-T.MathUtils.smoothstep(y,.30,.58))*.65:0,hips=1-leg-coatWeight;

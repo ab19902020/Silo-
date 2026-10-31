@@ -23,7 +23,7 @@ export function residentGLB(definition,suit=false){
   const buckets=new Map(),finish=g.attributes.residentSurface;
   for(const group of (g.groups.length?g.groups:[{start:0,count:g.index.count,materialIndex:0}]))for(let i=group.start;i<group.start+group.count;i+=3){
     const index=g.index.getX(i);let material=group.materialIndex;
-    if(material===0&&finish){material=finish.getZ(index)>.5?3:finish.getW(index)<.5?(finish.getX(index)>.85?4:5):0;}
+    if(material===0&&finish){const kind=finish.getZ(index);material=kind>1.5?4:kind>.5?3:finish.getW(index)<.5?(finish.getX(index)>.85?4:5):0;}   // 2 marks hair, 1 skin
     if(!buckets.has(material))buckets.set(material,[]);buckets.get(material).push(g.index.getX(i),g.index.getX(i+1),g.index.getX(i+2));
   }
   const primitives=[...buckets].map(([material,indices])=>({attributes,indices:append(new Uint32Array(indices),'SCALAR',5125),material,mode:4}));
@@ -39,7 +39,15 @@ export function residentGLB(definition,suit=false){
       if(['Idle','Walk','Run','Jump'].includes(name))actor.motion.sample(name,t);
       else if(name==='Climb')actor.motion.climb({cycle:t/2,grip:1});
       else poseResident(actor,name==='Sit'?'sit':'work',duration/Math.PI*Math.sin(Math.PI*t/duration)**2);
-      bones.forEach((b,j)=>{tracks[j].q.push(...b.quaternion.toArray());tracks[j].p.push(...b.position.toArray());});
+      // q and -q are the same rotation, and the rig is free to hand back either.
+      // A linearly interpolated track is not: a sign flip between two keyframes
+      // spins the bone a full turn on the way between them, and a flip at the
+      // loop boundary does it once a cycle. Keep each track in one hemisphere.
+      bones.forEach((b,j)=>{
+        const q=b.quaternion.toArray(),prev=tracks[j].q.slice(-4);
+        if(prev.length===4&&prev[0]*q[0]+prev[1]*q[1]+prev[2]*q[2]+prev[3]*q[3]<0)for(let k=0;k<4;k++)q[k]=-q[k];
+        tracks[j].q.push(...q);tracks[j].p.push(...b.position.toArray());
+      });
     }
     const input=append(times,'SCALAR',5126,{min:[0],max:[duration]}),samplers=[],channels=[];
     for(let j=0;j<bones.length;j++)for(const [key,type,target] of [['q','VEC4','rotation'],['p','VEC3','translation']]){const output=append(new Float32Array(tracks[j][key]),type,5126),sampler=samplers.length;samplers.push({input,output,interpolation:'LINEAR'});channels.push({sampler,target:{node:j+1,path:target}});}

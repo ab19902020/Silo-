@@ -1,6 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { SILO, STAIR_SWEEP, landingAngle, landingPoint, levelY, stairStepY, stairHeight, levelAt } from './data.js';
 import { createResident, poseResident } from './resident-model.js';
+import { updateResidentDetail } from './resident-lod.js';
 import { CROWD_APPEARANCES, crowdAppearanceIndex } from './resident-data.js';
 import { residentName } from './resident-stories.js';
 import { assignWorkday, workAt } from './workday.js';
@@ -73,7 +74,7 @@ export class PorterTraffic{
     for(const {r,distance} of near.slice(0,budget)){
       let a=this.actors.get(r.id);
       if(!a){const index=crowdAppearanceIndex(r.seed),definition={id:`delivery-body-${index}`,name:residentName(r.seed),role:'Stair porter',height:1.72,appearance:CROWD_APPEARANCES[index]};a=createResident(definition);a.root.position.copy(r.position);a.heading=r.sample.heading;a.root.rotation.y=a.heading;attachWorkProps(a,this.world.m,r.roster);this.scene.add(a.root);this.actors.set(r.id,a);}
-      a.root.position.copy(r.position);
+      a.root.position.copy(r.position);updateResidentDetail(a,talkingTo===r.id?0:distance,this.world.quality);
       // The rendered body eases over risers; IK still samples the actual treads.
       a.visualY=a.visualY==null?r.position.y:THREE.MathUtils.damp(a.visualY,r.position.y,22,dt);a.root.position.y=a.visualY;
       const target=talkingTo===r.id?Math.atan2(body.position.x-r.position.x,body.position.z-r.position.z):r.sample.speed?r.sample.heading:a.heading;

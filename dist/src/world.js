@@ -4,6 +4,9 @@ import { ColliderSet } from './physics.js';
 import { SILO, TAU, levelY, levelAt, roomType, TYPE_NAMES, stairStepY, STAIR_SWEEP, landingAngle, landingPoint } from './data.js';
 import { Kit, createMaterials, addSign, fixture, disposeGroup, SIGN_DEPTH } from './kit.js';
 
+// Shadow casters that are never drawn to the screen: see buildStructure.
+const SHADOW_ONLY=1;
+
 // Gallery pylons, four to a wing sector. Spacing them evenly round the ring put
 // a column 2.5 m from every door centre — half a metre clear of the jamb, right
 // in the walking line out of the wing. Grouping them between the doorways keeps
@@ -56,7 +59,7 @@ export class SiloWorld {
     // means no clock is running and the fixtures stay at working daylight.
     this.schedule=null;this.lampScale=1;this.lampWarmth=0;this.fixtures=new InteriorFixtures();
     this.buildStructure();this.surface=new SurfaceWorld(this.m);scene.add(this.surface.root);this.generator=buildGeneratorHall(this.m);scene.add(this.generator.root);this.generator.root.visible=false;
-    this.keyLight=new THREE.SpotLight(0xffd6a0,0,48,1.05,.8,1.65);this.keyLight.userData={key:null};this.keyLight.castShadow=true;this.keyLight.shadow.mapSize.set(1024,1024);this.keyLight.shadow.bias=-.00015;this.keyLight.shadow.normalBias=.008;this.keyLight.shadow.radius=2;this.keyLight.shadow.camera.near=.4;scene.add(this.keyLight,this.keyLight.target);
+    this.keyLight=new THREE.SpotLight(0xffd6a0,0,48,1.05,.8,1.65);this.keyLight.userData={key:null};this.keyLight.castShadow=true;this.keyLight.shadow.mapSize.set(1024,1024);this.keyLight.shadow.bias=-.00015;this.keyLight.shadow.normalBias=.008;this.keyLight.shadow.radius=2;this.keyLight.shadow.camera.near=.4;this.keyLight.shadow.camera.layers.enable(SHADOW_ONLY);scene.add(this.keyLight,this.keyLight.target);
     this.sun.castShadow=false;this.sun.visible=false;this.sun.intensity=0;
     this.silo17=buildSilo17(this.m);scene.add(this.silo17.root);this.silo17.root.visible=false;
     this.pressure=buildPressureGallery(this.m);scene.add(this.pressure.root);this.pressure.root.visible=false;
@@ -129,8 +132,12 @@ export class SiloWorld {
     this.structure=k.group(transforms.slice(0,15),true);this.scene.add(this.structure);this.landings=lk.group(transforms.slice(0,15),true);this.scene.add(this.landings);
     const sk=new Kit(this.m);
     sk.cylinder('concrete',0,H/2,0,C,H);
+    // The glass stands 2.5 cm proud of its backing. Their outer faces used to
+    // meet exactly, 36 cm from the column, and fought over every pixel there:
+    // a dashed white flicker down every lamp on the stair.
+    const L=.215;
     for(let j=0;j<8;j++){const a=j*TAU/8,ry=Math.PI/2-a;for(const da of [-.06,0,.06]){const aa=a+da;sk.box('darkMetal',Math.cos(aa)*(C+.018),H/2,Math.sin(aa)*(C+.018),.12,H-.5,.04,Math.PI/2-aa);}
-      if(j%2===0)for(const y of [2.7,7.1]){sk.cylinder('metal',Math.cos(a)*(C+.17),y,Math.sin(a)*(C+.17),.19,1.95);sk.cylinder('lamp',Math.cos(a)*(C+.19),y,Math.sin(a)*(C+.19),.17,1.72);sk.sphere('lamp',Math.cos(a)*(C+.19),y+.87,Math.sin(a)*(C+.19),.17);sk.sphere('lamp',Math.cos(a)*(C+.19),y-.87,Math.sin(a)*(C+.19),.17);for(const dy of [-.47,.47])sk.torus('darkMetal',Math.cos(a)*(C+.19),y+dy,Math.sin(a)*(C+.19),.185,.025,Math.PI/2);}
+      if(j%2===0)for(const y of [2.7,7.1]){sk.cylinder('metal',Math.cos(a)*(C+.17),y,Math.sin(a)*(C+.17),.19,1.95);sk.cylinder('lamp',Math.cos(a)*(C+L),y,Math.sin(a)*(C+L),.17,1.72);sk.sphere('lamp',Math.cos(a)*(C+L),y+.87,Math.sin(a)*(C+L),.17);sk.sphere('lamp',Math.cos(a)*(C+L),y-.87,Math.sin(a)*(C+L),.17);for(const dy of [-.47,.47])sk.torus('darkMetal',Math.cos(a)*(C+L),y+dy,Math.sin(a)*(C+L),.185,.025,Math.PI/2);}
     }
     buildStairFlight(sk);
     for(const y of [2.4,6.5]){sk.box('darkMetal',C+.06,y,0,.14,1.6,.35);sk.box('lamp',C+.14,y,0,.05,1.35,.16);}
@@ -146,7 +153,19 @@ export class SiloWorld {
     fs.cylinder('concrete',0,H/2,0,C,H);
     buildStairFlight(fs,{steps:36,quality:3,density:7});
     this.distant=fk.group(transforms,true);this.distantLandings=fl.group(transforms,true);this.distantStairs=fs.group(transforms,true);
-    this.scene.add(this.distant,this.distantLandings,this.distantStairs);this.updateStructure(1);
+    this.scene.add(this.distant,this.distantLandings,this.distantStairs);
+    // Only the storey you are standing on casts shadows. The shadow lamp is a
+    // fixture on this floor pointing down, and an instanced mesh is drawn into
+    // its shadow map whole — so every detailed storey above and below, and all
+    // hundred and forty far ones, were being drawn a second time each frame
+    // for shadows that land, at best, a floor or two further down the shaft.
+    // The band itself stops casting. A small copy of the detailed kit, on a
+    // layer only the shadow lamp looks at, carries the shadows for the storey
+    // here: it is never drawn to the screen, and never hit by a ray.
+    const shadowed=group=>{const copy=new THREE.Group();for(const mesh of group.children){const caster=new THREE.InstancedMesh(mesh.geometry,mesh.material,3);caster.castShadow=true;caster.receiveShadow=false;caster.layers.set(SHADOW_ONLY);caster.userData.ownedGeometry=false;copy.add(caster);mesh.castShadow=false;}this.scene.add(copy);return copy;};
+    this.structureHere=shadowed(this.structure);this.landingsHere=shadowed(this.landings);this.stairsHere=shadowed(this.stairs);
+    for(const group of [this.distant,this.distantLandings,this.distantStairs])for(const mesh of group.children)mesh.castShadow=false;
+    this.updateStructure(1);
     // Crown closes the structure above the top landing; no exterior town.
     const crown=new Kit(this.m);crown.cylinder('darkConcrete',0,levelY(1)+H,0,O+1,.65);for(let i=0;i<12;i++){const a=i*TAU/12;crown.beam('concrete',[Math.cos(a)*C,levelY(1)+H-.6,Math.sin(a)*C],[Math.cos(a)*O,levelY(1)+H-.6,Math.sin(a)*O],.35);}
     // Continue the visible spine through the top storey. Previously only its
@@ -156,8 +175,24 @@ export class SiloWorld {
     this.topCore=core.group();this.topCore.name='top-floor-stair-spine';this.topCore.position.y=levelY(1);this.scene.add(this.topCore,crown.group());
   }
   updateStructure(level){
-    const near=Array.from({length:15},(_,i)=>Math.max(1,Math.min(130,level-7))+i),stairs=near.filter(n=>n>1),far=Array.from({length:144},(_,i)=>i+1).filter(n=>!near.includes(n));
-    for(const [group,numbers,rotate] of [[this.structure,near,false],[this.landings,near,true],[this.stairs,stairs,true],[this.distant,far,false],[this.distantLandings,far,true],[this.distantStairs,far.filter(n=>n>1),true]])for(const mesh of group.children){
+    // Each detailed storey of the shaft is about 170,000 triangles — columns
+    // with their flutes and bolts, the gallery, the flight — and the detailed
+    // band was fifteen of them, drawn every frame and again into the shadow
+    // map, because an instanced mesh is culled as a whole and fifteen storeys
+    // make a bounding sphere a hundred and fifty metres tall. From a room off
+    // the shaft none of it is even in view. The silhouette the far levels keep
+    // is what carries the depth of the shaft; the band of full detail only
+    // needs to cover the storeys close enough to read a tread or a bolt.
+    this.lastStructureLevel=level;
+    const reach=this.quality==='high'?4:this.quality==='low'?1:2,count=reach*2+1;
+    this.structureReach=reach;
+    const near=Array.from({length:count},(_,i)=>Math.max(1,Math.min(145-count,level-reach))+i),far=Array.from({length:144},(_,i)=>i+1).filter(n=>!near.includes(n));
+    // The storeys that cast shadows: this one, and on high quality the one
+    // above and below it as well.
+    const here=near.filter(n=>Math.abs(n-level)<=(this.quality==='high'?1:0));
+    const groups=[[this.structure,near,false],[this.landings,near,true],[this.stairs,near.filter(n=>n>1),true],[this.distant,far,false],[this.distantLandings,far,true],[this.distantStairs,far.filter(n=>n>1),true]];
+    if(this.structureHere)groups.push([this.structureHere,here,false],[this.landingsHere,here,true],[this.stairsHere,here.filter(n=>n>1),true]);
+    for(const [group,numbers,rotate] of groups)for(const mesh of group.children){
       mesh.count=numbers.length;for(let i=0;i<numbers.length;i++){const matrix=new THREE.Matrix4().makeRotationY(rotate?-landingAngle(numbers[i]):0);matrix.setPosition(0,levelY(numbers[i]),0);mesh.setMatrixAt(i,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();
     }
   }
@@ -504,7 +539,14 @@ export class SiloWorld {
     this.lampScale=hourly?THREE.MathUtils.damp(this.lampScale,.83+.17*hourly.lamp,3,dt):1;
     this.lampWarmth=hourly?THREE.MathUtils.damp(this.lampWarmth,hourly.warmth,3,dt):0;
     if(hourly)this.surface.sky.scheduledDay=hourly.daylight;
-    this.surface.update(dt);const top=topLocal(position);this.outside=!this.special&&this.activeLevel===1&&(inRampCutout(top.x,top.z)?top.z>99&&top.y>10:top.y>=groundY(top.x,top.z)-.5);if(this.outside){this.surface.streamTerrain(top);this.surface.sky.mesh.position.set(top.x,top.y+1.7,top.z);}this.surface.sky.mesh.visible=this.outside;
+    this.surface.update(dt);const top=topLocal(position);this.outside=!this.special&&this.activeLevel===1&&(inRampCutout(top.x,top.z)?top.z>99&&top.y>10:top.y>=groundY(top.x,top.z)-.5);// The surface — ground, scree, the dead trees — sits on top of Level 001 and
+    // is three hundred thousand triangles, drawn every frame from every floor
+    // of the silo, because nothing in front of it stops the GPU being asked. It
+    // can only be seen from the ramp: the airlock's two doors never stand open
+    // together, so from anywhere short of the inner door at z 54 there is
+    // always a closed door between you and the daylight.
+    this.surface.root.visible=!this.special&&(this.outside||this.activeLevel===1&&top.z>52);
+    if(this.outside){this.surface.streamTerrain(top);this.surface.sky.mesh.position.set(top.x,top.y+1.7,top.z);}this.surface.sky.mesh.visible=this.outside;
     const airlocks=this.loaded.get(1)?.rooms[0].userData.doors||[];
     for(const door of airlocks){const other=airlocks.find(d=>d!==door);if(door.requested&&other.amount<.01){door.open=true;door.requested=false;}door.amount=THREE.MathUtils.damp(door.amount,door.open?1:0,3.5,dt);door.pivot.position.y=door.amount*4.35;if(door.collider)door.collider.enabled=door.amount<.96;}
 
@@ -537,6 +579,6 @@ export class SiloWorld {
     // floor number. Walking through 050 or 101 must not re-grade the picture.
     const depth=(levelY(1)-position.y)/SILO.levelHeight+1;
     const interiorFog=.0072+.0008*THREE.MathUtils.smoothstep(depth,47,52)+.001*THREE.MathUtils.smoothstep(depth,98,103);
-    this.scene.fog.density=this.outside?.0012:this.special==='excavator'?.004:this.special==='silo17'?.023:this.special?.009:interiorFog;this.scene.fog.color.setHex(this.outside?0x929fa3:this.special==='silo17'?0x132526:mood.fog);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);if(this.outside)this.scene.fog.color.copy(this.surface.sky.fogColor);this.structure.visible=this.landings.visible=this.stairs.visible=this.distant.visible=this.distantLandings.visible=this.distantStairs.visible=this.topCore.visible=!this.special&&!this.outside;
+    this.scene.fog.density=this.outside?.0012:this.special==='excavator'?.004:this.special==='silo17'?.023:this.special?.009:interiorFog;this.scene.fog.color.setHex(this.outside?0x929fa3:this.special==='silo17'?0x132526:mood.fog);this.scene.background.setHex(this.outside?0x929fa3:0x171e1c);if(this.outside)this.scene.fog.color.copy(this.surface.sky.fogColor);this.structure.visible=this.landings.visible=this.stairs.visible=this.structureHere.visible=this.landingsHere.visible=this.stairsHere.visible=this.distant.visible=this.distantLandings.visible=this.distantStairs.visible=this.topCore.visible=!this.special&&!this.outside;
   }
 }

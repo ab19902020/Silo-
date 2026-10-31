@@ -5,3 +5,8 @@ qa-output/
 .openai/artifacts/
 models/cast/*.glb
 playthrough.log
+
+# Android build output, downloaded tools and the signing key
+android/build/
+android/.tools/
+android/.keys/

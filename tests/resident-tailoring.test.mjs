@@ -40,6 +40,17 @@ test('neckline stays continuous at every supported build without moving the shou
   let n=0;for(const {a,b,count} of edges.values())if(count===1&&p.getY(a)>1.4&&p.getY(b)>1.4)for(const i of [a,b]){
    const radius=(p.getX(i)/(.066*wide))**2+((p.getZ(i)-.010)/.060)**2;assert.ok(Math.abs(radius-1)<1e-5,'ragged neckline');assert.ok(p.getY(i)>=1.4519&&p.getY(i)<=1.4661);n++;
   }
-  assert.ok(n>40);assert.ok(Array.from({length:p.count},(_,i)=>p.getY(i)>1.46&&Math.abs(p.getX(i))>.15*wide).some(Boolean),'shoulders were flattened');geometry.dispose();
+  assert.ok(n>40);
+  // The shoulders keep their height — a neckline fix that clamped every high
+  // torso vertex to the neck once pulled them down flat — and they slope. This
+  // used to assert that the top of the figure sat above 1.46 m fifteen
+  // centimetres out from the spine, which is the flat shelf that made the whole
+  // cast read as blocky: a real shoulder falls about four centimetres from the
+  // base of the neck to its tip.
+  const top=(lo,hi)=>Math.max(...Array.from({length:p.count},(_,i)=>Math.abs(p.getX(i))>=lo*wide&&Math.abs(p.getX(i))<hi*wide?p.getY(i):-9));
+  const root=top(.07,.10),tip=top(.17,.20);
+  assert.ok(tip>1.40,`shoulders collapsed: the tip is at ${tip.toFixed(3)} m`);
+  assert.ok(root-tip>.015&&root-tip<.07,`the shoulder falls ${((root-tip)*100).toFixed(1)} cm from the neck to the tip; a real one falls two to six`);
+  geometry.dispose();
  }
 });

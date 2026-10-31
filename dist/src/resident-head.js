@@ -46,13 +46,19 @@ export function addResidentHead({a,skin,hair,dark,add,binding,ell,box,tube}){
    const amount=clamp(Math.max(jaw*beard,a.moustache?tache*.75:0),0,.85);
    c.lerp(hair,amount);
   }
+  // The body's skin carries a faint mottling (resident-model.js, `shade`) and
+  // the head did not, so the two met in a pale ring round the neck. The same
+  // mottling, from the same position, makes the join disappear.
+  c.multiplyScalar(.97+.025*Math.cos(y*11+x*24)+.010*Math.sin(x*47+y*31));
   return {color:c,surface:[.53,0,1,0]};
  },skin);
  const eyeCenters=[-1,1].map(side=>shapeFace(side*.03385,1.6183,.08499,a)),r=.0118*(a.eyeSize??1);
  const glossy=(hex)=>{const c=new T.Color(hex);c.residentSurface=[.14,0,0,0];return c;};
  for(const [index,side] of [-1,1].entries()){
   const {x:ex,y:cy,z:ez}=eyeCenters[index];
-  ell(ex,cy,ez,r,r,r,glossy(0xbcb8a9),'Head',20);
+  // The whites were a mid grey, and under the silo's lamps every eye in the
+  // place looked dead. Still not paper-white: an eye is in its own shade.
+  ell(ex,cy,ez,r,r,r,glossy(0xd0cbbd),'Head',20);
   const cap=(radius,half,color)=>{const g=new T.SphereGeometry(radius,20,8,0,Math.PI*2,0,half);g.rotateX(Math.PI/2);g.translate(ex,cy,ez);add(g,color,'Head');};
   cap(r+.00025,.51,glossy(a.eyes??0x575647));cap(r+.00045,.235,glossy(0x080b09));
   for(const upper of [true,false])add(eyelidGeometry(eyeCenters[index],r,upper),skin,'Head');
@@ -65,23 +71,45 @@ export function addResidentHead({a,skin,hair,dark,add,binding,ell,box,tube}){
   for(const path of [...fit.arms,fit.bridge])for(let i=1;i<path.length;i++)tube(path[i-1],path[i],.0015,.0015,metal,'Head',6);
  }
  if(a.bald){scalp.dispose();return;}
- const sp=scalp.attributes.position,sn=scalp.attributes.normal,keep=[],masks=[];
+ const sp=scalp.attributes.position,keep=[],masks=[];
+ // The head is split along a seam, with the vertices on it doubled and each
+ // copy carrying its own normal. Pushing the hair out along those normals
+ // opened a crack along the crown that grew with the hair's volume, so the
+ // push uses the normal averaged over every copy of a point.
+ const sn=scalp.attributes.normal.clone(),welded=new Map(),weldKey=i=>`${sp.getX(i).toFixed(4)},${sp.getY(i).toFixed(4)},${sp.getZ(i).toFixed(4)}`;
+ for(let i=0;i<sp.count;i++){const k=weldKey(i),n=welded.get(k)||[0,0,0];n[0]+=sn.getX(i);n[1]+=sn.getY(i);n[2]+=sn.getZ(i);welded.set(k,n);}
+ for(let i=0;i<sp.count;i++){const [x,y,z]=welded.get(weldKey(i)),l=Math.hypot(x,y,z)||1;sn.setXYZ(i,x/l,y/l,z/l);}
  const curls=['curls','longCurls'].includes(a.hairStyle),long=['long','longCurls','braids'].includes(a.hairStyle)||female&&a.hairStyle==='waves';
+ const pulled=['bun','ponytail','braids'].includes(a.hairStyle);
+ const volume=pulled?[.0075,.0075]:curls?[.0150,.0200]:['waves','fringe','long'].includes(a.hairStyle)?[.0115,.0160]:[.0085,.0120];
  for(let i=0;i<sp.count;i++){
   const x=sp.getX(i),y=sp.getY(i),z=sp.getZ(i),front=clamp((z+.065)/.15,0,1);
   const line=1.565+.116*front+(female?.004:age*.020)-(a.hairStyle==='fringe'?.012:0);
   const m=clamp((y-line)/.025,0,1);masks.push(m);
-  const grain=curls?.0018*Math.sin(x*430+y*207)*Math.cos(z*335):.0007*Math.sin(x*270+z*180);
-  const offset=-.0035+m*(.009+clamp((y-1.67)/.09,0,1)*.009)+(grain*m);
+  const grain=curls?.0022*Math.sin(x*430+y*207)*Math.cos(z*335):.0008*Math.sin(x*270+z*180);
+  // Hair stands off the skull. It used to be a centimetre at most everywhere,
+  // which is a swimming cap: the head kept its bald silhouette and the hair
+  // was a colour on it. Hair pulled back into a bun or a tail does lie close;
+  // loose hair carries volume, most of it on the crown.
+  const offset=-.0035+m*(volume[0]+clamp((y-1.66)/.09,0,1)*volume[1])+(grain*m);
   sp.setXYZ(i,x+sn.getX(i)*offset,y+sn.getY(i)*offset,z+sn.getZ(i)*offset);
  }
  for(let i=0;i<data.indices.length;i+=3){const ids=data.indices.slice(i,i+3);if(ids.some(k=>masks[k]>.001))keep.push(...ids);}
  scalp.setIndex(keep);scalp.deleteAttribute('skinUV');scalp.computeVertexNormals();add(scalp,hair,'Head');
  if(long){
   const positions=[],indices=[],rows=16,cols=32;
+  // Hanging hair falls in locks of slightly different length, not a cut
+  // straight across like a curtain, and the edges of the fall curl in towards
+  // the neck so the sheet never shows as a single card from the side.
+  const reach=volume[0]+volume[1]*.5;
   for(let j=0;j<=rows;j++)for(let i=0;i<=cols;i++){
-   const t=j/rows,angle=Math.PI*.39+i/cols*Math.PI*1.22,rx=.083*fw*(1+.16*t),rz=.095*(1+.20*t);
-   positions.push(Math.sin(angle)*rx,1.655-t*(.29+.015*Math.sin(i*.7)),Math.cos(angle)*rz+.0015*Math.sin(t*18+i*.8));
+   const t=j/rows,u=i/cols,edge=Math.sin(Math.PI*u),angle=Math.PI*.39+u*Math.PI*1.22;
+   const lock=.29+.022*Math.sin(i*1.9)+.016*Math.sin(i*4.7+1.1)+.010*Math.sin(i*9.3);
+   // It starts under the hair on the crown and comes out from beneath it,
+   // rather than beginning in mid-air as a ledge round the back of the head.
+   const tuck=1-.14*(1-T.MathUtils.smoothstep(t,0,.2));
+   const rx=(.083+reach*.8)*fw*(1+.16*t)*(1-.10*(1-edge)*t)*tuck,rz=(.095+reach)*(1+.20*t)*(.92+.08*edge)*tuck;
+   positions.push(Math.sin(angle)*rx,1.700-t*(lock+.045),Math.cos(angle)*rz+.0022*Math.sin(t*18+i*.8)*edge);
   }
   for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const k=j*(cols+1)+i;indices.push(k,k+cols+1,k+1,k+1,k+cols+1,k+cols+2);}
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setIndex(indices);g.computeVertexNormals();add(g,hair,y=>binding('Head','Chest',clamp((y-1.42)/.12,0,1)));

@@ -10,6 +10,7 @@ import { updateResidentExpression } from './resident-expression.js';
 import { residentAppearance } from './face-shape.js';
 import { shoeGeometry } from './resident-footwear.js';
 import { fitHandFrame } from './hand-frame.js';
+import { buildFarResident } from './resident-lod.js';
 
 const templates=new Map();
 const material=residentMaterial();
@@ -56,7 +57,9 @@ export function buildResidentModel(definition,{suit=false}={}){
       colors.push(tone.r*shade,tone.g*shade,tone.b*shade);
       const skinPart=painted||tone===skin||tone.skinSurface,hairPart=tone===hair||tone.hairSurface,leather=tone===dark;
       if(finish)surfaces.push(finish[0],finish[1]||0,finish[2]||0,finish[3]||0);
-      else surfaces.push(skinPart?.51:hairPart?.9:leather?.59:.84,0,skinPart?1:0,skinPart||hairPart||leather?0:1);
+      // Hair is marked with 2 in the third channel so the shader can lay
+      // strands over it. It also carries a sheen: at .9 it was felt.
+      else surfaces.push(skinPart?.51:hairPart?.62:leather?.59:.84,0,skinPart?1:hairPart?2:0,skinPart||hairPart||leather?0:1);
     }
     if(geometry.index)for(const i of geometry.index.array)indices.push(start+i);else for(let i=0;i<p.count;i++)indices.push(start+i);geometry.dispose();
   };
@@ -134,6 +137,8 @@ export function buildResidentModel(definition,{suit=false}={}){
   const mesh=new THREE.SkinnedMesh(geometry,finishes);mesh.name=definition.id+(suit?'-cleaning-suit':'-resident');mesh.castShadow=true;mesh.receiveShadow=true;// Static conservative bounds cover the animated body without skinning every
   // vertex on the CPU each frame. Cleaner choreography keeps its own exemption.
   mesh.frustumCulled=!suit;mesh.boundingSphere=new THREE.Sphere(V(0,definition.height*.48,0),definition.height*.92);model.add(mesh);model.updateMatrixWorld(true);mesh.bind(new THREE.Skeleton(bones));geometry.computeBoundingSphere();
+  // The version shown across a room; see resident-lod.js.
+  if(!suit)buildFarResident(geometry,{fine:new Set(['Head','Neck'].map(n=>bones.indexOf(byName[n])))});
   // Every resident gets the same relaxed wrist alignment as the playable cast.
   model.userData.handFrames={};model.userData.armRetargeted=true;
   for(const side of ['L','R']){
@@ -143,6 +148,15 @@ export function buildResidentModel(definition,{suit=false}={}){
     if(cloud.length>8)model.userData.handFrames[side]={quaternion:fitHandFrame(cloud,direction,side==='L'?1:-1).quaternion.toArray()};
   }
   return model;
+}
+
+// Tailoring a resident — body, cloth, collar, jacket — is a fifth of a second
+// of work the first time they are seen, and during play that lands in a single
+// frame as you walk into a crowd. This does it ahead of time; afterwards the
+// resident costs a clone.
+export function warmResident(definition,options={}){
+  const key=definition.id+(options.suit?'-suit':'');if(templates.has(key))return false;
+  templates.set(key,buildResidentModel(definition,options));return true;
 }
 
 export function createResident(definition,options={}){
